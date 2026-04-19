@@ -36,7 +36,7 @@ GEMINI_API_KEY=yyyyyy
 GEMINI_MODEL=gemini-2.5-flash
 OLLAMA_MODEL=llama3.1
 OLLAMA_VISION_MODEL=gemma4:26b
-ALLOWED_HOST=pisomky.ternac.net
+ALLOWED_HOST=your.domain.here
 ```
 
 ## Spustenie
