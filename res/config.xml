@@ -10,30 +10,8 @@
    <renderers>
       <renderer mime="application/pdf">
          <fonts>
-            <!--<directory recursive="true">/usr/share/fonts/truetype</directory>
-            <font kerning="yes" embed-url="LiberationSerif-Regular.ttf">
-               <font-triplet name="Liberation Serif" style="normal" weight="normal"/>
-            </font>
-            <font kerning="yes" embed-url="LiberationSerif-Italic.ttf">
-               <font-triplet name="Liberation Serif" style="italic" weight="normal"/>
-            </font>
-            <font kerning="yes" embed-url="LiberationSerif-Bold.ttf">
-               <font-triplet name="Liberation Serif" style="normal" weight="bold"/>
-            </font>
-            <font kerning="yes" embed-url="LiberationSerif-BoldItalic.ttf">
-               <font-triplet name="Liberation Serif" style="italic" weight="bold"/>
-            </font>--> <!--keby som chcel specialne fonty embedovat do pdf-->
-             <auto-detect/> <!--vyhlada fonty na pocitaci-->
+            <auto-detect/>
          </fonts>
       </renderer>
-      <!--<encryption-params>
-         <user-password>testuserpass</user-password>
-         <owner-password>testownerpass</owner-password>
-         <noprint/>
-         <nocopy/>
-         <noedit/>
-         <noannotations/>
-      </encryption-params>--> <!--keby som chcel zabezpecit dokument-->
    </renderers>
-   <!--<use-cache>false</use-cache>--><!--ked chcem zakazat cacheovanie fontov-->
 </fop>
