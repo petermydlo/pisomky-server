@@ -46,7 +46,7 @@ ALLOWED_HOST=your.domain.here
 fastapi dev app/main.py
 
 # Produkčný server (hypercorn)
-hypercorn --worker-class trio -w 4 --bind unix:/tmp/pisomkyserver.sock app.main:app
+hypercorn --worker-class trio -w 4 --bind unix:/tmp/app.sock app.main:app
 ```
 
 Server vyžaduje hlavičku `Host: pisomky.ternac.net`. Admin rozhranie vyžaduje hlavičku `X-Remote-User` (nastavuje reverse proxy).
