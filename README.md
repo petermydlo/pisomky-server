@@ -70,7 +70,6 @@ res/
    xslt/            # XSLT šablóny (Saxon)
    xquery/          # XQuery súbory (Saxon)
 pubres/             # Statické súbory (CSS, JS, obrázky)
-scripts/            # Pomocné migračné skripty
 tests/              # Pytest testy
 ```
 
