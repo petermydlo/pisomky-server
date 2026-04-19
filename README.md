@@ -80,6 +80,15 @@ tests/              # Pytest testy
 pytest tests/ -v
 ```
 
+## Použitie AI
+
+Projekt bol vyvíjaný s pomocou [Claude](https://claude.ai) (Anthropic). AI asistencia bola využitá pri:
+
+- návrhu a implementácii AI funkcií (nápoveda, hodnotenie, import odpovedí)
+- reštruktúralizácii projektu a nastavení vývojového prostredia
+- písaní jednotkových testov
+- code review a oprave chýb (linter)
+
 ## Dátová vrstva
 
 Všetky dáta sú uložené ako XML súbory. Otázky a kategórie majú stabilné `@id` atribúty (8-znakový SHA-256 hash). Ak je otázka použitá v teste, pri mazaní sa označí `@deprecated="1"` namiesto fyzického vymazania.
