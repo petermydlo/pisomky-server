@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Písomkový server{% endblock %}
+{% block meta %}
+      <meta name="description" content="Stránka písomkového servera">
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+{% endblock %}
+{% block body %}
+      <div class="centrovane">
+         <h1 class="odsadenieH">Písomkový server</h1>
+         {%- if "wrongKey" == detail %}
+         <div class="alert alert-danger">Zadaný zlý kľúč, skúste znovu!</div>
+         {%- elif "missingTest" == detail %}
+         <div class="alert alert-danger">Test nenájdený, skúste znovu!</div>
+         {%- endif %}
+         <form id="loginForm" class="odsadenieH d-flex flex-column align-items-center">
+            <div class="form-group">
+               <label for="kluc">Kľúč písomky</label>
+               <input type="text" id="kluc" name="kluc" maxLength="40" class="form-control inputW" autocomplete="off" required autofocus/>
+            </div>
+            <div class="form-group form-check form-switch">
+               <input type="checkbox" id="wm" name="wm" class="form-check-input"/>
+               <label for="wm" class="form-chech-label">Editovateľný</label>
+            </div>
+            <button id="odoslat" class="btn btn-outline-info">Vstúpiť</button>
+         </form>
+      </div>
+      <footer>
+         <a class="btn btn-outline-light btn-sm" href="/admin">Admin</a>
+      </footer>
+{% endblock %}
+{% block extra_scripts %}
+      <script src="/pubres/js/index.js"><!--MyJS--></script>
+{% endblock %}

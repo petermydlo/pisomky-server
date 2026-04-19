@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.lock
+*.pdf
+*.fo
+.backup/
+.pytest_cache/
+
+# XML dáta — commitujú sa len example súbory
+res/xml/**/*.xml
+res/xml/**/*.xml.old
+res/xml/**/*.xml~
+!res/xml/**/*.example.xml

@@ -1,0 +1,5 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feedback>
+   <zapis datum="2025-01-08T09:20:00" otazka_id="otq00003" test_id="demo01xnovaka" val="1">Hint: Think about what happens to the source code before it can be executed.</zapis>
+   <zapis datum="2025-01-08T09:25:00" otazka_id="otq00003" test_id="demo01xkovacam" val="0">Hint: Consider the step-by-step execution model used by interpreted languages.</zapis>
+</feedback>

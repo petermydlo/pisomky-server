@@ -1,0 +1,31 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<testy xml:lang="sk" predmet="DEMO" trieda="I.A" skupina="" kapitola="01" gendat="2025-01-01T10:00:00" start="2025-01-08T09:00" stop="2025-01-08T09:45" autor="ucitel">
+   <test uuid="00000000-0000-0000-0000-000000000001" id="demo01xnovaka" meno="Ján" priezvisko="Novák" trieda="I.A">
+      <otazka id="otq00001" body="1">
+         <znenie>Aký je výsledok výrazu 2 + 2?</znenie>
+         <odpoved spravna="1">4</odpoved>
+         <odpoved spravna="0">3</odpoved>
+         <odpoved spravna="0">5</odpoved>
+         <odpoved spravna="0">22</odpoved>
+      </otazka>
+      <otazka id="otq00002" body="1">
+         <znenie>Python je interpretovaný jazyk.</znenie>
+         <odpoved spravna="1">pravda</odpoved>
+         <odpoved spravna="0">nepravda</odpoved>
+      </otazka>
+   </test>
+   <test uuid="00000000-0000-0000-0000-000000000002" id="demo01xkovacam" meno="Mária" priezvisko="Kováč" trieda="I.A">
+      <otazka id="otq00001" body="1">
+         <znenie>Aký je výsledok výrazu 2 + 2?</znenie>
+         <odpoved spravna="0">3</odpoved>
+         <odpoved spravna="1">4</odpoved>
+         <odpoved spravna="0">22</odpoved>
+         <odpoved spravna="0">5</odpoved>
+      </otazka>
+      <otazka id="otq00002" body="1">
+         <znenie>Python je interpretovaný jazyk.</znenie>
+         <odpoved spravna="0">nepravda</odpoved>
+         <odpoved spravna="1">pravda</odpoved>
+      </otazka>
+   </test>
+</testy>

@@ -1,0 +1,6 @@
+[tool.ruff.lint]
+select = ["E", "F", "B"]
+ignore = ["E501", "B904"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Import odpovedí z fotiek{% endblock %}
+{% block meta %}
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
+{% endblock %}
+{% block extra_css %}
+      <link nonce="NGINX_CSP_NONCE" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"/>
+{% endblock %}
+{% block body %}
+      <div class="flex-container-icon bg-info-subtle">
+         <div>
+            <a href="/admin"><i class="bi bi-house" title="Home"></i></a>
+         </div>
+      </div>
+      <div class="okraj hrubo bg-info">Import odpovedí z fotiek testov</div>
+
+      <!-- Upload sekcia -->
+      <div class="okraj" id="uploadSekcia">
+         <div class="form-group">
+            <label for="obrazky">Vyberte fotky/skeny testov:</label>
+            <input type="file" id="obrazky" name="obrazky" class="form-control" accept="image/*,.pdf" multiple/>
+         </div>
+         <div id="nahlady" class="d-flex flex-wrap gap-2 mt-2"></div>
+         <button id="btnImport" class="btn btn-outline-info mt-2" disabled>Importovať</button>
+      </div>
+
+      <!-- Priebeh -->
+      <div class="okraj d-none" id="priebehSekcia">
+         <div id="priebehText" class="hrubo">Spracovávam...</div>
+         <div class="progress mt-2">
+            <div id="priebehBar" class="progress-bar" role="progressbar">0%</div>
+         </div>
+      </div>
+
+      <!-- Vysledky -->
+      <div id="vysledkySekcia" class="d-none">
+         <div class="okraj hrubo bg-info">Výsledky importu</div>
+         <div id="vysledky"></div>
+      </div>
+{% endblock %}
+{% block extra_scripts %}
+      <script nonce="NGINX_CSP_NONCE" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"><!--Bootstrap--></script>
+      <script src="/pubres/js/utils.js"><!--MyUtils--></script>
+      <script src="/pubres/js/importanswers.js"><!--MyJS--></script>
+{% endblock %}

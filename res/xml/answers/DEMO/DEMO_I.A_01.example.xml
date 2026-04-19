@@ -1,0 +1,11 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<odpovede xml:lang="sk" predmet="DEMO" trieda="I.A" skupina="" kapitola="01">
+   <test id="demo01xnovaka" dat="2025-01-08T09:30:00">
+      <otazka id="otq00001">a</otazka>
+      <otazka id="otq00002">a</otazka>
+   </test>
+   <test id="demo01xkovacam" dat="2025-01-08T09:35:00">
+      <otazka id="otq00001">b</otazka>
+      <otazka id="otq00002">b</otazka>
+   </test>
+</odpovede>

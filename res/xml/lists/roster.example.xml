@@ -1,0 +1,13 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<triedy xml:lang="sk">
+   <trieda id="I.A">
+      <student meno="Ján" priezvisko="Novák"/>
+      <student meno="Mária" priezvisko="Kováč"/>
+      <student meno="Peter" priezvisko="Horváth" skupina="skupina1"/>
+      <student meno="Jana" priezvisko="Szabó" skupina="skupina1"/>
+   </trieda>
+   <trieda id="I.B">
+      <student meno="Tomáš" priezvisko="Varga"/>
+      <student meno="Eva" priezvisko="Tóth"/>
+   </trieda>
+</triedy>

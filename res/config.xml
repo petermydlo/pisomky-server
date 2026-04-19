@@ -1,0 +1,39 @@
+<fop version="1.1"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:noNamespaceSchemaLocation="http://svn.apache.org/viewvc/xmlgraphics/fop/trunk/src/foschema/fop-configuration.xsd?view=co">
+   <base>./</base>
+   <strict-configuration>true</strict-configuration>
+   <strict-validation>true</strict-validation>
+   <source-resolution>96</source-resolution>
+   <target-resolution>96</target-resolution>
+   <default-page-settings height="29.7cm" width="21cm"/>
+   <renderers>
+      <renderer mime="application/pdf">
+         <fonts>
+            <!--<directory recursive="true">/usr/share/fonts/truetype</directory>
+            <font kerning="yes" embed-url="LiberationSerif-Regular.ttf">
+               <font-triplet name="Liberation Serif" style="normal" weight="normal"/>
+            </font>
+            <font kerning="yes" embed-url="LiberationSerif-Italic.ttf">
+               <font-triplet name="Liberation Serif" style="italic" weight="normal"/>
+            </font>
+            <font kerning="yes" embed-url="LiberationSerif-Bold.ttf">
+               <font-triplet name="Liberation Serif" style="normal" weight="bold"/>
+            </font>
+            <font kerning="yes" embed-url="LiberationSerif-BoldItalic.ttf">
+               <font-triplet name="Liberation Serif" style="italic" weight="bold"/>
+            </font>--> <!--keby som chcel specialne fonty embedovat do pdf-->
+             <auto-detect/> <!--vyhlada fonty na pocitaci-->
+         </fonts>
+      </renderer>
+      <!--<encryption-params>
+         <user-password>testuserpass</user-password>
+         <owner-password>testownerpass</owner-password>
+         <noprint/>
+         <nocopy/>
+         <noedit/>
+         <noannotations/>
+      </encryption-params>--> <!--keby som chcel zabezpecit dokument-->
+   </renderers>
+   <!--<use-cache>false</use-cache>--><!--ked chcem zakazat cacheovanie fontov-->
+</fop>

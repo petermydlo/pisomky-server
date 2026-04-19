@@ -1,0 +1,21 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<kapitola predmet="DEMO" id="01" nazov="Ukážková kapitola">
+   <kategoria id="kat00001" pocet="2" body="1" nazov="Ukážková kategória">
+      <otazka id="otq00001" body="1">
+         <znenie>Aký je výsledok výrazu 2 + 2?</znenie>
+         <odpoved spravna="1">4</odpoved>
+         <odpoved spravna="0">3</odpoved>
+         <odpoved spravna="0">5</odpoved>
+         <odpoved spravna="0">22</odpoved>
+      </otazka>
+      <otazka id="otq00002" body="1">
+         <znenie>Python je interpretovaný jazyk.</znenie>
+         <odpoved spravna="1">pravda</odpoved>
+         <odpoved spravna="0">nepravda</odpoved>
+      </otazka>
+      <otazka id="otq00003" body="2" static="1">
+         <znenie>Vysvetli rozdiel medzi kompilovaným a interpretovaným jazykom.</znenie>
+         <vzor>Kompilovaný jazyk sa prekladá celý naraz pred spustením, interpretovaný sa vykonáva riadok po riadku.</vzor>
+      </otazka>
+   </kategoria>
+</kapitola>
