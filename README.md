@@ -21,7 +21,7 @@ FastAPI webová aplikácia pre tvorbu a správu školských písomiek. Umožňuj
 ## Inštalácia
 
 ```bash
-pip install -r /srv/requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Konfigurácia
@@ -43,10 +43,10 @@ ALLOWED_HOST=pisomky.ternac.net
 
 ```bash
 # Vývojový server
-/srv/venv/bin/fastapi dev app/main.py
+fastapi dev app/main.py
 
 # Produkčný server (hypercorn)
-/srv/venv/bin/hypercorn --worker-class trio -w 4 --bind unix:/tmp/pisomkyserver.sock app.main:app
+hypercorn --worker-class trio -w 4 --bind unix:/tmp/pisomkyserver.sock app.main:app
 ```
 
 Server vyžaduje hlavičku `Host: pisomky.ternac.net`. Admin rozhranie vyžaduje hlavičku `X-Remote-User` (nastavuje reverse proxy).
@@ -77,7 +77,7 @@ tests/              # Pytest testy
 ## Testy
 
 ```bash
-/srv/venv/bin/python -m pytest tests/ -v
+pytest tests/ -v
 ```
 
 ## Dátová vrstva
