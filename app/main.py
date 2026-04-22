@@ -10,7 +10,7 @@ from app.utils import find_test, xslt_to_string
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from app.mytypes import StringQueryOptional, StringPath, StringHeader
+from app.mytypes import BoolQuery, StringPath, StringHeader
 from app.routers import saveanswers
 from app.routers import savemarks
 from app.routers import showresult
@@ -36,7 +36,7 @@ from app.routers import processquestion
 from app.routers import setpaused
 from app.routers import importanswers
 from app.routers import aievaluate
-from app.routers.ai_providers import get_provider
+from app.routers.aiproviders import get_provider
 
 
 async def custom_http_exception_handler(request: Request, exc: HTTPException):
@@ -125,7 +125,7 @@ async def admin(request: Request, X_Remote_User: StringHeader):
       raise HTTPException(status_code=400, detail=str(e))
 
 @app.get('/{kluc}', response_class=HTMLResponse)
-async def view(request: Request, kluc: StringPath, q: StringQueryOptional = None):
+async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
    if not (kluc := kluc.strip()): #ked uzivatel zada kluc z prazdnych znakov
       return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'wrongKey'}, status_code=400)
    proc = request.app.state.proc
@@ -133,7 +133,7 @@ async def view(request: Request, kluc: StringPath, q: StringQueryOptional = None
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
       return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'missingTest'}, status_code=404)
    try:
-      if q and q in ['w', 'W']:
+      if edit:
          vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': False}, xslt_pools=request.app.state.xslt_pools)
       else:
          vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False}, xslt_pools=request.app.state.xslt_pools)
@@ -143,13 +143,13 @@ async def view(request: Request, kluc: StringPath, q: StringQueryOptional = None
       raise HTTPException(status_code=400, detail=str(e))
 
 @app.get('/admin/{kluc}', response_class=HTMLResponse)
-async def adminview(request: Request, X_Remote_User: StringHeader, kluc: StringPath, q: StringQueryOptional = None):
+async def adminview(request: Request, X_Remote_User: StringHeader, kluc: StringPath, edit: BoolQuery = False):
    proc = request.app.state.proc
    node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
       return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'missingTest'}, status_code=404)
    try:
-      if q and q in ['w', 'W']:
+      if edit:
          vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': True}, xslt_pools=request.app.state.xslt_pools)
       else:
          vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': True}, xslt_pools=request.app.state.xslt_pools)

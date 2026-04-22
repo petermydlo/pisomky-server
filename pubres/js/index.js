@@ -4,7 +4,7 @@ $(function() {
       const kluc = $("#kluc").val();
       let adresa = "/" + kluc;
       if ($("#wm").is(":checked"))
-         adresa += "?q=w";
+         adresa += "?edit=true";
       window.location = adresa;
    });
 });
