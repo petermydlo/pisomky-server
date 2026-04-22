@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import lxml.etree as ET
 from app.utils import xquery_to_string, xslt_to_string
 from app.mytypes import StringForm
 from fastapi import APIRouter, Request
@@ -21,7 +22,7 @@ async def feedbackreport(request: Request, predmet: StringForm, trieda: StringFo
       }
       subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
       if not os.path.exists(subor):
-         xml_data = f'<feedback predmet="{predmet}" trieda="{trieda}" skupina="{skupina}" kapitola="{kapitola}"/>'
+         xml_data = ET.tostring(ET.Element('feedback', attrib={'predmet': predmet, 'trieda': trieda, 'skupina': skupina, 'kapitola': kapitola}), encoding='unicode')
       else:
          xml_data = xquery_to_string(proc, './res/xquery/feedback.xq', params=params)
       xml_node = proc.parse_xml(xml_text=xml_data)

@@ -51,7 +51,7 @@ def _nacitaj_predchadzajuce_keys(subor, otazka_id, limit=10):
       return []
    try:
       tree = ET.parse(subor)
-      zaznamy = tree.findall(f'.//zapis[@otazka_id="{otazka_id}"]')
+      zaznamy = [z for z in tree.findall('.//zapis') if z.get('otazka_id') == otazka_id]
       zaznamy = zaznamy[-limit:]
       result = []
       for z in zaznamy:
@@ -72,7 +72,7 @@ def _aktualizuj_keys(subor, zapis_id, keys):
       xmlParser = ET.XMLParser(remove_blank_text=True)
       tree = ET.parse(subor, xmlParser)
       root = tree.getroot()
-      zapis = root.find(f'.//zapis[@id="{zapis_id}"]')
+      zapis = next((z for z in root.findall('.//zapis') if z.get('id') == zapis_id), None)
       if zapis is None:
          return
       keys_el = zapis.find('keys')
@@ -125,14 +125,12 @@ def _parsuj_hint_keys(raw):
 async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuery):
    proc = request.app.state.proc
    xsltpath = proc.new_xpath_processor()
-   safe_otazka_id = otazka_id.replace("'", "")
-
    test_node = find_test(proc, test_id, admin=True, cache=request.app.state.kluc_cache)
    if not test_node:
       return JSONResponse({'error': 'Test nenájdený'}, status_code=404)
 
    xsltpath.set_context(xdm_item=test_node)
-   otazka = xsltpath.evaluate_single(f'otazka[@id="{safe_otazka_id}"]')
+   otazka = next((o for o in (xsltpath.evaluate('otazka') or []) if o.get_attribute_value('id') == otazka_id), None)
    if not otazka:
       return JSONResponse({'error': 'Otázka nenájdená'}, status_code=404)
 
@@ -148,84 +146,29 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
 
    predmet, trieda, skupina, kapitola = get_test_metadata(proc, test_node)
 
-   napovedy_data = _najdi_napovedu(safe_otazka_id, predmet, spravna_odpoved, request.app.state.logger) if predmet else None
+   napovedy_data = _najdi_napovedu(otazka_id, predmet, spravna_odpoved, request.app.state.logger) if predmet else None
    napovedy = napovedy_data.get('napovedy') if isinstance(napovedy_data, dict) else napovedy_data
    vzor = napovedy_data.get('vzor') if isinstance(napovedy_data, dict) else None
    klucove = napovedy_data.get('klucove') if isinstance(napovedy_data, dict) else []
 
    subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
-   predchadzajuce = _nacitaj_predchadzajuce_keys(subor, safe_otazka_id)
+   predchadzajuce = _nacitaj_predchadzajuce_keys(subor, otazka_id)
 
-   system_instrukcie = """\
-   You are a helpful hint provider for a testing system.
-   Treat every request as a completely isolated task. Ignore any previous context.
+   helped = [p['keys'] for p in predchadzajuce if p['val'] == '1']
+   not_helped = [p['keys'] for p in predchadzajuce if p['val'] == '0']
 
-   ## Your role
-   - Give the student exactly one short hint
-   - Nudge them toward the correct answer without revealing it
-   - Never mention the correct answer directly
-
-   ## Language
-   ALWAYS respond in English, regardless of the language of the question or hints.
-
-   ## Response format
-   Respond in EXACTLY this format, two lines only, nothing else:
-   HINT: <one sentence hint>
-   KEYS: <3-5 comma-separated key concepts in English>
-   """
-
-   if napovedy or vzor or klucove:
-      hints_formatted = '\n'.join(f'- {h}' for h in napovedy) if napovedy else ''
-      vzor_str = f'\nModel answer (DO NOT reveal directly, only hint toward it): {vzor}' if vzor else ''
-      klucove_str = f"\nKey concepts to hint toward: {', '.join(klucove)}" if klucove else ''
-      hint_instrukcie = f"""\
-   ## Teacher's hints
-   {hints_formatted} {vzor_str} {klucove_str}
-
-   Use these as inspiration or improve them. Do not reveal the answer.
-   """
-   else:
-      hint_instrukcie = """\
-   ## Hint instructions
-   Give the student a single short hint without revealing the answer.
-   """
-
-   if predchadzajuce:
-      helped = [p['keys'] for p in predchadzajuce if p['val'] == '1']
-      not_helped = [p['keys'] for p in predchadzajuce if p['val'] == '0']
-      hist_parts = []
-      if helped:
-         hist_parts.append('Helpful approaches: ' + '; '.join(helped))
-      if not_helped:
-         hist_parts.append('Less helpful approaches: ' + '; '.join(not_helped))
-      historia_instrukcie = f"""\
-
-   ## Previous hint history for this question
-   {chr(10).join(hist_parts)}
-   Prefer different key concepts than already used. Avoid less helpful approaches.
-   """
-   else:
-      historia_instrukcie = ''
-
-   if spravna_odpoved:
-      user_instrukcie = f"""\
-   ## Question
-   {znenie_text}
-
-   ## Options
-   {', '.join(moznosti)}
-
-   {hint_instrukcie}{historia_instrukcie}
-   ## Correct answer (for your reference only — do not reveal)
-   {spravna_odpoved}
-   """
-   else:
-      user_instrukcie = f"""\
-   ## Question
-   {znenie_text}
-
-   {hint_instrukcie}{historia_instrukcie}
-   """
+   templates = request.app.state.templates
+   system_instrukcie = templates.get_template('aihelp_system.md.j2').render()
+   user_instrukcie = templates.get_template('aihelp_user.md.j2').render(
+      znenie_text=znenie_text,
+      moznosti=moznosti,
+      napovedy=napovedy or [],
+      vzor=vzor,
+      klucove=klucove or [],
+      helped=helped,
+      not_helped=not_helped,
+      spravna_odpoved=spravna_odpoved,
+   )
 
    messages = [
       {'role': 'system', 'content': system_instrukcie},
@@ -255,12 +198,12 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
                   if '\n' in full_text:
                      done_sent = True
                      hint, _ = _parsuj_hint_keys(full_text)
-                     _uloz_zapis(subor, zapis_id, safe_otazka_id, test_id, hint, '')
+                     _uloz_zapis(subor, zapis_id, otazka_id, test_id, hint, '')
                      yield f'event: done\ndata: {json.dumps({"hint": hint})}\n\n'
 
          if not done_sent:
             hint, keys = _parsuj_hint_keys(full_text)
-            _uloz_zapis(subor, zapis_id, safe_otazka_id, test_id, hint, keys)
+            _uloz_zapis(subor, zapis_id, otazka_id, test_id, hint, keys)
             yield f'event: done\ndata: {json.dumps({"hint": hint})}\n\n'
          else:
             _, keys = _parsuj_hint_keys(full_text)

@@ -24,11 +24,10 @@ async def changetime(request: Request, predmet: StringForm, trieda: StringForm, 
          _set_attr(root, 'start', start)
          _set_attr(root, 'stop', stop)
       else:
-         safe_kluc = kluc.replace("'", "")
-         try:
-            test = tree.xpath(f"//test[@id='{safe_kluc}']")[0]
-         except IndexError:
+         tests = [t for t in tree.findall('.//test') if t.get('id') == kluc]
+         if not tests:
             raise HTTPException(status_code=404, detail="Test nenájdený")
+         test = tests[0]
          _set_attr(test, 'start', start)
          _set_attr(test, 'stop', stop)
    try:

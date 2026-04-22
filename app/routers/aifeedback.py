@@ -31,7 +31,7 @@ async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis
          tree = etree.parse(subor, xmlParser)
          root = tree.getroot()
 
-         zapis = root.find(f'.//zapis[@id="{zapis_id}"]')
+         zapis = next((z for z in root.findall('.//zapis') if z.get('id') == zapis_id), None)
          if zapis is None:
             return {'ok': False, 'error': 'Záznam nenájdený'}
 

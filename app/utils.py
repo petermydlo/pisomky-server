@@ -666,7 +666,6 @@ def find_test(proc, kluc, admin=False, cache=None):
       cache = {}
    xsltpath = proc.new_xpath_processor()
    try:
-      safe_kluc = kluc.replace("'", "")
       test_node = None
 
       def _try_file(filename):
@@ -675,22 +674,22 @@ def find_test(proc, kluc, admin=False, cache=None):
             if node is None:
                return None
             xsltpath.set_context(xdm_item=node)
-            return xsltpath.evaluate_single(f"/testy/test[@id='{safe_kluc}']")
+            return next((t for t in (xsltpath.evaluate('/testy/test') or []) if t.get_attribute_value('id') == kluc), None)
          except Exception:
             return None
 
       #1. kluc je v cache - ideme priamo na subor
-      if safe_kluc in cache:
-         filename = cache[safe_kluc]
+      if kluc in cache:
+         filename = cache[kluc]
          test_node = _try_file(filename)
          if test_node is None:
-            del cache[safe_kluc]  #subor bol zmazany, odstranime z cache
+            del cache[kluc]  #subor bol zmazany, odstranime z cache
 
       #2. kluc nie je v cache - skusime najprv hot_file
       if test_node is None and cache.get('__hot__'):
          test_node = _try_file(cache['__hot__'])
          if test_node is not None:
-            cache[safe_kluc] = cache['__hot__']
+            cache[kluc] = cache['__hot__']
 
       #3. full scan ako posledna moznost
       if test_node is None:
@@ -703,9 +702,9 @@ def find_test(proc, kluc, admin=False, cache=None):
                print('chyba parsexml: ' + str(e))
                continue
             xsltpath.set_context(xdm_item=node)
-            found = xsltpath.evaluate_single(f"/testy/test[@id='{safe_kluc}']")
+            found = next((t for t in (xsltpath.evaluate('/testy/test') or []) if t.get_attribute_value('id') == kluc), None)
             if found is not None:
-               cache[safe_kluc] = filename
+               cache[kluc] = filename
                cache['__hot__'] = filename
                test_node = found
                break
@@ -724,8 +723,7 @@ def check_time(proc, predmet, trieda, skupina, kapitola, kluc):
    node = proc.parse_xml(xml_file_name=subor)
    xsltpath = proc.new_xpath_processor()
    xsltpath.set_context(xdm_item=node)
-   safe_kluc = kluc.replace("'", "")
-   test_node = xsltpath.evaluate_single(f"/testy/test[@id='{safe_kluc}']")
+   test_node = next((t for t in (xsltpath.evaluate('/testy/test') or []) if t.get_attribute_value('id') == kluc), None)
    if test_node is not None:
       rodic_node = test_node.get_parent()
       return _check_time_node(test_node, rodic_node)
