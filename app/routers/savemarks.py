@@ -12,11 +12,11 @@ router = APIRouter()
 
 #savemarks
 @router.post('/admin/savemarks/{kluc}')
-async def savemarks(request: Request, response: Response, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, dat: StringForm, skupina: StringForm = ''):
+async def savemarks(request: Request, response: Response, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, dat: StringForm, skupina: StringForm = ''):
    adresar = f'./res/xml/answers/{predmet}'
-   cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}.xml')
+   cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
    async with request.form() as form:
-      form_data = {k: v for k, v in form.items() if k not in {'kluc', 'predmet', 'trieda', 'skupina', 'kapitola', 'dat'}}
+      form_data = {k: v for k, v in form.items() if k not in {'kluc', 'predmet', 'trieda', 'skupina', 'kapitola', 'fileid', 'dat'}}
    lock = FileLock(f'{cesta}.lock')
    try:
       await run_in_threadpool(write_marks, lock, cesta, form_data, kluc, dat)
@@ -26,18 +26,18 @@ async def savemarks(request: Request, response: Response, kluc: StringPath, pred
    response.status_code = 201
    return
 
-def write_marks(lock, cesta, form_data, kluc, dat):
+def write_marks(lock: FileLock, cesta: Path, form_data: dict, kluc: str, dat: str) -> None:
    with lock:
       try:
          xmlParser = ET.XMLParser(remove_blank_text=True)
          tree = ET.parse(cesta, xmlParser)
          root = tree.getroot()
-         testxml = next(iter(root.xpath(".//test[@id=$kluc][@dat=$dat]", kluc=kluc, dat=dat)), None)
+         testxml = next(iter(root.xpath(".//test[@id=$kluc][@dat=$dat]", kluc=kluc, dat=dat)), None)  # type: ignore[arg-type]
          for key, value in form_data.items():
             typ, idotazky = key.split('_', 1)
-            otazkaxml = next(iter(testxml.xpath(".//otazka[@id=$id]", id=idotazky)), None)
+            otazkaxml = next(iter(testxml.xpath(".//otazka[@id=$id]", id=idotazky)), None)  # type: ignore[union-attr]
             if otazkaxml is None:
-               otazkaxml = ET.SubElement(testxml, 'otazka', attrib={'id': idotazky})
+               otazkaxml = ET.SubElement(testxml, 'otazka', attrib={'id': idotazky})  # type: ignore[arg-type]
             param = 'body' if typ in ('h', 'bh') else 'koment'
             otazkaxml.set(param, value)
          ET.indent(tree, space='   ')

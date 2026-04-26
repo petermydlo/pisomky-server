@@ -16,7 +16,6 @@
          <meta name="viewport" content="width=device-width, initial-scale=1"/>
          <link rel="icon" type="image/svg+xml" href="/pubres/img/faviconP.svg"/>
          <xsl:call-template name="cdn-css"/>
-         <link nonce="NGINX_CSP_NONCE" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css" integrity="sha256-cwDJdubMsvIJcAYY5EXUZAuQLxSlELxFYQlxvsxdYs8=" crossorigin="anonymous"/>
          <link rel="stylesheet" type="text/css" href="/pubres/css/testy.css"/>
       </head>
       <body>
@@ -35,7 +34,7 @@
                      </xsl:for-each-group>
                   </select>
                   <label for="trieda" class="form-label odsadenieHM">Trieda</label>
-                  <select id="trieda" name="trieda" class="selectpicker form-control form-select inputW" title="Vyber triedu/triedy..." multiple="multiple" required="required">
+                  <select id="trieda" name="trieda" class="form-select inputW" multiple="multiple" required="required" size="{count(distinct-values(document('../xml/lists/roster.xml')/triedy/trieda/@id))}">
                      <xsl:for-each-group select="document('../xml/lists/roster.xml')/triedy/trieda" group-by="@id">
                         <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
                         <option value="{@id}"><xsl:value-of select="@id"/></option>
@@ -88,7 +87,6 @@
          </div>
          <xsl:call-template name="cdn-popper"/>
          <xsl:call-template name="cdn-js"/>
-         <script nonce="NGINX_CSP_NONCE" src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js" integrity="sha256-obLPuLg5xxN2MC2szEaXLaN8tEKYgeCMn+TSPMxqOfE=" crossorigin="anonymous"><xsl:comment>Bootstrap-select</xsl:comment></script>
          <script src="/pubres/js/selectcreate.js"><xsl:comment>MyJS</xsl:comment></script>
       </body>
    </html>

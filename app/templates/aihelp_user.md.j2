@@ -1,0 +1,33 @@
+## Question
+{{ znenie_text }}
+{% if spravna_odpoved %}
+
+## Options
+{{ moznosti | join(', ') }}
+{% endif %}
+{% if napovedy or vzor or klucove %}
+
+## Teacher's hints
+{% for h in napovedy %}- {{ h }}
+{% endfor %}{% if vzor %}Model answer (DO NOT reveal directly, only hint toward it): {{ vzor }}
+{% endif %}{% if klucove %}Key concepts to hint toward: {{ klucove | join(', ') }}
+{% endif %}
+Use these as inspiration or improve them. Do not reveal the answer.
+{% else %}
+
+## Hint instructions
+Give the student a single short hint without revealing the answer.
+{% endif %}
+{% if helped or not_helped %}
+
+## Previous hint history for this question
+{% if helped %}Helpful approaches: {{ helped | join('; ') }}
+{% endif %}{% if not_helped %}Less helpful approaches: {{ not_helped | join('; ') }}
+{% endif %}
+Prefer different key concepts than already used. Avoid less helpful approaches.
+{% endif %}
+{% if spravna_odpoved %}
+
+## Correct answer (for your reference only — do not reveal)
+{{ spravna_odpoved }}
+{% endif %}

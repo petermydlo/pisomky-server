@@ -18,3 +18,5 @@ zxing-cpp
 pymupdf
 pytest
 ruff
+mypy
+lxml-stubs

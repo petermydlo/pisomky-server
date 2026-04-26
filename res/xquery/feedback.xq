@@ -4,9 +4,10 @@ declare variable $predmet as xs:string external;
 declare variable $trieda as xs:string external;
 declare variable $skupina as xs:string external;
 declare variable $kapitola as xs:string external;
+declare variable $fileid as xs:string external;
 
-let $feedback := if (doc-available(concat('../xml/feedback/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '.xml')))
-                 then doc(concat('../xml/feedback/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '.xml'))
+let $feedback := if (doc-available(concat('../xml/feedback/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '_', $fileid, '.xml')))
+                 then doc(concat('../xml/feedback/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '_', $fileid, '.xml'))
                  else ()
 let $qsubor := doc(concat('../xml/questions/', $predmet, '/', $predmet, '_', $kapitola, '.xml'))
 
@@ -32,7 +33,7 @@ let $otazky :=
          </napovedy>
       </otazka>
 
-return <feedback predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}">
+return <feedback predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}" fileid="{$fileid}">
    {
    for $kat_id in distinct-values($otazky/@kategoria)
       let $q_kat := $qsubor//kategoria[@id = $kat_id]

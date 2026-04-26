@@ -10,7 +10,7 @@
 
 <xsl:function name="my:adresa" as="xs:string">
    <xsl:param name="testnode" as="element()"/>
-   <xsl:sequence select="concat('../xml/answers/', $testnode/@predmet, '/', $testnode/@predmet, '_', $testnode/@trieda, $testnode/@skupina, '_', $testnode/@kapitola, '.xml')"/>
+   <xsl:sequence select="concat('../xml/answers/', $testnode/@predmet, '/', $testnode/@predmet, '_', $testnode/@trieda, $testnode/@skupina, '_', $testnode/@kapitola, '_', $testnode/@fileid, '.xml')"/>
 </xsl:function>
 
 <xsl:function name="my:vybtesty" as="document-node()">

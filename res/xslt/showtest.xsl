@@ -5,8 +5,10 @@
 <xsl:output method="html" version="5" indent="yes" encoding="UTF-8"/>
 
 <xsl:import href="head.xsl"/>
+<xsl:import href="common_html.xsl"/>
 
 <xsl:param name="admin" as="xs:boolean"/>
+<xsl:param name="napovedy_zostatok" as="xs:integer" required="yes"/>
 
 <xsl:template match="test">
    <html lang="sk">
@@ -33,7 +35,7 @@
          <link rel="stylesheet" type="text/css" href="/pubres/css/testy.css"/>
       </head>
       <body>
-         <div id="hlavicka" class="neviditelny" kluc="{@id}" predmet="{../@predmet}" trieda="{../@trieda}" skupina="{../@skupina}" kapitola="{../@kapitola}"/>
+         <div id="hlavicka" class="neviditelny" kluc="{@id}" predmet="{../@predmet}" trieda="{../@trieda}" skupina="{../@skupina}" kapitola="{../@kapitola}" fileid="{../@fileid}"/>
          <div class="flex-container-icon bg-info-subtle">
             <xsl:if test="$admin = true()">
                <div>
@@ -159,14 +161,17 @@
                   <xsl:apply-templates select="znenie"/>
                </span>
                <xsl:if test="not($je_rating_formular)">
-                  <span class="ai-napoveda-btn" title="Požiadať AI o nápovedu">
+                  <span class="ai-napoveda-btn{if ($napovedy_zostatok le 0) then ' hint-vycerpany' else ''}">
                      <xsl:attribute name="data-otazka-id">
                         <xsl:value-of select="@id"/>
                      </xsl:attribute>
                      <xsl:attribute name="data-test-id">
                         <xsl:value-of select="ancestor::test/@id"/>
                      </xsl:attribute>
-                     <i class="bi bi-lightbulb"/>
+                     <xsl:attribute name="title">
+                        <xsl:value-of select="concat('AI help (zostatok: ', $napovedy_zostatok, ')')"/>
+                     </xsl:attribute>
+                     <i class="bi bi-lightbulb text-warning text-opacity-50"/>
                   </span>
                </xsl:if>
             </div>
@@ -200,57 +205,5 @@
    </div>
 </xsl:template>
 
-<xsl:template match="ref">
-   <xsl:variable name="ref_id" select="@id"/>
-   <xsl:value-of select="count(ancestor::test/otazka[@id = $ref_id]/preceding-sibling::otazka) + 1"/>
-</xsl:template>
-
-<xsl:template match="obrazok">
-   <div class="centrovane">
-      <img src="/pubres/img/{@src}">
-         <xsl:if test="@vyska">
-            <xsl:attribute name="height"><xsl:value-of select="@vyska"/>px</xsl:attribute>
-         </xsl:if>
-         <xsl:if test="@sirka">
-            <xsl:attribute name="width"><xsl:value-of select="@sirka"/>px</xsl:attribute>
-         </xsl:if>
-         <xsl:if test="@nazov">
-            <xsl:attribute name="title"><xsl:value-of select="@nazov"/></xsl:attribute>
-         </xsl:if>
-      </img>
-   </div>
-</xsl:template>
-
-<xsl:template match="file">
-   <a href="/pubres/subory/{@src}">
-      <xsl:if test="@meno">
-         <xsl:attribute name="download"><xsl:value-of select="@meno"/></xsl:attribute>
-      </xsl:if>
-      <xsl:if test="not(@meno)">
-         <xsl:attribute name="download"/>
-      </xsl:if>
-      <xsl:if test="@nazov">
-         <xsl:value-of select="@nazov"/>
-      </xsl:if>
-   </a>
-   <xsl:apply-templates/>
-</xsl:template>
-
-<xsl:template match="text()">
-   <xsl:if test="normalize-space(.)">
-      <xsl:value-of select="."/>
-   </xsl:if>
-</xsl:template>
-
-<xsl:template match="br">
-   <br/>
-   <xsl:apply-templates/>
-</xsl:template>
-
-<xsl:template match="bold | italic | underline | upp | low | sup | sub">
-   <span class="{local-name()}">
-      <xsl:apply-templates/>
-   </span>
-</xsl:template>
 
 </xsl:stylesheet>

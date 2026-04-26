@@ -1,10 +1,10 @@
-$(function() {
-   $("#loginForm").on("submit", function(e) {
+document.addEventListener('DOMContentLoaded', () => {
+   document.getElementById('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const kluc = $("#kluc").val();
-      let adresa = "/" + kluc;
-      if ($("#wm").is(":checked"))
-         adresa += "?edit=true";
+      const kluc = document.getElementById('kluc').value;
+      let adresa = '/' + kluc;
+      if (document.getElementById('wm').checked)
+         adresa += '?edit=true';
       window.location = adresa;
    });
 });

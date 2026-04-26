@@ -21,6 +21,8 @@ from app.utils import (
    delete_question,
    is_used,
    find_test_file,
+   test_xml_path as xml_path,
+   modify_test_xml,
 )
 
 PREDMET = 'MAT'
@@ -348,6 +350,36 @@ def test_delete_question_pouzita(questions_file, tests_file):
 
 def test_delete_question_nenajde(questions_file):
    assert delete_question('neexistuje') is False
+
+
+# --- test_xml_path ---
+
+def test_xml_path_bez_skupiny():
+   cesta = xml_path('MAT', '1A', '', 'kap1', 'ab12')
+   assert cesta == './res/xml/tests/MAT/MAT_1A_kap1_ab12.xml'
+
+def test_xml_path_so_skupinou():
+   cesta = xml_path('MAT', '1A', 'sk1', 'kap1', 'ab12')
+   assert cesta == './res/xml/tests/MAT/MAT_1Ask1_kap1_ab12.xml'
+
+def test_xml_path_bez_fileid():
+   cesta = xml_path('MAT', '1A', '', 'kap1', '')
+   assert cesta == './res/xml/tests/MAT/MAT_1A_kap1_.xml'
+
+
+# --- modify_test_xml ---
+
+def test_modify_test_xml_zmeni_atribut(tests_file):
+   def callback(tree):
+      tree.getroot().set('start', '2026-01-01T08:00')
+   modify_test_xml(str(tests_file), callback)
+   tree = ET.parse(str(tests_file))
+   assert tree.getroot().get('start') == '2026-01-01T08:00'
+
+def test_modify_test_xml_neexistujuci_subor(tmp_path):
+   cesta = str(tmp_path / 'neexistuje.xml')
+   with pytest.raises(Exception):
+      modify_test_xml(cesta, lambda tree: None)
 
 
 # --- add_question ---

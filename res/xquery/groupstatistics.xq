@@ -4,6 +4,7 @@ declare variable $predmet as xs:string external;
 declare variable $trieda as xs:string external;
 declare variable $skupina as xs:string external;
 declare variable $kapitola as xs:string external;
+declare variable $fileid as xs:string external;
 declare variable $autor as xs:string external := '';
 
 declare function local:najdiOtazku($predmet, $kapitola, $otazka_id) {
@@ -23,11 +24,11 @@ declare function local:pismeno($pozicia as xs:integer) as xs:string {
    substring('abcdefghij', $pozicia, 1)
 };
 
-let $tests_subor := if (doc-available(concat('../xml/tests/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '.xml')))
-                    then doc(concat('../xml/tests/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '.xml'))
+let $tests_subor := if (doc-available(concat('../xml/tests/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '_', $fileid, '.xml')))
+                    then doc(concat('../xml/tests/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '_', $fileid, '.xml'))
                     else ()
-let $answers_subor := if (doc-available(concat('../xml/answers/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '.xml')))
-                      then doc(concat('../xml/answers/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '.xml'))
+let $answers_subor := if (doc-available(concat('../xml/answers/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '_', $fileid, '.xml')))
+                      then doc(concat('../xml/answers/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '_', $fileid, '.xml'))
                       else ()
 let $qsubor := doc(concat('../xml/questions/', $predmet, '/', $predmet, '_', $kapitola, '.xml'))
 
@@ -106,7 +107,7 @@ let $otazky :=
                       {$q_otazka/znenie[1]}
                    </otazka>
 
-return <statistika predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}">
+return <statistika predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}" fileid="{$fileid}">
    {
    for $kat_id in distinct-values($otazky/@kategoria)
       let $q_kat := $qsubor//kategoria[@id = $kat_id]

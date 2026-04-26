@@ -1,177 +1,173 @@
-$(function() {
+document.addEventListener('DOMContentLoaded', () => {
 
    const ODPOVEDE = ['a', 'b', 'c', 'd'];
 
+   function el(tag, classes = '', text = '') {
+      const e = document.createElement(tag);
+      if (classes) e.className = classes;
+      if (text) e.textContent = text;
+      return e;
+   }
+
    // nahladove obrazky pri vybere suborov
-   $('#obrazky').on('change', function() {
+   document.getElementById('obrazky').addEventListener('change', function() {
       const files = this.files;
-      $('#nahlady').empty();
+      const nahlady = document.getElementById('nahlady');
+      nahlady.innerHTML = '';
       if (files.length > 0) {
-         $.each(files, function(i, file) {
+         Array.from(files).forEach(file => {
             if (file.type === 'application/pdf') {
-               $('#nahlady').append(
-                  $('<div>').addClass('rounded d-flex flex-column align-items-center justify-content-center bg-light border')
-                     .css({height: '80px', width: '80px', fontSize: '10px', overflow: 'hidden'})
-                     .append($('<div>').text('📄').css('fontSize', '32px'))
-                     .append($('<div>').text(file.name).css({wordBreak: 'break-all', textAlign: 'center', padding: '0 2px'}))
-               );
+               const div = el('div', 'nahladPdf rounded d-flex flex-column align-items-center justify-content-center bg-light border');
+               div.appendChild(el('div', 'nahladPdf-icon', '📄'));
+               div.appendChild(el('div', 'nahladPdf-nazov', file.name));
+               nahlady.appendChild(div);
             } else {
-               const url = URL.createObjectURL(file);
-               $('#nahlady').append(
-                  $('<img>').attr('src', url).addClass('rounded').css({height: '80px', width: '80px', objectFit: 'cover'})
-               );
+               const img = el('img', 'nahladImg rounded');
+               img.src = URL.createObjectURL(file);
+               nahlady.appendChild(img);
             }
          });
-         $('#btnImport').prop('disabled', false);
+         document.getElementById('btnImport').disabled = false;
       } else {
-         $('#btnImport').prop('disabled', true);
+         document.getElementById('btnImport').disabled = true;
       }
    });
 
    // import
-   $('#btnImport').on('click', function() {
-      const files = $('#obrazky')[0].files;
+   document.getElementById('btnImport').addEventListener('click', async () => {
+      const files = document.getElementById('obrazky').files;
       if (!files.length) return;
 
-      $('#uploadSekcia').addClass('d-none');
-      $('#priebehSekcia').removeClass('d-none');
-      $('#vysledkySekcia').addClass('d-none');
-      $('#vysledky').empty();
+      document.getElementById('uploadSekcia').classList.add('d-none');
+      document.getElementById('priebehSekcia').classList.remove('d-none');
+      document.getElementById('vysledkySekcia').classList.add('d-none');
+      document.getElementById('vysledky').innerHTML = '';
 
       const formData = new FormData();
-      $.each(files, function(i, file) {
-         formData.append('obrazky', file);
-      });
+      Array.from(files).forEach(file => formData.append('obrazky', file));
 
       nastavPriebeh(0, `Spracovávam ${files.length} fotiek...`);
 
-      $.ajax({
-         url: '/admin/ai/importanswers',
-         method: 'POST',
-         data: formData,
-         processData: false,
-         contentType: false,
-         xhr: function() {
-            const xhr = new XMLHttpRequest();
-            return xhr;
+      try {
+         const resp = await fetch('/admin/ai/importanswers', { method: 'POST', body: formData });
+         if (resp.ok) {
+            const data = await resp.json();
+            nastavPriebeh(100, 'Hotovo.');
+            zobrazVysledky(data.vysledky);
+         } else {
+            const data = await resp.json().catch(() => ({}));
+            nastavPriebeh(100, 'Chyba!');
+            zobrazVysledky([{chyba: data?.detail || 'Neznáma chyba'}]);
          }
-      })
-      .done(function(data) {
-         nastavPriebeh(100, 'Hotovo.');
-         zobrazVysledky(data.vysledky);
-      })
-      .fail(function(xhr) {
+      } catch {
          nastavPriebeh(100, 'Chyba!');
-         zobrazVysledky([{chyba: xhr.responseJSON?.detail || 'Neznáma chyba'}]);
-      });
+         zobrazVysledky([{chyba: 'Neznáma chyba'}]);
+      }
    });
 
    function nastavPriebeh(pct, text) {
-      $('#priebehText').text(text);
-      $('#priebehBar').css('width', pct + '%').text(pct + '%');
+      document.getElementById('priebehText').textContent = text;
+      const bar = document.getElementById('priebehBar');
+      bar.style.width = pct + '%';
+      bar.textContent = pct + '%';
    }
 
    function zobrazVysledky(vysledky) {
-      $('#priebehSekcia').addClass('d-none');
-      $('#vysledkySekcia').removeClass('d-none');
+      document.getElementById('priebehSekcia').classList.add('d-none');
+      document.getElementById('vysledkySekcia').classList.remove('d-none');
 
-      const $cont = $('#vysledky');
-      $cont.empty();
+      const cont = document.getElementById('vysledky');
+      cont.innerHTML = '';
 
-      $.each(vysledky, function(i, v) {
-         const $blok = $('<div>').addClass('okraj mb-2');
+      vysledky.forEach(v => {
+         const blok = el('div', 'okraj mb-2');
 
          if (v.chyba) {
-            $blok.addClass('bg-danger-subtle');
-            $blok.append($('<div>').addClass('hrubo').text(v.subor || 'Chyba'));
-            $blok.append($('<div>').text(v.chyba));
+            blok.classList.add('bg-danger-subtle');
+            blok.appendChild(el('div', 'hrubo', v.subor || 'Chyba'));
+            blok.appendChild(el('div', '', v.chyba));
          } else {
-            $blok.addClass(v.nejasnosti && v.nejasnosti.length > 0 ? 'bg-warning-subtle' : 'bg-success-subtle');
-            $blok.append(
-               $('<div>').addClass('hrubo').text(
-                  `${v.test_id} — ${v.predmet} ${v.trieda}${v.skupina} ${v.kapitola} — zapísané: ${v.zapisane}`
-               )
-            );
+            blok.classList.add(v.nejasnosti?.length > 0 ? 'bg-warning-subtle' : 'bg-success-subtle');
+            blok.appendChild(el('div', 'hrubo',
+               `${v.test_id} — ${v.predmet} ${v.trieda}${v.skupina} ${v.kapitola} — zapísané: ${v.zapisane}`
+            ));
 
-            // nejasnosti
-            if (v.nejasnosti && v.nejasnosti.length > 0) {
-               $blok.append($('<div>').addClass('hrubo mt-2').text('Nejasnosti — skontrolujte a potvrďte:'));
-               $.each(v.nejasnosti, function(j, n) {
-                  const $riadok = $('<div>').addClass('d-flex align-items-center gap-2 mt-1');
-                  $riadok.append($('<span>').addClass('hrubo').text(n.id + ':'));
-                  $riadok.append($('<span>').text(n.znenie));
-                  if (n.dovod) {
-                     $riadok.append($('<span>').addClass('text-muted').text('(' + n.dovod + ')'));
-                  }
-                  // vyber odpovede
-                  const $select = $('<select>').addClass('form-select form-select-sm').css('width', 'auto');
-                  $select.append($('<option>').val('').text('—'));
-                  $.each(ODPOVEDE, function(k, pism) {
-                     $select.append($('<option>').val(pism).text(pism));
-                  });
-                  $select.data('test-id', v.test_id);
-                  $select.data('otazka-id', n.id);
-                  $select.data('predmet', v.predmet);
-                  $select.data('trieda', v.trieda);
-                  $select.data('skupina', v.skupina);
-                  $select.data('kapitola', v.kapitola);
-                  $riadok.append($select);
+            if (v.nejasnosti?.length > 0) {
+               blok.appendChild(el('div', 'hrubo mt-2', 'Nejasnosti — skontrolujte a potvrďte:'));
+               v.nejasnosti.forEach(n => {
+                  const riadok = el('div', 'd-flex align-items-center gap-2 mt-1');
+                  riadok.appendChild(el('span', 'hrubo', n.id + ':'));
+                  riadok.appendChild(el('span', '', n.znenie));
+                  if (n.dovod) riadok.appendChild(el('span', 'text-muted', '(' + n.dovod + ')'));
 
-                  // tlacidlo ulozit
-                  const $btn = $('<button>').addClass('btn btn-sm btn-outline-success').text('Uložiť').prop('disabled', true);
-                  $select.on('change', function() {
-                     $btn.prop('disabled', !$(this).val());
+                  const select = el('select', 'form-select form-select-sm w-auto');
+                  const optEmpty = el('option', '', '—');
+                  optEmpty.value = '';
+                  select.appendChild(optEmpty);
+                  ODPOVEDE.forEach(pism => {
+                     const opt = el('option', '', pism);
+                     opt.value = pism;
+                     select.appendChild(opt);
                   });
-                  $btn.on('click', function() {
-                     const sel = $riadok.find('select');
-                     ulozNejasnost(sel.data('test-id'), sel.data('otazka-id'), sel.val(),
-                        sel.data('predmet'), sel.data('trieda'), sel.data('skupina'), sel.data('kapitola'),
-                        $btn, $riadok);
+                  select.dataset.testId = v.test_id;
+                  select.dataset.otazkaId = n.id;
+                  select.dataset.predmet = v.predmet;
+                  select.dataset.trieda = v.trieda;
+                  select.dataset.skupina = v.skupina;
+                  select.dataset.kapitola = v.kapitola;
+                  select.dataset.fileid = v.fileid;
+                  riadok.appendChild(select);
+
+                  const btn = el('button', 'btn btn-sm btn-outline-success', 'Uložiť');
+                  btn.disabled = true;
+                  select.addEventListener('change', () => { btn.disabled = !select.value; });
+                  btn.addEventListener('click', () => {
+                     ulozNejasnost(select.dataset.testId, select.dataset.otazkaId, select.value,
+                        select.dataset.predmet, select.dataset.trieda, select.dataset.skupina,
+                        select.dataset.kapitola, select.dataset.fileid, btn, riadok);
                   });
-                  $riadok.append($btn);
-                  $blok.append($riadok);
+                  riadok.appendChild(btn);
+                  blok.appendChild(riadok);
                });
             }
          }
 
-         $cont.append($blok);
+         cont.appendChild(blok);
       });
 
-      // tlacidlo pre novy import
-      $cont.append(
-         $('<button>').addClass('btn btn-outline-info mt-2').text('Importovať ďalšie')
-            .on('click', function() {
-               $('#obrazky').val('');
-               $('#nahlady').empty();
-               $('#btnImport').prop('disabled', true);
-               $('#vysledkySekcia').addClass('d-none');
-               $('#uploadSekcia').removeClass('d-none');
-            })
-      );
+      const btnNovy = el('button', 'btn btn-outline-info mt-2', 'Importovať ďalšie');
+      btnNovy.addEventListener('click', () => {
+         document.getElementById('obrazky').value = '';
+         document.getElementById('nahlady').innerHTML = '';
+         document.getElementById('btnImport').disabled = true;
+         document.getElementById('vysledkySekcia').classList.add('d-none');
+         document.getElementById('uploadSekcia').classList.remove('d-none');
+      });
+      cont.appendChild(btnNovy);
    }
 
-   function ulozNejasnost(testId, otazkaId, odpoved, predmet, trieda, skupina, kapitola, $btn, $riadok) {
+   async function ulozNejasnost(testId, otazkaId, odpoved, predmet, trieda, skupina, kapitola, fileid, btn, riadok) {
       const data = new FormData();
       data.append('predmet', predmet);
       data.append('trieda', trieda);
       data.append('skupina', skupina);
       data.append('kapitola', kapitola);
+      data.append('fileid', fileid);
       data.append(otazkaId, odpoved);
 
-      $.ajax({
-         url: '/admin/ai/importmanual/' + testId,
-         method: 'POST',
-         data: data,
-         processData: false,
-         contentType: false
-      })
-      .done(function() {
-         $riadok.find('select, button').prop('disabled', true);
-         $riadok.append($('<span>').addClass('text-success hrubo').text(' ✓'));
-      })
-      .fail(function(xhr) {
-         zobrazNotifikaciu(xhr.responseJSON?.detail || 'Chyba pri ukladaní!');
-      });
+      try {
+         const resp = await fetch('/admin/ai/importmanual/' + testId, { method: 'POST', body: data });
+         if (resp.ok) {
+            riadok.querySelectorAll('select, button').forEach(e => e.disabled = true);
+            const ok = el('span', 'text-success hrubo', ' ✓');
+            riadok.appendChild(ok);
+         } else {
+            const json = await resp.json().catch(() => ({}));
+            zobrazNotifikaciu(json?.detail || 'Chyba pri ukladaní!');
+         }
+      } catch {
+         zobrazNotifikaciu('Chyba pri ukladaní!');
+      }
    }
 
 });

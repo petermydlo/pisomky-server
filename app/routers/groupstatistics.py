@@ -9,7 +9,7 @@ from fastapi.exceptions import HTTPException
 router = APIRouter()
 
 @router.post('/admin/groupstatistics', response_class=HTMLResponse)
-async def groupstatistics(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, skupina: StringForm = '', X_Remote_User: StringHeader = ''):
+async def groupstatistics(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', X_Remote_User: StringHeader = ''):
    proc = request.app.state.proc
    try:
       params = {
@@ -17,6 +17,7 @@ async def groupstatistics(request: Request, predmet: StringForm, trieda: StringF
          'trieda': trieda,
          'skupina': skupina,
          'kapitola': kapitola,
+         'fileid': fileid,
          'autor': X_Remote_User
       }
       xml_data = xquery_to_string(proc, './res/xquery/groupstatistics.xq', params=params)

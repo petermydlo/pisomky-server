@@ -6,7 +6,7 @@
 <xsl:import href="head.xsl"/>
 
 <xsl:template match="statistika">
-   <xsl:variable name="tests" select="doc(concat('../xml/tests/', @predmet, '/', @predmet, '_', @trieda, @skupina, '_', @kapitola, '.xml'))"/>
+   <xsl:variable name="tests" select="doc('../xml/tests/' || @predmet || '/' || @predmet || '_' || @trieda || @skupina || '_' || @kapitola || '_' || @fileid || '.xml')"/>
    <html lang="sk">
       <head>
          <title>Štatistika skupiny: <xsl:value-of select="@predmet"/> <xsl:value-of select="@trieda"/><xsl:value-of select="@skupina"/> <xsl:value-of select="@kapitola"/></title>
@@ -19,7 +19,7 @@
          <link rel="stylesheet" type="text/css" href="/pubres/css/testy.css"/>
          <style nonce="NGINX_CSP_NONCE">
             <xsl:for-each select="//otazka">
-               <xsl:value-of select="concat('.pb-', translate(@id, '.', '-'), ' { width: ', @percento, '%; }')"/>
+               <xsl:value-of select="'.pb-' || translate(@id, '.', '-') || ' { width: ' || @percento || '%; }'"/>
             </xsl:for-each>
          </style>
       </head>
@@ -50,7 +50,7 @@
                <div class="nav nav-tabs flex-container-tab bg-info-subtle bold">
                   <xsl:for-each select="kategoria">
                      <div>
-                        <a class="nav-link navbar-brand" data-bs-toggle="tab" href="#{concat('kat_', @id)}" title="{if (@nazov != '') then @nazov else @id}">
+                        <a class="nav-link navbar-brand" data-bs-toggle="tab" href="#{'kat_' || @id}" title="{if (@nazov != '') then @nazov else @id}">
                            <xsl:if test="position() = 1">
                               <xsl:attribute name="class">nav-link navbar-brand active</xsl:attribute>
                            </xsl:if>
@@ -83,7 +83,7 @@
 </xsl:template>
 
 <xsl:template match="kategoria">
-   <div class="tab-pane" id="{concat('kat_', @id)}">
+   <div class="tab-pane" id="{'kat_' || @id}">
       <xsl:if test="position() = 1">
          <xsl:attribute name="class">tab-pane active</xsl:attribute>
       </xsl:if>
@@ -94,7 +94,7 @@
 </xsl:template>
 
 <xsl:template match="otazka">
-   <xsl:variable name="collapse_id" select="concat('gs_', @id)"/>
+   <xsl:variable name="collapse_id" select="'gs_' || @id"/>
    <xsl:variable name="farba">
       <xsl:choose>
          <xsl:when test="xs:integer(@percento) >= 75">bg-success-subtle</xsl:when>

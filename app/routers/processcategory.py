@@ -20,8 +20,8 @@ async def process_category(request: Request, predmet: StringForm, kategoria_id: 
             raise HTTPException(status_code=400, detail='Kategória sa nedala vytvoriť')
          return JSONResponse(content={'id': nova_id}, status_code=200)
       elif operacia == 'update':
-         data = {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus}
-         ok = update_category(kategoria_id, data)
+         update_data: dict[str, str | None] = {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus}
+         ok = update_category(kategoria_id, update_data)
          if not ok:
             raise HTTPException(status_code=400, detail='Kategória sa nedala upraviť')
          return JSONResponse(content={'ok': True}, status_code=200)

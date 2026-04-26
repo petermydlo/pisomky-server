@@ -1,40 +1,32 @@
-$(function() {
-   $("#ulozit").on("click", function(e) {
+document.addEventListener('DOMContentLoaded', () => {
+   document.getElementById('ulozit').addEventListener('click', async (e) => {
       e.preventDefault();
-      const kluc = $("#hlavicka").attr("kluc");
+      const hlavicka = document.getElementById('hlavicka');
+      const kluc = hlavicka.getAttribute('kluc');
       const udaje = new FormData();
-      udaje.append("predmet", $("#hlavicka").attr("predmet"));
-      udaje.append("trieda", $("#hlavicka").attr("trieda"));
-      udaje.append("skupina", $("#hlavicka").attr("skupina"));
-      udaje.append("kapitola", $("#hlavicka").attr("kapitola"));
-      udaje.append("dat", $("#hlavicka").attr("dat"));
-      $("#odpovede input[type='radio'][name^='h_']:checked, #odpovede input[type='radio'][name^='bh_']:checked").each(function() {
-         udaje.append($(this).attr("name"), $(this).parent().text());
+      udaje.append('predmet',  hlavicka.getAttribute('predmet'));
+      udaje.append('trieda',   hlavicka.getAttribute('trieda'));
+      udaje.append('skupina',  hlavicka.getAttribute('skupina'));
+      udaje.append('kapitola', hlavicka.getAttribute('kapitola'));
+      udaje.append('fileid',   hlavicka.getAttribute('fileid'));
+      udaje.append('dat',      hlavicka.getAttribute('dat'));
+      document.querySelectorAll("#odpovede input[type='radio'][name^='h_']:checked, #odpovede input[type='radio'][name^='bh_']:checked").forEach(el => {
+         udaje.append(el.getAttribute('name'), el.parentElement.textContent);
       });
-      $("#odpovede input[type='number'][id^='h_'], #odpovede input[type='number'][id^='bh_'], #odpovede input[type='text'][id^='k_']").each(function() {
-         udaje.append($(this).attr("id"), $(this).val());
+      document.querySelectorAll("#odpovede input[type='number'][id^='h_'], #odpovede input[type='number'][id^='bh_'], #odpovede input[type='text'][id^='k_']").forEach(el => {
+         udaje.append(el.id, el.value);
       });
-      $.ajax({
-         url: "/admin/savemarks/" + kluc,
-         method: "POST",
-         data: udaje,
-         processData: false,
-         contentType: false
-      })
-      .done(function(data, status, xhr) {
-         zobrazNotifikaciu("Známky úspešne uložené.", "success", "Úspech");
-      })
-      .fail(function(xhr, statusText, error) {
-         console.error("AJAX Error:", {
-            status: xhr.status,
-            statusText: statusText,
-            error: error,
-            response: xhr.responseText
-         });
-         switch(xhr.status) {
-            case 500: zobrazNotifikaciu("Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr."); break;
-            default: zobrazNotifikaciu("Vyskytla sa chyba! Skúste to prosím neskôr.");
+      try {
+         const resp = await fetch('/admin/savemarks/' + kluc, { method: 'POST', body: udaje });
+         if (resp.ok) {
+            zobrazNotifikaciu('Známky úspešne uložené.', 'success', 'Úspech');
+         } else {
+            if (resp.status === 500) zobrazNotifikaciu('Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr.');
+            else zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
          }
-      });
+      } catch (err) {
+         console.error('Chyba:', err);
+         zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
+      }
    });
 });

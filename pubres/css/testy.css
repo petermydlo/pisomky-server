@@ -57,10 +57,11 @@ input[type="text"] {
    margin-top: 0.25rem;
 }
 
-input:focus {
+input:focus,
+select:focus {
    outline: none !important;
-   border-color: #9eeaf9 !important;
-   box-shadow: 0 0 0 0.25rem #9eeaf9 !important;
+   border-color: rgba(var(--bs-info-rgb), 0.5) !important;
+   box-shadow: 0 0 0 0.125rem rgba(var(--bs-info-rgb), 0.5) !important;
 }
 
 input.casInput {
@@ -143,8 +144,8 @@ button {
    text-indent: 0 !important;
    line-height: 1 !important;
    text-align: center;
-   background-color: #f8f9fa;
-   border: 1px solid #dee2e6;
+   background-color: var(--bs-gray-100);
+   border: 1px solid var(--bs-gray-300);
    border-radius: 50%;
    font-size: 1rem;
    flex-shrink: 0;
@@ -154,17 +155,32 @@ button {
 
 /* Efekt pri prejdení myšou */
 .ai-napoveda-btn:hover {
-   background-color: #fff3cd; /* Jemne žltkastá pri aktivite */
-   border-color: #ffecb5;
+   background-color: var(--bs-warning-bg-subtle);
+   border-color: var(--bs-warning-border-subtle);
    transform: scale(1.15) rotate(10deg);
-   box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+   box-shadow: 0 0.125rem 0.25rem rgba(var(--bs-black-rgb), 0.075);
 }
+
+.ai-napoveda-btn.hint-vycerpany {
+   cursor: not-allowed;
+   opacity: 0.35;
+}
+.ai-napoveda-btn.hint-vycerpany i {
+   color: rgba(var(--bs-black-rgb), 0.5) !important;
+}
+.ai-napoveda-btn.hint-vycerpany:hover {
+   background-color: var(--bs-gray-100);
+   border-color: var(--bs-gray-300);
+   transform: none;
+   box-shadow: none;
+}
+
 
 .tooltip-text {
    display: none;
    position: absolute;
-   background: #333;
-   color: #fff;
+   background: var(--bs-gray-800);
+   color: var(--bs-white);
    padding: 6px 10px;
    border-radius: 4px;
    width: auto;
@@ -209,8 +225,8 @@ button {
 /* Rating  */
 .rating-wrap { display: flex; flex-direction: row; gap: 8px; padding: 8px; flex: 0 0 auto; }
 .rating-label { cursor: pointer; }
-.rating-label .rating-star { font-size: 1.5em; color: #ccc; }
-.rating-label input:checked ~ .rating-star { color: #ffc107; }
+.rating-label .rating-star { font-size: 1.5em; color: var(--bs-gray-400); }
+.rating-label input:checked ~ .rating-star { color: var(--bs-warning); }
 
 /* Z-index pre kontajner toastov, aby bol nad všetkým */
 .toast-container {
@@ -237,7 +253,7 @@ button {
 /* Ošetrenie, aby pätička nebola priesvitná */
 .toast-footer {
    background-color: var(--bs-light);
-   border-top: 1px solid rgba(0,0,0,0.05);
+   border-top: 1px solid rgba(var(--bs-black-rgb), 0.05);
    border-bottom-left-radius: calc(var(--bs-toast-border-radius) - var(--bs-toast-border-width));
    border-bottom-right-radius: calc(var(--bs-toast-border-radius) - var(--bs-toast-border-width));
 }
@@ -564,4 +580,32 @@ div:hover > span.penIcon {
    body {
       display: none;
    }
+}
+
+#trieda option:checked {
+   background-color: var(--bs-primary);
+   color: var(--bs-white);
+}
+
+.nahladImg {
+   height: 80px;
+   width: 80px;
+   object-fit: cover;
+}
+
+.nahladPdf {
+   height: 80px;
+   width: 80px;
+   font-size: 10px;
+   overflow: hidden;
+}
+
+.nahladPdf-icon {
+   font-size: 32px;
+}
+
+.nahladPdf-nazov {
+   word-break: break-all;
+   text-align: center;
+   padding: 0 2px;
 }

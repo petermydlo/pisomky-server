@@ -1,13 +1,17 @@
+VENV = /srv/venv
+
 .PHONY: test lint run dev
 
+
 test:
-	pytest
+	$(VENV)/bin/pytest
 
 lint:
-	ruff check app/
+	$(VENV)/bin/ruff check app/
+	$(VENV)/bin/mypy app/
 
 run:
-	hypercorn --worker-class trio -w 4 --bind unix:/tmp/pisomkyserver.sock app.main:app
+	$(VENV)/bin/hypercorn --worker-class trio -w 4 --bind unix:/tmp/pisomkyserver.sock app.main:app
 
 dev:
-	fastapi dev app/main.py
+	$(VENV)/bin/fastapi dev app/main.py

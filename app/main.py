@@ -6,7 +6,8 @@ from fastapi import FastAPI, Request
 from saxonche import PySaxonProcessor
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from app.utils import find_test, xslt_to_string
+from app.utils import find_test, xslt_to_string, get_test_metadata
+from app.routers.aihelp import _spocitaj_napovedy_testu
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -28,7 +29,7 @@ from app.routers import changetime
 from app.routers import stoptime
 from app.routers import aihelp
 from app.routers import aifeedback
-from app.routers import aifeedback_report
+from app.routers import aifeedbackreport
 from app.routers import groupstatistics
 from app.routers import processchapter
 from app.routers import processcategory
@@ -44,7 +45,7 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
 
 exceptions = {404: custom_http_exception_handler}
 
-app = FastAPI(exception_handlers=exceptions, docs_url=None, redoc_url=None)
+app = FastAPI(exception_handlers=exceptions, docs_url=None, redoc_url=None)  # type: ignore[arg-type]
 
 #globalny Saxon procesor aby sa nemusel vytvarat niekolkokrat
 app.state.proc = PySaxonProcessor(license=False)
@@ -94,7 +95,7 @@ app.include_router(changetime.router)
 app.include_router(stoptime.router)
 app.include_router(aihelp.router)
 app.include_router(aifeedback.router)
-app.include_router(aifeedback_report.router)
+app.include_router(aifeedbackreport.router)
 app.include_router(groupstatistics.router)
 app.include_router(importanswers.router)
 app.include_router(processchapter.router)
@@ -133,10 +134,16 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
       return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'missingTest'}, status_code=404)
    try:
+      xp = proc.new_xpath_processor()
+      xp.set_context(xdm_item=node)
+      pocet_otazok = int(xp.evaluate_single('count(otazka)') or 0)
+      predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, node)
+      subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
+      napovedy_zostatok = max(0, pocet_otazok - _spocitaj_napovedy_testu(subor, kluc))
       if edit:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': False}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok}, xslt_pools=request.app.state.xslt_pools)
       else:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok}, xslt_pools=request.app.state.xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
       request.app.state.logger.error(f'chyba view: {e}')
@@ -149,10 +156,16 @@ async def adminview(request: Request, X_Remote_User: StringHeader, kluc: StringP
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
       return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'missingTest'}, status_code=404)
    try:
+      xp = proc.new_xpath_processor()
+      xp.set_context(xdm_item=node)
+      pocet_otazok = int(xp.evaluate_single('count(otazka)') or 0)
+      predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, node)
+      subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
+      napovedy_zostatok = max(0, pocet_otazok - _spocitaj_napovedy_testu(subor, kluc))
       if edit:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': True}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok}, xslt_pools=request.app.state.xslt_pools)
       else:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': True}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok}, xslt_pools=request.app.state.xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
       request.app.state.logger.error(f'chyba adminview: {e}')

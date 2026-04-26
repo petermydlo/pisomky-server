@@ -1,27 +1,54 @@
-$(function() {
+document.addEventListener('DOMContentLoaded', () => {
+
+   function skupinaData(el) {
+      return {
+         predmet: el.closest('.tab-pane.active').id,
+         trieda:  el.closest('div.skupina').querySelector('#trieda').textContent,
+         skupina: el.closest('div.skupina').querySelector('#skupina').textContent,
+         kapitola:el.closest('div.skupina').querySelector('#kapitola').textContent,
+         fileid:  el.closest('div.skupina').dataset.fileid
+      };
+   }
+
+   function odosliForm(action, data) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = action;
+      Object.entries(data).forEach(([name, value]) => {
+         const input = document.createElement('input');
+         input.type = 'hidden';
+         input.name = name;
+         input.value = value;
+         form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+   }
+
+   function chybaNotifikaciu(status) {
+      if (status === 404) zobrazNotifikaciu('Testy nenájdené!');
+      else if (status === 403) zobrazNotifikaciu('Nemáte oprávnenie na danú akciu. Kontaktujte svojho administrátora!');
+      else if (status === 500) zobrazNotifikaciu('Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr.');
+      else zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
+   }
+
    //vykona zmenu tabu podla hash v URL
    function onHashChange() {
       const hash = window.location.hash;
-      const $tab = hash ? $("div.nav").find("[data-bs-toggle='tab'][href='" + hash + "']") : null;
-      if ($tab && $tab.length)
-         $tab.tab("show");
+      const tab = hash ? document.querySelector(`div.nav [data-bs-toggle='tab'][href='${hash}']`) : null;
+      if (tab)
+         bootstrap.Tab.getOrCreateInstance(tab).show();
       else {
          history.replaceState(null, '', window.location.pathname);
-         $("div.nav").find("[data-bs-toggle='tab']:first").tab("show");
+         const first = document.querySelector("div.nav [data-bs-toggle='tab']");
+         if (first) bootstrap.Tab.getOrCreateInstance(first).show();
       }
-   };
+   }
 
    //zmeni fragment pri vybrati tabu
-   $("[data-bs-toggle='tab']").on("click", function(e) {
-      parent.location.hash = $(this).attr("href");
+   document.querySelectorAll("[data-bs-toggle='tab']").forEach(tab => {
+      tab.addEventListener('click', () => { parent.location.hash = tab.getAttribute('href'); });
    });
-
-   //formatuje aktualny cas na YYYY-MM-DDTHH:MM
-   function terazFormatovany() {
-      const coeff = 1000 * 60;
-      const teraz = new Date(Math.round(Date.now() / coeff) * coeff);
-      return teraz.getFullYear() + "-" + (teraz.getMonth()+1).toString().padStart(2, '0') + "-" + teraz.getDate().toString().padStart(2, '0') + "T" + teraz.getHours().toString().padStart(2, '0') + ":" + teraz.getMinutes().toString().padStart(2, '0');
-   }
 
    //validuje format YYYY-MM-DDTHH:MM
    function jeValidnyCas(val) {
@@ -29,294 +56,218 @@ $(function() {
    }
 
    //odosle zmenu casu na server
-   function odosliZmenuCasu(trigger, starypolicko, novy) {
-      const data = {
-         predmet: trigger.closest(".tab-pane.active").attr("id"),
-         trieda:  trigger.closest("div.skupina").find("#trieda").text(),
-         skupina: trigger.closest("div.skupina").find("#skupina").text(),
-         kapitola:trigger.closest("div.skupina").find("#kapitola").text()
-      };
-      if (trigger.is(".startT, .stopT"))
-         data.kluc = trigger.attr("id");
-      if (trigger.is(".startS, .startT"))
-         data.start = novy;
-      else
-         data.stop = novy;
+   async function odosliZmenuCasu(trigger, starypolicko, novy) {
+      const data = skupinaData(trigger);
+      if (trigger.matches('.startT, .stopT')) data.kluc = trigger.id;
+      if (trigger.matches('.startS, .startT')) data.start = novy;
+      else data.stop = novy;
 
-      $.ajax({ url: "/admin/changetime", data: data, method: "POST" })
-      .done(function() {
-         starypolicko.text(novy);
-         const cell = starypolicko.closest("div");
-         cell.css("background-color", "rgba(var(--bs-success-rgb), 0.5)");
-         setTimeout(function() { cell.css("background-color", ""); }, 1500);
-      })
-      .fail(function(xhr, statusText, error) {
-         console.error("AJAX Error:", {
-            status: xhr.status,
-            statusText: statusText,
-            error: error,
-            response: xhr.responseText
+      const cell = starypolicko.closest('div');
+      try {
+         const resp = await fetch('/admin/changetime', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams(data)
          });
-         const cell = starypolicko.closest("div");
-         cell.css("background-color", "rgba(var(--bs-danger-rgb), 0.5)");
-         setTimeout(function() { cell.css("background-color", ""); }, 1500);
-         switch(xhr.status) {
-            case 404: zobrazNotifikaciu("Testy nenájdené!"); break;
-            case 403: zobrazNotifikaciu("Nemáte oprávnenie na danú akciu. Kontaktujte svojho administrátora!"); break;
-            case 500: zobrazNotifikaciu("Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr."); break;
-            default:  zobrazNotifikaciu("Vyskytla sa chyba! Skúste to prosím neskôr.");
+         if (resp.ok) {
+            starypolicko.textContent = novy;
+            cell.style.backgroundColor = 'rgba(var(--bs-success-rgb), 0.5)';
+            setTimeout(() => { cell.style.backgroundColor = ''; }, 1500);
+         } else {
+            cell.style.backgroundColor = 'rgba(var(--bs-danger-rgb), 0.5)';
+            setTimeout(() => { cell.style.backgroundColor = ''; }, 1500);
+            chybaNotifikaciu(resp.status);
          }
-      });
+      } catch (err) {
+         console.error('Chyba:', err);
+         cell.style.backgroundColor = 'rgba(var(--bs-danger-rgb), 0.5)';
+         setTimeout(() => { cell.style.backgroundColor = ''; }, 1500);
+         zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
+      }
    }
 
    //zmeni cas skupiny testov alebo jedneho testu
-   $(".startS, .stopS, .startT, .stopT").on("click", function(event) {
+   document.addEventListener('click', (event) => {
+      if (!event.target.matches('.startS, .stopS, .startT, .stopT')) return;
       event.stopPropagation();
       event.preventDefault();
 
       //zatvorime vsetky ostatne otvorene inputy
-      $(".casInput").each(function() {
-         const fn = $(this).data("zavriet");
-         if (fn) fn();
-      });
+      document.querySelectorAll('.casInput').forEach(el => { if (el._zavriet) el._zavriet(); });
 
-      //ak uz je otvoreny input v tejto bunke, ignorujeme klik
-      const $parentDiv = $(this).parent();
-      if ($parentDiv.find(".casInput").length) return;
+      const pen = event.target;
+      const parentDiv = pen.parentElement;
+      if (parentDiv.querySelector('.casInput')) return;
 
-      const $pen = $(this);
-      const starypolicko = $pen.siblings("span").first();
-      const stary = starypolicko.text().trim();
-
-      //CTRL+click prefilluje aktualny cas ale este neodosle
+      const starypolicko = pen.previousElementSibling;
+      const stary = starypolicko.textContent.trim();
       const predvyplneny = event.ctrlKey ? terazFormatovany() : stary;
 
       //vytvorime inline input s potvrdenim a zrusenim
-      const $input = $("<input>").addClass("casInput").attr("type", "text").attr("title", "Formát: YYYY-MM-DDTHH:MM").val(predvyplneny);
-      const $btns   = $("<div>").addClass("casBtns");
-      const $btnOk  = $("<span>").addClass("casBtn casBtn-ok").attr("title", "Potvrdiť").html("✔");
-      const $btnDel = $("<span>").addClass("casBtn casBtn-del").attr("title", "Vymazať čas").html("🗑");
-      const $btnX   = $("<span>").addClass("casBtn casBtn-cancel").attr("title", "Zrušiť").html("✖");
-      $btns.append($btnOk, $btnDel, $btnX);
+      const input = document.createElement('input');
+      input.className = 'casInput';
+      input.type = 'text';
+      input.title = 'Formát: YYYY-MM-DDTHH:MM';
+      input.value = predvyplneny;
+
+      const btns = document.createElement('div');
+      btns.className = 'casBtns';
+      const btnOk  = document.createElement('span');
+      btnOk.className = 'casBtn casBtn-ok'; btnOk.title = 'Potvrdiť'; btnOk.innerHTML = '✔';
+      const btnDel = document.createElement('span');
+      btnDel.className = 'casBtn casBtn-del'; btnDel.title = 'Vymazať čas'; btnDel.innerHTML = '🗑';
+      const btnX   = document.createElement('span');
+      btnX.className = 'casBtn casBtn-cancel'; btnX.title = 'Zrušiť'; btnX.innerHTML = '✖';
+      btns.append(btnOk, btnDel, btnX);
 
       //skryjeme stary text a pero
-      starypolicko.hide();
-      $pen.hide();
-      $parentDiv.append($input, $btns);
-      $input.trigger("focus").trigger("select");
+      starypolicko.style.display = 'none';
+      pen.style.display = 'none';
+      parentDiv.append(input, btns);
+      input.focus(); input.select();
 
       //docasne vypneme collapse na rodicovskom div
-      const $collapseTarget = $parentDiv.closest("[data-bs-toggle='collapse']");
-      $collapseTarget.attr("data-bs-toggle-disabled", $collapseTarget.attr("data-bs-toggle"));
-      $collapseTarget.removeAttr("data-bs-toggle");
-
-      function zavriet() {
-         $input.remove(); $btns.remove();
-         starypolicko.show();
-         $pen.css("display", "");
-         //obnovime collapse
-         $collapseTarget.attr("data-bs-toggle", $collapseTarget.attr("data-bs-toggle-disabled"));
-         $collapseTarget.removeAttr("data-bs-toggle-disabled");
+      const collapseTarget = parentDiv.closest("[data-bs-toggle='collapse']");
+      if (collapseTarget) {
+         collapseTarget.dataset.bsToggleDisabled = collapseTarget.getAttribute('data-bs-toggle');
+         collapseTarget.removeAttribute('data-bs-toggle');
       }
 
-      //ulozime zavriet na input aby sme ho mohli volat zvonka
-      $input.data("zavriet", zavriet);
+      function zavriet() {
+         input.remove(); btns.remove();
+         starypolicko.style.display = '';
+         pen.style.display = '';
+         if (collapseTarget) {
+            collapseTarget.setAttribute('data-bs-toggle', collapseTarget.dataset.bsToggleDisabled);
+            delete collapseTarget.dataset.bsToggleDisabled;
+         }
+      }
+
+      input._zavriet = zavriet;
 
       function potvrdit() {
-         const novy = $input.val().trim();
+         const novy = input.value.trim();
          if (novy === stary) { zavriet(); return; }
          if (novy !== '' && !jeValidnyCas(novy)) {
-            $input.addClass("is-invalid");
-            $input.attr("title", "Neplatný formát. Použite YYYY-MM-DDTHH:MM");
+            input.classList.add('is-invalid');
+            input.title = 'Neplatný formát. Použite YYYY-MM-DDTHH:MM';
             return;
          }
          zavriet();
-         odosliZmenuCasu($pen, starypolicko, novy);
+         odosliZmenuCasu(pen, starypolicko, novy);
       }
 
-      $btnOk.on("click",  function(e) { e.stopPropagation(); potvrdit(); });
-      $btnDel.on("click", function(e) { e.stopPropagation(); zavriet(); odosliZmenuCasu($pen, starypolicko, " "); });
-      $btnX.on("click",   function(e) { e.stopPropagation(); zavriet(); });
+      btnOk.addEventListener('click',  (e) => { e.stopPropagation(); potvrdit(); });
+      btnDel.addEventListener('click', (e) => { e.stopPropagation(); zavriet(); odosliZmenuCasu(pen, starypolicko, ' '); });
+      btnX.addEventListener('click',   (e) => { e.stopPropagation(); zavriet(); });
 
-      $input.on("keydown", function(e) {
-         if (e.key === "Enter")  { e.stopPropagation(); potvrdit(); }
-         if (e.key === "Escape") { e.stopPropagation(); zavriet(); }
+      input.addEventListener('keydown', (e) => {
+         if (e.key === 'Enter')  { e.stopPropagation(); potvrdit(); }
+         if (e.key === 'Escape') { e.stopPropagation(); zavriet(); }
       });
    });
 
    //odhlasi uzivatela a presmeruje na uvodnu obrazovku
-   $(".autor").on("click", function(event) {
+   document.addEventListener('click', (event) => {
+      if (!event.target.closest('.autor')) return;
       event.stopPropagation();
       event.preventDefault();
-         $.ajax({
-            method: "GET",
-            url: "/admin",
-            username: "user",
-            password: "password",
-            headers: {"Authorization": "Basic xxx"}
-         })
-         .done(function(data, status, xhr) {
-            zobrazNotifikaciu("Na odhlásenie, prosím, zatvorte toto okno prezerača.", "info", "Informácia");
-         })
-         .fail(function(xhr) {
-            window.location = "/";
-         });
+      fetch('/admin', { headers: {'Authorization': 'Basic xxx'} })
+         .then(() => zobrazNotifikaciu('Na odhlásenie, prosím, zatvorte toto okno prezerača.', 'info', 'Informácia'))
+         .catch(() => { window.location = '/'; });
    });
 
    //vymaze skupinu testov
-   $(".del").on("click", function(event) {
+   document.addEventListener('click', async (event) => {
+      if (!event.target.closest('.del')) return;
       event.stopPropagation();
       event.preventDefault();
-      const predmet = $(this).closest(".tab-pane.active").attr("id");
-      const trieda = $(this).closest("div.grid").find("#trieda").text();
-      const skupina = $(this).closest("div.grid").find("#skupina").text();
-      const kapitola = $(this).closest("div.grid").find("#kapitola").text();
-      const potvrdenie = confirm("Naozaj chcete vymazať test " + predmet + ':' + trieda + skupina + ':' + kapitola + "?");
-      if (potvrdenie)
-         $.ajax({
-            method: "DELETE",
-            url: "/admin/deletetests",
-            data: {
-               predmet:predmet,
-               trieda:trieda,
-               skupina:skupina,
-               kapitola:kapitola
-            }
-         })
-         .done(function(data, status, xhr) {
-            parent.location.hash = xhr.responseText;
+      const el = event.target.closest('.del');
+      const d = skupinaData(el);
+      if (!confirm(`Naozaj chcete vymazať test ${d.predmet}:${d.trieda}${d.skupina}:${d.kapitola}?`)) return;
+      try {
+         const resp = await fetch('/admin/deletetests', {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams(d)
+         });
+         if (resp.ok) {
+            parent.location.hash = await resp.text();
             location.reload();
-         })
-         .fail(function(xhr, statusText, error) {
-            console.error("AJAX Error:", {
-               status: xhr.status,
-               statusText: statusText,
-               error: error,
-               response: xhr.responseText
-            });
-            switch(xhr.status) {
-               case 404: zobrazNotifikaciu("Testy nenájdené!"); break;
-               case 403: zobrazNotifikaciu("Nemáte oprávnenie na danú akciu. Kontaktujte svojho administrátora!"); break;
-               case 500: zobrazNotifikaciu("Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr."); break;
-               default: zobrazNotifikaciu("Vyskytla sa chyba! Skúste to prosím neskôr.");
-            };
-         });
-   });
-
-   //zobrazi statistiku pre skupinu testov
-   $(".groupstatistics").on("click", function(event) {
-      event.stopPropagation();
-      event.preventDefault();
-      const predmet = $(this).closest(".tab-pane.active").attr("id");
-      const trieda = $(this).closest("div.grid").find("#trieda").text();
-      const skupina = $(this).closest("div.grid").find("#skupina").text();
-      const kapitola = $(this).closest("div.grid").find("#kapitola").text();
-      const $form = $("<form method='POST' action='/admin/groupstatistics'>");
-      $form.append($('<input type="hidden" name="predmet">').val(predmet));
-      $form.append($('<input type="hidden" name="trieda">').val(trieda));
-      $form.append($('<input type="hidden" name="skupina">').val(skupina));
-      $form.append($('<input type="hidden" name="kapitola">').val(kapitola));
-      $('body').append($form);
-      $form.submit();
-   });
-
-   //zobrazi feedback report pre skupinu testov
-   $(".feedback").on("click", function(event) {
-      event.stopPropagation();
-      event.preventDefault();
-      const predmet = $(this).closest(".tab-pane.active").attr("id");
-      const trieda = $(this).closest("div.grid").find("#trieda").text();
-      const skupina = $(this).closest("div.grid").find("#skupina").text();
-      const kapitola = $(this).closest("div.grid").find("#kapitola").text();
-      const $form = $("<form method='POST' action='/admin/feedbackreport'>");
-      $form.append($('<input type="hidden" name="predmet">').val(predmet));
-      $form.append($('<input type="hidden" name="trieda">').val(trieda));
-      $form.append($('<input type="hidden" name="skupina">').val(skupina));
-      $form.append($('<input type="hidden" name="kapitola">').val(kapitola));
-      $('body').append($form);
-      $form.submit();
-   });
-
-   //vytlaci skupinu kodov, testov alebo rieseni
-   $(".codes, .tests, .results").on("click", function(event) {
-      event.stopPropagation();
-      event.preventDefault();
-      const predmet = $(this).closest(".tab-pane.active").attr("id");
-      const trieda = $(this).closest("div.grid").find("#trieda").text();
-      const skupina = $(this).closest("div.grid").find("#skupina").text();
-      const kapitola = $(this).closest("div.grid").find("#kapitola").text();
-      const url = $(this).hasClass("results") ? "/admin/downloadresults" : $(this).hasClass("tests") ? "/admin/downloadtests" : "/admin/downloadcodes";
-      $.ajax({
-         method: "POST",
-         url: url,
-         data: {
-            predmet:predmet,
-            trieda:trieda,
-            skupina:skupina,
-            kapitola:kapitola
-         },
-         xhr: function() {
-            const xhr = new XMLHttpRequest();
-            xhr.responseType = "blob";
-            return xhr;
+         } else {
+            chybaNotifikaciu(resp.status);
          }
-      })
-      .done(function(data, status, xhr) {
-         const type = xhr.getResponseHeader('Content-Type');
-         let filename = "";
-         const disposition = xhr.getResponseHeader('Content-Disposition');
-         if (disposition && disposition.indexOf('attachment') !== -1) {
-            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-            const matches = filenameRegex.exec(disposition);
-            if (matches != null && matches[1])
-               filename = matches[1].replace(/['"]/g, '');
-         }
-         const blob = new Blob([data], {type: type});
-         const url = window.URL || window.webkitURL;
-         const link = url.createObjectURL(blob);
-         const $a = $("<a/>", {"download": filename, "href": link});
-         $("body").append($a);
-         $a[0].click();
-         $a.remove();
-         url.revokeObjectURL(link);
-      })
-      .fail(function(xhr, statusText, error) {
-         console.error("AJAX Error:", {
-            status: xhr.status,
-            statusText: statusText,
-            error: error,
-            response: xhr.responseText
-         });
-         switch(xhr.status) {
-            case 404: zobrazNotifikaciu("Testy nenájdené!"); break;
-            case 403: zobrazNotifikaciu("Nemáte oprávnenie na danú akciu. Kontaktujte svojho administrátora!"); break;
-            case 500: zobrazNotifikaciu("Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr."); break;
-            default: zobrazNotifikaciu("Vyskytla sa chyba! Skúste to prosím neskôr.");
-         };
-      });
-   });
-
-   //regeneruje otazky v skupine testov (len ak nie su odpovede)
-   $(".regenerate:not(.disabled)").on("click", function(event) {
-      event.stopPropagation();
-      event.preventDefault();
-      const predmet = $(this).closest(".tab-pane.active").attr("id");
-      const trieda = $(this).closest("div.grid").find("#trieda").text();
-      const skupina = $(this).closest("div.grid").find("#skupina").text();
-      const kapitola = $(this).closest("div.grid").find("#kapitola").text();
-      const potvrdenie = confirm("Naozaj chcete regenerovať otázky pre " + predmet + ":" + trieda + skupina + ":" + kapitola + "?");
-      if (potvrdenie) {
-         const $form = $("<form method='POST' action='/admin/regeneratetests'>");
-         $form.append($('<input type="hidden" name="predmet">').val(predmet));
-         $form.append($('<input type="hidden" name="trieda">').val(trieda));
-         $form.append($('<input type="hidden" name="skupina">').val(skupina));
-         $form.append($('<input type="hidden" name="kapitola">').val(kapitola));
-         $('body').append($form);
-         $form.submit();
+      } catch (err) {
+         console.error('Chyba:', err);
+         zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
       }
    });
 
+   //zobrazi statistiku pre skupinu testov
+   document.addEventListener('click', (event) => {
+      if (!event.target.closest('.groupstatistics')) return;
+      event.stopPropagation();
+      event.preventDefault();
+      odosliForm('/admin/groupstatistics', skupinaData(event.target.closest('.groupstatistics')));
+   });
+
+   //zobrazi feedback report pre skupinu testov
+   document.addEventListener('click', (event) => {
+      if (!event.target.closest('.feedback')) return;
+      event.stopPropagation();
+      event.preventDefault();
+      odosliForm('/admin/feedbackreport', skupinaData(event.target.closest('.feedback')));
+   });
+
+   //vytlaci skupinu kodov, testov alebo rieseni
+   document.addEventListener('click', async (event) => {
+      const btn = event.target.closest('.codes, .tests, .results');
+      if (!btn) return;
+      event.stopPropagation();
+      event.preventDefault();
+      const d = skupinaData(btn);
+      const url = btn.classList.contains('results') ? '/admin/downloadresults'
+                : btn.classList.contains('tests')   ? '/admin/downloadtests'
+                : '/admin/downloadcodes';
+      try {
+         const resp = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams(d)
+         });
+         if (resp.ok) {
+            const blob = await resp.blob();
+            const disposition = resp.headers.get('Content-Disposition') || '';
+            let filename = '';
+            const match = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+            if (match?.[1]) filename = match[1].replace(/['"]/g, '');
+            const link = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = link; a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(link);
+         } else {
+            chybaNotifikaciu(resp.status);
+         }
+      } catch (err) {
+         console.error('Chyba:', err);
+         zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
+      }
+   });
+
+   //regeneruje otazky v skupine testov (len ak nie su odpovede)
+   document.addEventListener('click', (event) => {
+      const btn = event.target.closest('.regenerate:not(.disabled)');
+      if (!btn) return;
+      event.stopPropagation();
+      event.preventDefault();
+      const d = skupinaData(btn);
+      if (!confirm(`Naozaj chcete regenerovať otázky pre ${d.predmet}:${d.trieda}${d.skupina}:${d.kapitola}?`)) return;
+      odosliForm('/admin/regeneratetests', d);
+   });
+
    window.addEventListener('hashchange', onHashChange, false);
-   //spusti prvotny vyber tabu
    onHashChange();
 });

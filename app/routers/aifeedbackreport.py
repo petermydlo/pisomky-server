@@ -11,18 +11,19 @@ from fastapi.exceptions import HTTPException
 router = APIRouter()
 
 @router.post('/admin/feedbackreport', response_class=HTMLResponse)
-async def feedbackreport(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, skupina: StringForm = ''):
+async def feedbackreport(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
    proc = request.app.state.proc
    try:
       params = {
          'predmet': predmet,
          'trieda': trieda,
          'skupina': skupina,
-         'kapitola': kapitola
+         'kapitola': kapitola,
+         'fileid': fileid
       }
-      subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
+      subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
       if not os.path.exists(subor):
-         xml_data = ET.tostring(ET.Element('feedback', attrib={'predmet': predmet, 'trieda': trieda, 'skupina': skupina, 'kapitola': kapitola}), encoding='unicode')
+         xml_data = ET.tostring(ET.Element('feedback', attrib={'predmet': predmet, 'trieda': trieda, 'skupina': skupina, 'kapitola': kapitola, 'fileid': fileid}), encoding='unicode')
       else:
          xml_data = xquery_to_string(proc, './res/xquery/feedback.xq', params=params)
       xml_node = proc.parse_xml(xml_text=xml_data)

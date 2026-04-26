@@ -7,7 +7,7 @@ import qrcode
 import qrcode.image.svg
 import lxml.etree as ET
 from fastapi.concurrency import run_in_threadpool
-from app.utils import xslt_to_pdf
+from app.utils import xslt_to_pdf, test_xml_path
 from app.mytypes import StringForm
 from fastapi import APIRouter, Request, BackgroundTasks
 from fastapi.responses import FileResponse
@@ -20,7 +20,7 @@ def _generuj_qr_kody(cesta: str) -> str:
    """Vygeneruje QR SVG pre každý test v XML súbore. Vráti cestu k temp adresáru."""
    tree = ET.parse(cesta)
    qrdir = tempfile.mkdtemp()
-   for test_id in tree.xpath('//test/@id'):
+   for test_id in tree.xpath('//test/@id'):  # type: ignore[union-attr]
       qr = qrcode.QRCode(
          error_correction=qrcode.constants.ERROR_CORRECT_L,
          box_size=3,
@@ -30,14 +30,13 @@ def _generuj_qr_kody(cesta: str) -> str:
       qr.add_data(test_id)
       qr.make(fit=True)
       img = qr.make_image()
-      img.save(f'{qrdir}/{test_id}.svg')
+      img.save(f'{qrdir}/{test_id}.svg')  # type: ignore[str-bytes-safe]
    return qrdir
 
 
 @router.post('/admin/downloadtests', response_class=FileResponse)
-async def downloadtests(request: Request, background_tasks: BackgroundTasks, predmet: StringForm, trieda: StringForm, kapitola: StringForm, skupina: StringForm = ''):
-   adresar = f'./res/xml/tests/{predmet}'
-   cesta = f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
+async def downloadtests(request: Request, background_tasks: BackgroundTasks, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
+   cesta = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
    if not os.path.exists(cesta):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
    try:

@@ -17,9 +17,9 @@ async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis
       if not test_node:
          return {'ok': False, 'error': 'Test nenájdený'}
 
-      predmet, trieda, skupina, kapitola = get_test_metadata(proc, test_node)
+      predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, test_node)
 
-      nazov = f'{predmet}_{trieda}{skupina}_{kapitola}.xml'
+      nazov = f'{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
       subor = f'./res/xml/feedback/{predmet}/{nazov}'
 
       if not os.path.exists(subor):

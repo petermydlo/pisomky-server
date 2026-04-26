@@ -17,7 +17,7 @@ load_dotenv()
 
 router = APIRouter()
 
-def _najdi_napovedu(otazka_id, predmet, spravna_odpoved=None, logger=None):
+def _najdi_napovedu(otazka_id: str, predmet: str, spravna_odpoved: str | None = None, logger=None) -> dict | None:
    otazka_el, cesta = find_question(otazka_id)
    if otazka_el is None:
       return None
@@ -45,7 +45,17 @@ def _najdi_napovedu(otazka_id, predmet, spravna_odpoved=None, logger=None):
       return None
 
 
-def _nacitaj_predchadzajuce_keys(subor, otazka_id, limit=10):
+def _spocitaj_napovedy_testu(subor: str, test_id: str) -> int:
+   if not os.path.exists(subor):
+      return 0
+   try:
+      tree = ET.parse(subor)
+      return sum(1 for z in tree.findall('.//zapis') if z.get('test_id') == test_id)
+   except Exception:
+      return 0
+
+
+def _nacitaj_predchadzajuce_keys(subor: str, otazka_id: str, limit: int = 10) -> list[dict]:
    """Nacita klucove slova z predchadzajucich napovedi pre danu otazku."""
    if not os.path.exists(subor):
       return []
@@ -64,7 +74,7 @@ def _nacitaj_predchadzajuce_keys(subor, otazka_id, limit=10):
       return []
 
 
-def _aktualizuj_keys(subor, zapis_id, keys):
+def _aktualizuj_zapis(subor: str, zapis_id: str, hint: str | None = None, keys: str | None = None) -> None:
    if not os.path.exists(subor):
       return
    lock = FileLock(subor + '.lock')
@@ -75,15 +85,21 @@ def _aktualizuj_keys(subor, zapis_id, keys):
       zapis = next((z for z in root.findall('.//zapis') if z.get('id') == zapis_id), None)
       if zapis is None:
          return
-      keys_el = zapis.find('keys')
-      if keys_el is None:
-         keys_el = ET.SubElement(zapis, 'keys')
-      keys_el.text = keys
+      if hint is not None:
+         hint_el = zapis.find('hint')
+         if hint_el is None:
+            hint_el = ET.SubElement(zapis, 'hint')
+         hint_el.text = hint
+      if keys is not None:
+         keys_el = zapis.find('keys')
+         if keys_el is None:
+            keys_el = ET.SubElement(zapis, 'keys')
+         keys_el.text = keys
       ET.indent(tree, space='   ')
       tree.write(subor, encoding='UTF-8', xml_declaration=True)
 
 
-def _uloz_zapis(subor, zapis_id, otazka_id, test_id, hint, keys):
+def _uloz_zapis(subor: str, zapis_id: str, otazka_id: str, test_id: str) -> None:
    os.makedirs(os.path.dirname(subor), exist_ok=True)
    lock = FileLock(subor + '.lock')
    with lock:
@@ -100,16 +116,11 @@ def _uloz_zapis(subor, zapis_id, otazka_id, test_id, hint, keys):
       zapis.set('otazka_id', otazka_id)
       zapis.set('test_id', test_id)
       zapis.set('val', '')
-      hint_el = ET.SubElement(zapis, 'hint')
-      hint_el.text = hint
-      if keys:
-         keys_el = ET.SubElement(zapis, 'keys')
-         keys_el.text = keys
       ET.indent(tree, space='   ')
       tree.write(subor, encoding='UTF-8', xml_declaration=True)
 
 
-def _parsuj_hint_keys(raw):
+def _parsuj_hint_keys(raw: str) -> tuple[str, str]:
    hint = raw
    keys = ''
    for line in raw.split('\n'):
@@ -144,14 +155,25 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
    if not znenie_text:
       return JSONResponse({'error': 'Prázdne znenie otázky'}, status_code=400)
 
-   predmet, trieda, skupina, kapitola = get_test_metadata(proc, test_node)
+   predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, test_node)
+
+   xsltpath.set_context(xdm_item=test_node)
+   pocet_otazok = int(xsltpath.evaluate_single('count(otazka)') or 0)
 
    napovedy_data = _najdi_napovedu(otazka_id, predmet, spravna_odpoved, request.app.state.logger) if predmet else None
    napovedy = napovedy_data.get('napovedy') if isinstance(napovedy_data, dict) else napovedy_data
    vzor = napovedy_data.get('vzor') if isinstance(napovedy_data, dict) else None
    klucove = napovedy_data.get('klucove') if isinstance(napovedy_data, dict) else []
 
-   subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
+   subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
+   pouzite = _spocitaj_napovedy_testu(subor, test_id)
+
+   if pocet_otazok > 0 and pouzite >= pocet_otazok:
+      async def limit_stream():
+         yield 'event: napoveda_limit\ndata: {}\n\n'
+      return StreamingResponse(limit_stream(), media_type='text/event-stream',
+                               headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
    predchadzajuce = _nacitaj_predchadzajuce_keys(subor, otazka_id)
 
    helped = [p['keys'] for p in predchadzajuce if p['val'] == '1']
@@ -176,10 +198,12 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
    ]
 
    zapis_id = secrets.token_hex(8)
+   remaining = pocet_otazok - pouzite - 1
+   _uloz_zapis(subor, zapis_id, otazka_id, test_id)
 
    async def generate():
       try:
-         yield f'event: meta\ndata: {json.dumps({"zapis_id": zapis_id})}\n\n'
+         yield f'event: meta\ndata: {json.dumps({"zapis_id": zapis_id, "remaining": remaining})}\n\n'
 
          full_text = ''
          done_sent = False
@@ -198,17 +222,17 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
                   if '\n' in full_text:
                      done_sent = True
                      hint, _ = _parsuj_hint_keys(full_text)
-                     _uloz_zapis(subor, zapis_id, otazka_id, test_id, hint, '')
+                     _aktualizuj_zapis(subor, zapis_id, hint=hint)
                      yield f'event: done\ndata: {json.dumps({"hint": hint})}\n\n'
 
          if not done_sent:
             hint, keys = _parsuj_hint_keys(full_text)
-            _uloz_zapis(subor, zapis_id, otazka_id, test_id, hint, keys)
+            _aktualizuj_zapis(subor, zapis_id, hint=hint, keys=keys or None)
             yield f'event: done\ndata: {json.dumps({"hint": hint})}\n\n'
          else:
             _, keys = _parsuj_hint_keys(full_text)
             if keys:
-               _aktualizuj_keys(subor, zapis_id, keys)
+               _aktualizuj_zapis(subor, zapis_id, keys=keys)
 
       except Exception as e:
          request.app.state.logger.error(f'chyba napoveda stream: {e}')

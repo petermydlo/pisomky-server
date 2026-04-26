@@ -80,7 +80,7 @@
 
 <xsl:template match="otazka">
    <div class="flex-container-table-otazka">
-      <div class="okraj flex-container-table-znenie bg-info-subtle" role="button" data-bs-toggle="collapse" data-bs-target="#{concat('o_', @id)}">
+      <div class="okraj flex-container-table-znenie bg-info-subtle" role="button" data-bs-toggle="collapse" data-bs-target="#{'o_' || @id}">
          <div class="bold znenie">
             <xsl:text>[</xsl:text>
             <span>
@@ -98,7 +98,7 @@
             </xsl:if>
          </div>
       </div>
-      <div class="collapse" id="{concat('o_', @id)}">
+      <div class="collapse" id="{'o_' || @id}">
          <xsl:apply-templates select="napovedy/napoveda"/>
       </div>
    </div>
@@ -121,9 +121,10 @@
             <i class="bi bi-dash-circle text-primary"/>
          </xsl:otherwise>
       </xsl:choose>
+      <xsl:variable name="dt" select="tokenize(@datum, 'T')"/>
       <span class="text-muted text-nowrap">
-         <div><xsl:value-of select="substring-before(@datum, 'T')"/></div>
-         <div><xsl:value-of select="substring-after(@datum, 'T')"/></div>
+         <div><xsl:value-of select="$dt[1]"/></div>
+         <div><xsl:value-of select="$dt[2]"/></div>
       </span>
       <span>
          <xsl:value-of select="."/>

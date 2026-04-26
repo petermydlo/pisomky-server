@@ -17,7 +17,7 @@ load_dotenv()
 
 router = APIRouter()
 
-def write_answers_import(lock, cesta, form_data, kluc):
+def write_answers_import(lock: 'FileLock', cesta: 'Path | str', form_data: dict, kluc: str) -> None:
    with lock:
       if not Path(cesta).is_file():
          with open(cesta, 'w') as sub:
@@ -28,13 +28,13 @@ def write_answers_import(lock, cesta, form_data, kluc):
       tree = ET.parse(str(cesta), xmlParser)
       root = tree.getroot()
       dat = datetime.now().isoformat(timespec='seconds')
-      testxml = next(iter(root.xpath("test[@id=$id]", id=kluc)), None)
+      testxml = next(iter(root.xpath("test[@id=$id]", id=kluc)), None)  # type: ignore[arg-type]
       if testxml is None:
          testxml = ET.SubElement(root, 'test', attrib={'id': kluc, 'dat': dat})
       else:
          testxml.set('dat', dat)
       for key, value in form_data.items():
-         otazka = next(iter(testxml.xpath("otazka[@id=$id]", id=key)), None)
+         otazka = next(iter(testxml.xpath("otazka[@id=$id]", id=key)), None)  # type: ignore[arg-type]
          if otazka is not None:
             otazka.text = value
          else:
@@ -43,18 +43,18 @@ def write_answers_import(lock, cesta, form_data, kluc):
       ET.indent(tree, space='   ')
       tree.write(str(cesta), encoding='utf-8', xml_declaration=True, pretty_print=True)
 
-def nacitaj_tests_xml(cesta, test_id):
+def nacitaj_tests_xml(cesta: str, test_id: str) -> str:
    """Nacita obsah tests XML suboru ako string."""
    tree = ET.parse(cesta)
-   test = next(iter(tree.xpath(".//test[@id=$id]", id=test_id)), None)
+   test = next(iter(tree.xpath(".//test[@id=$id]", id=test_id)), None)  # type: ignore[arg-type]
    if test is not None:
       return ET.tostring(test, encoding='unicode')
    return ''
 
-def ziskaj_metadata(cesta):
+def ziskaj_metadata(cesta: str) -> tuple[str, str, str, str, str]:
    tree = ET.parse(cesta)
    root = tree.getroot()
-   return root.get('predmet', ''), root.get('trieda', ''), root.get('skupina', ''), root.get('kapitola', '')
+   return root.get('predmet', ''), root.get('trieda', ''), root.get('skupina', ''), root.get('kapitola', ''), root.get('fileid', '')
 
 
 def precitaj_qr_kody(obsah: bytes, mime_type: str) -> list[str]:
@@ -69,7 +69,7 @@ def precitaj_qr_kody(obsah: bytes, mime_type: str) -> list[str]:
       doc = fitz.open(stream=obsah, filetype='pdf')
       for page in doc:
          pix = page.get_pixmap(dpi=150)
-         imgs.append(Image.frombytes('RGB', [pix.width, pix.height], pix.samples))
+         imgs.append(Image.frombytes('RGB', (pix.width, pix.height), pix.samples))
       doc.close()
    else:
       imgs.append(Image.open(io.BytesIO(obsah)))
@@ -88,13 +88,13 @@ async def importanswers_page(request: Request):
 
 
 @router.post('/admin/ai/importmanual/{kluc}')
-async def importmanual(request: Request, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, skupina: StringForm = ''):
+async def importmanual(request: Request, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
    adresar = f'./res/xml/answers/{predmet}'
    Path(adresar).mkdir(parents=True, exist_ok=True)
-   cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}.xml')
+   cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
    lock = FileLock(f'{cesta}.lock')
    async with request.form() as form:
-      form_data = {k: v for k, v in form.items() if k not in {'predmet', 'trieda', 'skupina', 'kapitola'}}
+      form_data = {k: v for k, v in form.items() if k not in {'predmet', 'trieda', 'skupina', 'kapitola', 'fileid'}}
    try:
       await run_in_threadpool(write_answers_import, lock, cesta, form_data,  kluc)
    except Exception as e:
@@ -153,10 +153,10 @@ async def _spracuj_subor(subor, cache, provider, vysledky):
          vysledky.append({'subor': subor.filename, 'test_id': tid, 'chyba': 'Zadanie nenájdené v DB'})
          continue
 
-      predmet, trieda, skupina, kapitola = ziskaj_metadata(cesta_tests)
+      predmet, trieda, skupina, kapitola, fileid = ziskaj_metadata(cesta_tests)
       adresar = f'./res/xml/answers/{predmet}'
       Path(adresar).mkdir(parents=True, exist_ok=True)
-      cesta_ans = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}.xml')
+      cesta_ans = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
       lock = FileLock(f'{cesta_ans}.lock')
       form_data = {o['id']: o['odpoved'] for o in entry.get('odpovede', [])}
 
@@ -169,6 +169,7 @@ async def _spracuj_subor(subor, cache, provider, vysledky):
             'trieda': trieda,
             'skupina': skupina,
             'kapitola': kapitola,
+            'fileid': fileid,
             'zapisane': len(form_data),
             'nejasnosti': entry.get('nejasnosti', [])
          })
@@ -185,7 +186,7 @@ async def importanswers(request: Request):
 
    cache = request.app.state.kluc_cache
    provider = request.app.state.ai_provider
-   vysledky = []
+   vysledky: list[dict] = []
 
    async with anyio.create_task_group() as tg:
       for subor in subory:

@@ -1,25 +1,32 @@
-function zobrazNotifikaciu(text, typ = "danger", hlavicka = "Chyba", trvanie = 5000) {
+function terazFormatovany() {
+   const teraz = new Date();
+   teraz.setSeconds(0, 0);
+   return teraz.getFullYear() + '-' + (teraz.getMonth()+1).toString().padStart(2, '0') + '-' + teraz.getDate().toString().padStart(2, '0') + 'T' + teraz.getHours().toString().padStart(2, '0') + ':' + teraz.getMinutes().toString().padStart(2, '0');
+}
+
+function zobrazNotifikaciu(text, typ = 'danger', hlavicka = 'Chyba', trvanie = 5000) {
    zabezpecToastKontajner(typ, hlavicka);
-   $("#toastMessage").text(text);
-   $("#toastFeedback").addClass("d-none").removeClass("d-flex");
+   document.getElementById('toastMessage').textContent = text;
+   const feedback = document.getElementById('toastFeedback');
+   feedback.classList.add('d-none');
+   feedback.classList.remove('d-flex');
 
    setTimeout(() => {
-      const el = $("#liveToast")[0];
+      const el = document.getElementById('liveToast');
       const toast = new bootstrap.Toast(el, {autohide: false});
       toast.show();
-
       setTimeout(() => {
-         if ($("#liveToast").length) bootstrap.Toast.getInstance($("#liveToast")[0])?.hide();
+         bootstrap.Toast.getInstance(document.getElementById('liveToast'))?.hide();
       }, trvanie);
    }, 50);
 }
 
-function zabezpecToastKontajner(typ = "danger", hlavicka = "Chyba") {
-   const $staryToast = $("#liveToast");
-   if ($staryToast.length > 0) {
-      const inst = bootstrap.Toast.getInstance($staryToast[0]);
-      if (inst) inst.dispose();
-      $staryToast.closest('.toast-container').remove();
+function zabezpecToastKontajner(typ = 'danger', hlavicka = 'Chyba') {
+   const staryToast = document.getElementById('liveToast');
+   if (staryToast) {
+      staryToast.dispatchEvent(new Event('hidden.bs.toast'));
+      bootstrap.Toast.getInstance(staryToast)?.dispose();
+      staryToast.closest('.toast-container').remove();
    }
 
    const toastHTML = `
@@ -39,27 +46,26 @@ function zabezpecToastKontajner(typ = "danger", hlavicka = "Chyba") {
             </div>
          </div>
       </div>`;
-   const $novyToastContainer = $(toastHTML);
-   $("body").append($novyToastContainer);
-   const toastEl = $novyToastContainer.find('#liveToast')[0];
-   const bsToast = new bootstrap.Toast(toastEl);
-   return bsToast;
+   const tpl = document.createElement('template');
+   tpl.innerHTML = toastHTML.trim();
+   const container = tpl.content.firstElementChild;
+   document.body.appendChild(container);
+   return new bootstrap.Toast(container.querySelector('#liveToast'));
 }
 
-$(document).on("click", ".feedback-btn", function() {
-   const $btn = $(this);
-   const pomohlo = $btn.data("val");
-   const testId = $btn.data("test-id");
-   const zapisId = $btn.data("zapis-id");
-   const $footer = $("#toastFeedback");
-   $footer.html("<small class='text-success fw-bold'>Ďakujeme!</small>");
-   $.post("/ai/feedback", {
-      test_id: testId,
-      val: pomohlo,
-      zapis_id: zapisId
+document.addEventListener('click', (e) => {
+   if (!e.target.matches('.feedback-btn')) return;
+   const btn = e.target;
+   const pomohlo = btn.dataset.val;
+   const testId = btn.dataset.testId;
+   const zapisId = btn.dataset.zapisId;
+   document.getElementById('toastFeedback').innerHTML = "<small class='text-success fw-bold'>Ďakujeme!</small>";
+   fetch('/ai/feedback', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({ test_id: testId, val: pomohlo, zapis_id: zapisId })
    });
    setTimeout(() => {
-      const inst = bootstrap.Toast.getInstance($("#liveToast")[0]);
-      if (inst) inst.hide();
+      bootstrap.Toast.getInstance(document.getElementById('liveToast'))?.hide();
    }, 1500);
 });

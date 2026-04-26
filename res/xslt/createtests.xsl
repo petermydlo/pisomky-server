@@ -8,6 +8,7 @@
 <xsl:output method="xml" version="1.1" indent="yes" encoding="UTF-8"/>
 
 <xsl:param name="seed_ext"/>
+<xsl:param name="fileid"/>
 <xsl:param name="predmet"/>
 <xsl:param name="trieda"/>
 <xsl:param name="skupina"/>
@@ -25,7 +26,7 @@
      aj pri rovnomenných žiakoch v rovnakej triede. -->
 <xsl:strip-space elements="*"/>
 
-<xsl:variable name="vkapitola" select="document(concat('../xml/questions/', $predmet, '/', $predmet, '_', $kapitola, '.xml'))/kapitola"/>
+<xsl:variable name="vkapitola" select="document('../xml/questions/' || $predmet || '/' || $predmet || '_' || $kapitola || '.xml')/kapitola"/>
 
 <xsl:variable name="vsetkycesty">
    <xsl:apply-templates select="$vkapitola//otazka" mode="cesta"/>
@@ -40,7 +41,7 @@
 </xsl:template>
 
 <xsl:template match="/triedy">
-   <testy xml:lang="sk" predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{$start}" stop="{$stop}" autor="{$autor}">
+   <testy xml:lang="sk" predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}" fileid="{$fileid}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{$start}" stop="{$stop}" autor="{$autor}">
       <xsl:if test="$vkapitola/@filesave = '1'">
          <xsl:attribute name="filesave">1</xsl:attribute>
       </xsl:if>
@@ -48,9 +49,9 @@
    </testy>
 </xsl:template>
 
-<!-- Vstupný template pre regenerovanie: zdrojom je existujúci testy XML (root <testy>, nie <triedy>) -->
+<!-- Vstupný template pre regenerovanie: zdrojom su existujúce testy XML (root <testy>, nie <triedy>) -->
 <xsl:template match="/testy">
-   <testy xml:lang="sk" predmet="{@predmet}" trieda="{@trieda}" skupina="{@skupina}" kapitola="{@kapitola}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{@start}" stop="{@stop}" autor="{@autor}">
+   <testy xml:lang="sk" predmet="{@predmet}" trieda="{@trieda}" skupina="{@skupina}" kapitola="{@kapitola}" fileid="{@fileid}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{@start}" stop="{@stop}" autor="{@autor}">
       <xsl:if test="$vkapitola/@filesave = '1'">
          <xsl:attribute name="filesave">1</xsl:attribute>
       </xsl:if>
@@ -59,7 +60,7 @@
 </xsl:template>
 
 <xsl:template match="test" mode="regenerate">
-   <xsl:variable name="seed" select="concat(@meno, @priezvisko, $seed_ext, position(), generate-id())"/>
+   <xsl:variable name="seed" select="@meno || @priezvisko || $seed_ext || position() || generate-id()"/>
    <xsl:variable name="cesta">
       <xsl:if test="$cesty != ''">
          <xsl:sequence select="fn:random-number-generator($seed)?permute(tokenize($cesty))[position() = 1]"/>
@@ -77,8 +78,8 @@
             <xsl:with-param name="vc" select="$cesta" tunnel="yes"/>
          </xsl:apply-templates>
       </xsl:variable>
-      <xsl:variable name="seed0" select="concat('0', $seed, position(), generate-id())"/>
-      <xsl:variable name="seed1" select="concat('1', $seed, position(), generate-id())"/>
+      <xsl:variable name="seed0" select="'0' || $seed || position() || generate-id()"/>
+      <xsl:variable name="seed1" select="'1' || $seed || position() || generate-id()"/>
       <xsl:sequence select="$otazky/otazka[@static and not(@bonus)]"/>
       <xsl:sequence select="fn:random-number-generator($seed0)?permute($otazky/otazka[not(@static) and not(@bonus)])"/>
       <xsl:sequence select="$otazky/otazka[@bonus and @static]"/>
@@ -96,7 +97,7 @@
 </xsl:template>
 
 <xsl:template match="student">
-   <xsl:variable name="seed" select="concat(@meno, @priezvisko, $seed_ext, position(), generate-id())"/>
+   <xsl:variable name="seed" select="@meno || @priezvisko || $seed_ext || position() || generate-id()"/>
    <xsl:variable name="cesta">
       <xsl:if test="$cesty != ''">
          <xsl:sequence select="fn:random-number-generator($seed)?permute(tokenize($cesty))[position() = 1]"/>
@@ -105,16 +106,16 @@
    <test>
       <xsl:variable name="id">
          <xsl:if test="$identita = false() and $anonymne = false()">
-            <xsl:value-of select="concat(lower-case($predmet), lower-case($kapitola), generate-id())"/>
+            <xsl:value-of select="lower-case($predmet) || lower-case($kapitola) || $fileid || generate-id()"/>
          </xsl:if>
          <xsl:if test="$identita = false() and $anonymne = true()">
-            <xsl:value-of select="concat(format-date(current-date(), '[Y01][M01][D01]'), generate-id())"/>
+            <xsl:value-of select="format-date(current-date(), '[Y01][M01][D01]') || $fileid || generate-id()"/>
          </xsl:if>
          <xsl:if test="$identita = true() and $anonymne = false()">
-            <xsl:value-of select="concat(lower-case($predmet), lower-case($kapitola), 'd2e', my:normalizuj(lower-case(@priezvisko)), my:normalizuj(lower-case(substring(@meno,1,1))))"/>
+            <xsl:value-of select="lower-case($predmet) || lower-case($kapitola) || $fileid || my:normalizuj(lower-case(@priezvisko)) || my:normalizuj(lower-case(substring(@meno,1,1)))"/>
          </xsl:if>
          <xsl:if test="$identita = true() and $anonymne = true()">
-            <xsl:value-of select="concat(format-date(current-date(), '[Y01][M01][D01]'), 'd2e', my:normalizuj(lower-case(@priezvisko)), my:normalizuj(lower-case(substring(@meno,1,1))))"/>
+            <xsl:value-of select="format-date(current-date(), '[Y01][M01][D01]') || $fileid || my:normalizuj(lower-case(@priezvisko)) || my:normalizuj(lower-case(substring(@meno,1,1)))"/>
          </xsl:if>
       </xsl:variable>
       <xsl:attribute name="id"><xsl:value-of select="$id"/></xsl:attribute>
@@ -142,8 +143,8 @@
             <xsl:with-param name="vc" select="$cesta" tunnel="yes"/>
          </xsl:apply-templates>
       </xsl:variable>
-      <xsl:variable name="seed0" select="concat('0', $seed, position(), generate-id())"/>
-      <xsl:variable name="seed1" select="concat('1', $seed, position(), generate-id())"/>
+      <xsl:variable name="seed0" select="'0' || $seed || position() || generate-id()"/>
+      <xsl:variable name="seed1" select="'1' || $seed || position() || generate-id()"/>
       <xsl:sequence select="$otazky/otazka[@static and not(@bonus)]"/>
       <xsl:sequence select="fn:random-number-generator($seed0)?permute($otazky/otazka[not(@static) and not(@bonus)])"/>
       <xsl:sequence select="$otazky/otazka[@bonus and @static]"/>
@@ -155,10 +156,10 @@
    <xsl:param name="seed"/>
    <pokyny>
       <xsl:apply-templates select="$vkapitola/pokyny/head[@static]"/>
-      <xsl:variable name="seed2" select="concat('2', $seed, position(), generate-id())"/>
+      <xsl:variable name="seed2" select="'2' || $seed || position() || generate-id()"/>
       <xsl:apply-templates select="fn:random-number-generator($seed2)?permute($vkapitola/pokyny/head[not(@static)])[position() = 1]"/>
       <xsl:apply-templates select="$vkapitola/pokyny/tail[@static]"/>
-      <xsl:variable name="seed3" select="concat('3', $seed, position(), generate-id())"/>
+      <xsl:variable name="seed3" select="'3' || $seed || position() || generate-id()"/>
       <xsl:apply-templates select="fn:random-number-generator($seed3)?permute($vkapitola/pokyny/tail[not(@static)])[position() = 1]"/>
    </pokyny>
 </xsl:template>
@@ -187,7 +188,7 @@
       </xsl:if>
    </xsl:variable>
    <xsl:variable name="zostatok" select="$pocetotazok - count($otazkystaticke/otazka)"/>
-   <xsl:variable name="seed4" select="concat('4', $seed, position(), generate-id())"/>
+   <xsl:variable name="seed4" select="'4' || $seed || position() || generate-id()"/>
    <xsl:variable name="otazkydynamicke">
       <xsl:if test="$vc != ''">
          <xsl:apply-templates select="fn:random-number-generator($seed4)?permute(otazka[not(@deprecated)][not(@paused='1')][not(@static)][tokenize(@cesta, ',') = $vc or not(@cesta)])[position() = 1 to $zostatok]">
@@ -230,7 +231,7 @@
             <xsl:with-param name="seed" select="$seed" tunnel="yes"/>
          </xsl:apply-templates>
       </xsl:copy>
-      <xsl:variable name="seed5" select="concat('5', $seed, position(), generate-id())"/>
+      <xsl:variable name="seed5" select="'5' || $seed || position() || generate-id()"/>
       <xsl:variable name="pomer" select="if (@pomer) then @pomer else '1:3'"/>
       <xsl:for-each select="fn:random-number-generator($seed5)?permute(my:nahodne-odpovede(odpoved, $seed5, $pomer))">
          <xsl:copy-of copy-namespaces="no" select="."/>
@@ -320,7 +321,7 @@
 
 <xsl:template match="alter">
    <xsl:param name="seed" tunnel="yes"/>
-   <xsl:variable name="seed8" select="concat('8', $seed, position(), generate-id())"/>
+   <xsl:variable name="seed8" select="'8' || $seed || position() || generate-id()"/>
    <xsl:apply-templates select="fn:random-number-generator($seed8)?permute(choice)[position() = 1]"/> <!-- vyberie nahodne jedno vnutro choice a aplikuje transformacie -->
 </xsl:template>
 
@@ -340,6 +341,17 @@
    </xsl:if>
 </xsl:template>
 
+<xsl:function name="my:hash4" as="xs:string">
+   <xsl:param name="s" as="xs:string"/>
+   <xsl:variable name="h" select="fold-left(string-to-codepoints($s), 5381, function($a, $c) { ($a * 33 + $c) mod 1679616 })"/>
+   <xsl:variable name="chars" select="'0123456789abcdefghijklmnopqrstuvwxyz'"/>
+   <xsl:variable name="d0" select="$h mod 36"/>
+   <xsl:variable name="d1" select="($h idiv 36) mod 36"/>
+   <xsl:variable name="d2" select="($h idiv 1296) mod 36"/>
+   <xsl:variable name="d3" select="($h idiv 46656) mod 36"/>
+   <xsl:value-of select="substring($chars, $d3 + 1, 1) || substring($chars, $d2 + 1, 1) || substring($chars, $d1 + 1, 1) || substring($chars, $d0 + 1, 1)"/>
+</xsl:function>
+
 <xsl:function name="my:normalizuj">
    <xsl:param name="text"/>
    <xsl:sequence select="replace(replace(normalize-unicode($text,'NFKD'),'\P{IsBasicLatin}',''), '\s', '')"/>
@@ -352,8 +364,8 @@
    <xsl:variable name="pocet" select="tokenize($pomer, ':')"/>
    <xsl:variable name="spravnych" select="xs:integer($pocet[1])" as="xs:integer"/>
    <xsl:variable name="nespravnych" select="xs:integer($pocet[2])" as="xs:integer"/>
-   <xsl:variable name="seed6" select="concat('6', $seed)"/>
-   <xsl:variable name="seed7" select="concat('7', $seed)"/>
+   <xsl:variable name="seed6" select="'6' || $seed"/>
+   <xsl:variable name="seed7" select="'7' || $seed"/>
    <xsl:sequence select="fn:random-number-generator($seed6)?permute($odpovede[@spravna = '1'])[position() = 1 to $spravnych]"/>
    <xsl:sequence select="fn:random-number-generator($seed7)?permute($odpovede[@spravna = '0'])[position() = 1 to $nespravnych]"/>
 </xsl:function>

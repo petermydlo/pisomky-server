@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-from app.utils import xslt_to_pdf
+from app.utils import xslt_to_pdf, test_xml_path
 from app.mytypes import StringForm
 from fastapi import APIRouter, Request, BackgroundTasks
 from fastapi.responses import FileResponse
@@ -10,9 +10,8 @@ from fastapi.exceptions import HTTPException
 router = APIRouter()
 
 @router.post('/admin/downloadresults', response_class=FileResponse)
-async def downloadresults(request: Request, background_tasks: BackgroundTasks, predmet: StringForm, trieda: StringForm, kapitola: StringForm, skupina: StringForm = ''):
-   adresar = f'./res/xml/tests/{predmet}'
-   cesta = f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
+async def downloadresults(request: Request, background_tasks: BackgroundTasks, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
+   cesta = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
    if not os.path.exists(cesta):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
    try:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from app.utils import modify_test_xml
+from app.utils import modify_test_xml, test_xml_path
 from app.mytypes import StringForm, StringFormOptional
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
@@ -9,7 +9,7 @@ from fastapi.exceptions import HTTPException
 router = APIRouter()
 
 @router.post('/admin/changetime', response_class=HTMLResponse)
-async def changetime(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, skupina: StringForm = '', start: StringFormOptional = None, stop: StringFormOptional = None, kluc: StringFormOptional = None):
+async def changetime(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', start: StringFormOptional = None, stop: StringFormOptional = None, kluc: StringFormOptional = None):
    def _modify(tree):
       root = tree.getroot()
 
@@ -31,7 +31,7 @@ async def changetime(request: Request, predmet: StringForm, trieda: StringForm, 
          _set_attr(test, 'start', start)
          _set_attr(test, 'stop', stop)
    try:
-      modify_test_xml(predmet, trieda, skupina, kapitola, _modify)
+      modify_test_xml(test_xml_path(predmet, trieda, skupina, kapitola, fileid), _modify)
       return HTMLResponse(content='ok', status_code=204)
    except HTTPException:
       raise

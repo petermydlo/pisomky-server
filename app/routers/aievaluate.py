@@ -5,33 +5,16 @@ import re
 import json
 import glob
 import unicodedata
+from pathlib import Path
 import lxml.etree as ET
 from app.mytypes import StringForm
+from app.utils import find_test_file
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
 
 router = APIRouter()
 
-SYSTEM_PROMPT = """You are a teacher's assistant evaluating a student's test.
-You will receive a list of open questions with model answers and the student's answers.
-
-Your task for each question:
-1. Compare the student's answer to the model answer and key words
-2. Assign points from 0 to the maximum
-3. Write a brief reason in Slovak (1-2 sentences) explaining the score
-
-Rules:
-- Be fair but strict — partial knowledge deserves partial points
-- If key words are present but explanation is weak, give partial credit
-- If the answer is completely wrong or missing, give 0
-- The model answer may contain <any> markers — the student can use any reasonable value there
-- The model answer may contain <any:X> markers where X is a name — ALL occurrences of the same
-  <any:X> across all questions must have been answered with the SAME value by the student.
-  Check consistency across questions — if the student used different values for the same <any:X>,
-  deduct points accordingly.
-
-Return ONLY a JSON array, one object per question, no other text:
-[{"id": "<question id>", "body": <integer>, "dovod": "<reason in Slovak>"}, ...]"""
+SYSTEM_PROMPT = (Path(__file__).parent.parent / 'templates' / 'aievaluate_system.md').read_text()
 
 
 def _normalizuj(text: str) -> str:
@@ -51,7 +34,7 @@ def _nahrad_placeholder(vzor: str, ziak: dict) -> str:
       'kod':        ziak.get('kod', ''),
    }
 
-   def nahrad(match):
+   def nahrad(match: 're.Match') -> str:
       cast = match.group(1)
       parts = cast.split(':')
       typ = parts[0].strip()
@@ -70,14 +53,13 @@ def _nahrad_placeholder(vzor: str, ziak: dict) -> str:
    return re.sub(r'\{([^}]+)\}', nahrad, vzor)
 
 
-def _nacitaj_udaje_ziaka(predmet: str, trieda: str, skupina: str, kapitola: str, test_id: str) -> dict:
+def _nacitaj_udaje_ziaka(cesta_tst: str, test_id: str, trieda: str) -> dict:
    """Načíta meno, priezvisko, triedu žiaka z tests XML."""
-   cesta = f'./res/xml/tests/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
    meno = ''
    priezvisko = ''
    trieda_ziak = trieda
    try:
-      tree = ET.parse(cesta)
+      tree = ET.parse(cesta_tst)
       test = next(iter(tree.xpath(".//test[@id=$id]", id=test_id)), None)
       if test is not None:
          meno = test.get('meno', '')
@@ -108,9 +90,8 @@ def _nacitaj_otazku_questions(predmet: str, otazka_id: str) -> dict | None:
    return None
 
 
-def _nacitaj_otvorene_otazky(predmet: str, test_id: str, trieda: str, skupina: str, kapitola: str) -> list[dict]:
+def _nacitaj_otvorene_otazky(cesta_tst: str, test_id: str, predmet: str, trieda: str, skupina: str, kapitola: str) -> list[dict]:
    """Načíta všetky otvorené otázky testu s odpoveďami žiaka."""
-   cesta_tst = f'./res/xml/tests/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
    cesta_ans = f'./res/xml/answers/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
 
    odpovede = {}
@@ -204,8 +185,9 @@ async def evaluate_open(
 ):
    """Vyhodnotí všetky otvorené odpovede žiaka naraz. Vráti zoznam {id, body, dovod}."""
    try:
-      ziak = await run_in_threadpool(_nacitaj_udaje_ziaka, predmet, trieda, skupina, kapitola, test_id)
-      otazky = await run_in_threadpool(_nacitaj_otvorene_otazky, predmet, test_id, trieda, skupina, kapitola)
+      cesta_tst = find_test_file(test_id) or ''
+      ziak = await run_in_threadpool(_nacitaj_udaje_ziaka, cesta_tst, test_id, trieda)
+      otazky = await run_in_threadpool(_nacitaj_otvorene_otazky, cesta_tst, test_id, predmet, trieda, skupina, kapitola)
 
       if not otazky:
          return {'ok': False, 'kod': 'no_questions'}

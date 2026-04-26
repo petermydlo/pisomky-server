@@ -11,14 +11,19 @@ from pathlib import Path
 from queue import Queue, Empty
 from filelock import FileLock
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
+from collections.abc import Mapping
+if TYPE_CHECKING:
+   from collections.abc import Callable, Generator
+   from saxonche import PySaxonProcessor, PyXdmNode, PyXsltExecutable
 
-def _xfind(node, expr, **kw):
+def _xfind(node: ET._Element | ET._ElementTree, expr: str, **kw) -> ET._Element | None:
    """Bezpecny XPath lookup — vracia prvy vysledok alebo None."""
    result = node.xpath(expr, **kw)
-   return result[0] if result else None
+   return result[0] if result else None  # type: ignore[return-value,index]
 
-def get_test_metadata(proc, test_node):
-   """Vrati predmet, trieda, skupina, kapitola z rodica test nodu."""
+def get_test_metadata(proc: 'PySaxonProcessor', test_node: 'PyXdmNode') -> tuple[str, str, str, str, str]:
+   """Vrati predmet, trieda, skupina, kapitola, fileid z rodica test nodu."""
    xp = proc.new_xpath_processor()
    xp.set_context(xdm_item=test_node.get_parent())
    return (
@@ -26,12 +31,13 @@ def get_test_metadata(proc, test_node):
       xp.evaluate_single('string(@trieda)'),
       xp.evaluate_single('string(@skupina)'),
       xp.evaluate_single('string(@kapitola)'),
+      xp.evaluate_single('string(@fileid)'),
    )
 
 # --- Konverzie do inych formatov ---
 
 @contextmanager
-def _xslt_executable(proc, stylesheet_file, xslt_pools):
+def _xslt_executable(proc: 'PySaxonProcessor', stylesheet_file: str, xslt_pools: dict) -> 'Generator[PyXsltExecutable, None, None]':
    """Poskytne skompilovanú XSLT šablónu z poolu (alebo skompiluje novú)."""
    pool = xslt_pools.setdefault(stylesheet_file, Queue())
    try:
@@ -45,15 +51,17 @@ def _xslt_executable(proc, stylesheet_file, xslt_pools):
       executable.clear_parameters()
       pool.put(executable)
 
-def _set_params(proc, executable, params):
+def _set_params(proc: 'PySaxonProcessor', executable: 'PyXsltExecutable', params: dict) -> None:
    """Nastavi parametre na skompilovanej XSLT šablóne."""
    for k, v in params.items():
       if isinstance(v, bool):
          executable.set_parameter(k, proc.make_boolean_value(v))
+      elif isinstance(v, int):
+         executable.set_parameter(k, proc.make_integer_value(v))
       else:
          executable.set_parameter(k, proc.make_string_value(v))
 
-def xslt_to_pdf(proc, stylesheet, source_file=None, xdm_node=None, params=None, xslt_pools=None):
+def xslt_to_pdf(proc: 'PySaxonProcessor', stylesheet: str, source_file: str | None = None, xdm_node: 'PyXdmNode | None' = None, params: dict | None = None, xslt_pools: dict | None = None) -> 'tempfile._TemporaryFileWrapper':
    """Transformuje xml zdroj s xslt sablonou na pdf subor."""
    if xslt_pools is not None:
       with _xslt_executable(proc, stylesheet, xslt_pools) as executable:
@@ -83,7 +91,7 @@ def xslt_to_pdf(proc, stylesheet, source_file=None, xdm_node=None, params=None, 
    os.remove(fofile.name)
    return pdffile
 
-def xslt_to_string(proc, stylesheet_file, source_file=None, xdm_node=None, params=None, xslt_pools=None):
+def xslt_to_string(proc: 'PySaxonProcessor', stylesheet_file: str, source_file: str | None = None, xdm_node: 'PyXdmNode | None' = None, params: dict | None = None, xslt_pools: dict | None = None) -> str:
    """Transformuje xml zdroj s xslt sablonou na retazec."""
    if xslt_pools is not None:
       with _xslt_executable(proc, stylesheet_file, xslt_pools) as executable:
@@ -101,6 +109,8 @@ def xslt_to_string(proc, stylesheet_file, source_file=None, xdm_node=None, param
          for k, v in params.items():
             if isinstance(v, bool):
                xsltproc.set_parameter(k, proc.make_boolean_value(v))
+            elif isinstance(v, int):
+               xsltproc.set_parameter(k, proc.make_integer_value(v))
             else:
                xsltproc.set_parameter(k, proc.make_string_value(v))
       executable = xsltproc.compile_stylesheet(stylesheet_file=stylesheet_file)
@@ -111,7 +121,7 @@ def xslt_to_string(proc, stylesheet_file, source_file=None, xdm_node=None, param
       else:
          return executable.call_template_returning_string(None)
 
-def xquery_to_string(proc, query_file, params=None):
+def xquery_to_string(proc: 'PySaxonProcessor', query_file: str, params: dict | None = None) -> str:
    """Transformuje xquery subor na retazec."""
    xqproc = proc.new_xquery_processor()
    if params:
@@ -122,13 +132,13 @@ def xquery_to_string(proc, query_file, params=None):
    return result
 
 # --- Zabezpecenie ID ---
-def _hash_category(kategoria, subor_id=''):
+def _hash_category(kategoria: ET._Element, subor_id: str = '') -> str:
    """Vypocita hash kategorie z hashu suboru a hashov jej otazok."""
    hashe = [o.get('id', '') for o in kategoria.findall('otazka')]
    obsah = subor_id + '|' + '|'.join(hashe)
    return hashlib.sha256(obsah.encode('utf-8')).hexdigest()[:8]
 
-def _hash_question(otazka, predmet):
+def _hash_question(otazka: ET._Element, predmet: str) -> str:
    """Vypocita hash obsahu otazky."""
    parts = [predmet]
    znenie = otazka.find('znenie')
@@ -143,7 +153,7 @@ def _hash_question(otazka, predmet):
    obsah = '|'.join(parts)
    return hashlib.sha256(obsah.encode('utf-8')).hexdigest()[:8]
 
-def ensure_ids(cesta):
+def ensure_ids(cesta: str | Path) -> None:
    """Doplni @id do otazok v questions XML ak este nemaju. Bezpecne aj pri subehu."""
    cesta = Path(cesta)
    if not cesta.exists():
@@ -189,7 +199,7 @@ def ensure_ids(cesta):
       tree.write(str(cesta), encoding='utf-8', xml_declaration=True, pretty_print=True)
 
 # --- Vyhladavanie a uprava casti testu podla ID ---
-def find_chapter(kapitola_id, predmet=None, cache=None):
+def find_chapter(kapitola_id: str, predmet: str | None = None, cache: dict | None = None) -> tuple[ET._Element, str] | tuple[None, None]:
    """Najde koren kapitoly v questions XML podla @id.
    predmet je volitelny filter (napr. 'SXT4') — odporuca sa pouzit,
    pretoze kapitola_id je unikatne len v ramci predmetu.
@@ -237,15 +247,15 @@ def find_chapter(kapitola_id, predmet=None, cache=None):
 
    return None, None
 
-def delete_chapter(kapitola_id, predmet, cache=None):
+def delete_chapter(kapitola_id: str, predmet: str, cache: dict | None = None) -> bool:
    """Vymaze XML subor kapitoly ak nie je pouzita v tests suboroch.
    Vracia True ak uspech, False ak pouzita alebo nenajdena.
    """
    kapitola, cesta = find_chapter(kapitola_id, predmet, cache)
-   if kapitola is None:
+   if kapitola is None or cesta is None:
       return False
    pouzita = any(
-      is_used(o.get('id'))
+      is_used(o.get('id') or '')
       for o in kapitola.findall('.//otazka[@id]')
    )
    if pouzita:
@@ -255,7 +265,7 @@ def delete_chapter(kapitola_id, predmet, cache=None):
       cache.pop(f'{predmet}:{kapitola_id}', None)
    return True
 
-def create_chapter(predmet, kapitola_id, nazov=None):
+def create_chapter(predmet: str, kapitola_id: str, nazov: str | None = None) -> tuple[str, bool] | tuple[None, bool]:
    """Vytvori novy XML subor kapitoly pre dany predmet.
    Subor bude obsahovat prazdny element pokyny a jednu kategoriu s jednou otazkou.
    Vracia (kapitola_id, True) ak uspech, (None, False) ak subor uz existuje alebo chyba.
@@ -271,7 +281,7 @@ def create_chapter(predmet, kapitola_id, nazov=None):
    tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return kapitola_id, True
 
-def find_category(kategoria_id, cache=None):
+def find_category(kategoria_id: str, cache: dict | None = None) -> tuple[ET._Element, str] | tuple[None, None]:
    """Najde kategoriu v questions XML podla @id.
    Prehladava vsetky subory v res/xml/questions/, vyuziva cache
    pre rychlejsie opakovane vyhladavanie.
@@ -312,7 +322,7 @@ def find_category(kategoria_id, cache=None):
 
    return None, None
 
-def update_category(kategoria_id, nove_data, cache=None):
+def update_category(kategoria_id: str, nove_data: Mapping[str, str | None], cache: dict | None = None) -> bool:
    """Upravi atributy kategorie v questions XML.
    nove_data je dict, moze obsahovat:
      'pocet'  - string s poctom otazok na vyber
@@ -322,7 +332,7 @@ def update_category(kategoria_id, nove_data, cache=None):
    Vracia True ak uspech, False ak kategoria nenajdena.
    """
    kategoria, cesta = find_category(kategoria_id, cache)
-   if kategoria is None:
+   if kategoria is None or cesta is None:
       return False
    lock = FileLock(cesta + '.lock')
    with lock:
@@ -337,19 +347,19 @@ def update_category(kategoria_id, nove_data, cache=None):
                if attr in kategoria.attrib:
                   del kategoria.attrib[attr]
             else:
-               kategoria.set(attr, nove_data[attr])
+               kategoria.set(attr, str(nove_data[attr]))
       ET.indent(tree, space='   ')
       tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return True
 
-def delete_category(kategoria_id, cache=None):
+def delete_category(kategoria_id: str, cache: dict | None = None) -> bool:
    """Vymaze kategoriu z questions XML podla @id.
    Ak je ktora otazka pouzita v tests, nastavi @deprecated='1' na kategorii
    aj vsetkych jej otazkach namiesto vymazania.
    Vracia True ak uspech, False ak kategoria nenajdena.
    """
    kategoria, cesta = find_category(kategoria_id, cache)
-   if kategoria is None:
+   if kategoria is None or cesta is None:
       return False
    lock = FileLock(cesta + '.lock')
    with lock:
@@ -358,7 +368,7 @@ def delete_category(kategoria_id, cache=None):
       kategoria = _xfind(tree, ".//kategoria[@id=$id]", id=kategoria_id)
       if kategoria is None:
          return False
-      pouzita = any(is_used(o.get('id')) for o in kategoria.findall('.//otazka[@id]'))
+      pouzita = any(is_used(o.get('id') or '') for o in kategoria.findall('.//otazka[@id]'))
       if pouzita:
          kategoria.set('deprecated', '1')
       else:
@@ -372,7 +382,7 @@ def delete_category(kategoria_id, cache=None):
       tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return True
 
-def add_category(kapitola_id, nova_kategoria, za_kategoria_id=None, predmet=None, cache=None):
+def add_category(kapitola_id: str, nova_kategoria: dict, za_kategoria_id: str | None = None, predmet: str | None = None, cache: dict | None = None) -> tuple[str | None, bool]:
    """Prida novu kategoriu do kapitoly v questions XML.
    nova_kategoria je dict, moze obsahovat:
      'pocet'    - string s poctom otazok na vyber (povinny)
@@ -383,7 +393,7 @@ def add_category(kapitola_id, nova_kategoria, za_kategoria_id=None, predmet=None
    Vracia (kategoria_id, True) ak uspech, (None, False) pri chybe.
    """
    kapitola, cesta = find_chapter(kapitola_id, predmet, cache)
-   if kapitola is None:
+   if kapitola is None or cesta is None:
       return None, False
    lock = FileLock(cesta + '.lock')
    with lock:
@@ -410,7 +420,7 @@ def add_category(kapitola_id, nova_kategoria, za_kategoria_id=None, predmet=None
    nova_id = kategorie[-1].get('id') if kategorie else None
    return nova_id, True
 
-def find_test_file(kluc, cache=None):
+def find_test_file(kluc: str, cache: dict | None = None) -> str | None:
    """Najde cestu k tests XML suboru podla kluca testu, vyuziva cache."""
    if cache is None:
       cache = {}
@@ -445,7 +455,7 @@ def find_test_file(kluc, cache=None):
 
    return None
 
-def is_used(otazka_id):
+def is_used(otazka_id: str) -> bool:
    """Skontroluje ci je otazka pouzita v niektorom tests subore.
    Vracia True ak pouzita, False ak nie.
    """
@@ -458,7 +468,7 @@ def is_used(otazka_id):
          pass
    return False
 
-def find_question(otazka_id, cache=None):
+def find_question(otazka_id: str, cache: dict | None = None) -> tuple[ET._Element, str] | tuple[None, None]:
    """Najde otazku v questions XML podla @id."""
    if cache is None:
       cache = {}
@@ -495,7 +505,7 @@ def find_question(otazka_id, cache=None):
 
    return None, None
 
-def update_question(otazka_id, nove_data, cache=None):
+def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) -> bool:
    """Upravi atributy a obsah otazky v questions XML.
    nove_data je dict, moze obsahovat:
      'znenie'    - novy XML string obsahu znenia (napr. '<znenie>text</znenie>')
@@ -506,7 +516,7 @@ def update_question(otazka_id, nove_data, cache=None):
    Vracia True ak uspech, False ak otazka nenajdena.
    """
    otazka, cesta = find_question(otazka_id, cache)
-   if otazka is None:
+   if otazka is None or cesta is None:
       return False
    lock = FileLock(cesta + '.lock')
    with lock:
@@ -562,13 +572,13 @@ def update_question(otazka_id, nove_data, cache=None):
       tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return True
 
-def delete_question(otazka_id, cache=None):
+def delete_question(otazka_id: str, cache: dict | None = None) -> bool:
    """Vymaze otazku z questions XML podla @id.
    Ak je otazka pouzita v tests, nastavi @deprecated='1' namiesto vymazania.
    Vracia True ak uspech, False ak otazka nenajdena.
    """
    otazka, cesta = find_question(otazka_id, cache)
-   if otazka is None:
+   if otazka is None or cesta is None:
       return False
    lock = FileLock(cesta + '.lock')
    with lock:
@@ -590,7 +600,7 @@ def delete_question(otazka_id, cache=None):
       tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return True
 
-def add_question(kategoria_id, nova_otazka, za_otazka_id=None, cache=None):
+def add_question(kategoria_id: str, nova_otazka: dict, za_otazka_id: str | None = None, cache: dict | None = None) -> tuple[str | None, bool]:
    """Prida novu otazku do kategorie v questions XML.
    nova_otazka je dict, moze obsahovat:
      'znenie'   - XML string obsahu znenia (povinny)
@@ -602,7 +612,7 @@ def add_question(kategoria_id, nova_otazka, za_otazka_id=None, cache=None):
    Vracia (otazka_id, True) ak uspech, (None, False) ak kategoria nenajdena.
    """
    kategoria, cesta = find_category(kategoria_id, cache)
-   if kategoria is None:
+   if kategoria is None or cesta is None:
       return None, False
    lock = FileLock(cesta + '.lock')
    with lock:
@@ -651,16 +661,18 @@ def add_question(kategoria_id, nova_otazka, za_otazka_id=None, cache=None):
    return None, True
 
 # --- Testy a cas ---
-def modify_test_xml(predmet, trieda, skupina, kapitola, callback):
-   """Najde spravny xml subor a upravy ho podla parametrov."""
-   cesta = f'./res/xml/tests/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
+def test_xml_path(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str:
+   return f'./res/xml/tests/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
+
+def modify_test_xml(cesta: str, callback: 'Callable[[ET._ElementTree], None]') -> None:
+   """Upravi xml subor testov podla callbacku."""
    xmlParser = ET.XMLParser(remove_blank_text=True)
    tree = ET.parse(cesta, xmlParser)
    callback(tree)
    ET.indent(tree, space='   ')
    tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
 
-def find_test(proc, kluc, admin=False, cache=None):
+def find_test(proc: 'PySaxonProcessor', kluc: str, admin: bool = False, cache: dict | None = None) -> 'PyXdmNode | None':
    """Najde test v tests XML podla @id."""
    if cache is None:
       cache = {}
@@ -717,9 +729,11 @@ def find_test(proc, kluc, admin=False, cache=None):
    except Exception:
       return None
 
-def check_time(proc, predmet, trieda, skupina, kapitola, kluc):
+def check_time(proc: 'PySaxonProcessor', kluc: str) -> bool:
    """Najde platny cas pre test."""
-   subor = f'./res/xml/tests/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
+   subor = find_test_file(kluc)
+   if not subor:
+      return False
    node = proc.parse_xml(xml_file_name=subor)
    xsltpath = proc.new_xpath_processor()
    xsltpath.set_context(xdm_item=node)
@@ -729,8 +743,8 @@ def check_time(proc, predmet, trieda, skupina, kapitola, kluc):
       return _check_time_node(test_node, rodic_node)
    return False
 
-def _check_time_node(test_node, rodic_node):
-   def parse_time(node, attr):
+def _check_time_node(test_node: 'PyXdmNode', rodic_node: 'PyXdmNode') -> bool:
+   def parse_time(node: 'PyXdmNode', attr: str) -> dat.datetime | None:
       try:
          return dat.datetime.fromisoformat(node.get_attribute_value(attr).strip())
       except Exception:

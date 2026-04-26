@@ -2,6 +2,7 @@
 
 import os
 from app.mytypes import StringForm
+from app.utils import test_xml_path
 from fastapi import APIRouter, Request
 from fastapi.responses import PlainTextResponse
 from fastapi.exceptions import HTTPException
@@ -9,9 +10,9 @@ from fastapi.exceptions import HTTPException
 router = APIRouter()
 
 @router.delete('/admin/deletetests', response_class=PlainTextResponse)
-async def delete(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, skupina: StringForm = ''):
+async def delete(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
    adresar = f'./res/xml/tests/{predmet}'
-   cesta = f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
+   cesta = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
    if not os.path.exists(cesta):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
    try:
