@@ -76,7 +76,7 @@
                               <span id="trieda"><xsl:value-of select="@trieda"/></span><span id="skupina"><xsl:value-of select="@skupina"/></span>
                            </div>
                         </div>
-                        <div id="{$skupina_id}" class="collapse show"
+                        <div id="{$skupina_id}" class="collapse"
                              data-trieda="{@trieda}" data-skupina="{@skupina}">
                         <xsl:for-each-group select="current-group()" group-by="@kapitola">
                            <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
