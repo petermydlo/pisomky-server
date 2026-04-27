@@ -526,7 +526,7 @@ div:hover > span.penIcon {
 
 /* Logika viditeľnosti */
 .skryte      { display: none !important; }
-.neviditelny { visibility: hidden; cursor: default !important; }
+.neviditelny { visibility: hidden; }
 
 /* 7. MEDIA QUERIES (Responzivita a Tlač) */
 @media screen and (max-width: 1400px) {

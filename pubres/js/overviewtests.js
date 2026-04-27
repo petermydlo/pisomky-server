@@ -1,7 +1,3 @@
-document.addEventListener('click', (e) => {
-   if (e.target.closest('.skupina .grid > .neviditelny')) e.stopPropagation();
-}, true);
-
 document.addEventListener('DOMContentLoaded', () => {
 
    function skupinaData(el) {
