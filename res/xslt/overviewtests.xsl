@@ -72,10 +72,9 @@
                         <xsl:variable name="skupina_id" select="generate-id()"/>
                         <div class="grid skupinaToggle bg-info bg-opacity-25" role="button"
                              data-bs-toggle="collapse" data-bs-target="#{$skupina_id}">
-                           <div class="zalomenie">
+                           <div class="zalomenie grid-span span7">
                               <span id="trieda"><xsl:value-of select="@trieda"/></span><span id="skupina"><xsl:value-of select="@skupina"/></span>
                            </div>
-                           <div/><div/><div/><div/><div/><div/>
                         </div>
                         <div id="{$skupina_id}" class="collapse show"
                              data-trieda="{@trieda}" data-skupina="{@skupina}">
