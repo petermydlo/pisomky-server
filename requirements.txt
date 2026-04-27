@@ -13,7 +13,6 @@ filelock
 ollama
 anthropic
 google-genai
-mempalace
 zxing-cpp
 pymupdf
 pytest
