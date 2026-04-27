@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 
-from app.mytypes import StringForm, StringPath, FileListOptional
 from datetime import datetime
 from pathlib import Path
-from app.utils import check_time
+from app.mytypes import StringForm, StringPath, StringFormOptional, FileListOptional
+from app.utils import check_time, modify_test_xml, find_test_file, test_xml_path, update_category, update_question
 import lxml.etree as ET
 from fastapi.concurrency import run_in_threadpool
 from filelock import FileLock
 from fastapi import APIRouter, Request, Response
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.exceptions import HTTPException
 
 router = APIRouter()
 
-#saveanswers
 @router.post('/saveanswers/{kluc}')
 async def saveanswers(request: Request, response: Response, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', subory: FileListOptional = None):
    proc = request.app.state.proc
@@ -74,3 +74,71 @@ def write_answers(lock: FileLock, cesta: Path, form_data: dict, adresar: str, pr
          tree.write(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml', encoding='utf-8', xml_declaration=True, pretty_print=True)
       except Exception as e:
          raise Exception('chyba odpovede: ' + str(e))
+
+@router.post('/stoptime/{kluc}', response_class=HTMLResponse)
+async def stoptime(request: Request, kluc: StringPath, stop: StringForm):
+   def _modify(tree):
+      tests = [t for t in tree.findall('.//test') if t.get('id') == kluc]
+      if not tests:
+         raise HTTPException(status_code=404, detail='Test nenájdený')
+      tests[0].set('stop', stop)
+
+   try:
+      cesta = find_test_file(kluc, request.app.state.kluc_cache)
+      if not cesta:
+         raise HTTPException(status_code=404, detail='Test nenájdený')
+      modify_test_xml(cesta, _modify)
+      return HTMLResponse(content='ok', status_code=204)
+   except HTTPException:
+      raise
+   except Exception as e:
+      raise HTTPException(status_code=400, detail='chyba stoptime: ' + str(e))
+
+@router.post('/admin/setpaused', response_class=JSONResponse)
+async def set_paused(request: Request, id: StringForm, typ: StringForm, paused: StringForm):
+   try:
+      hodnota = '1' if paused == '1' else None
+      if typ == 'kategoria':
+         ok = update_category(id, {'paused': hodnota})
+      elif typ == 'otazka':
+         ok = update_question(id, {'paused': hodnota})
+      else:
+         raise HTTPException(status_code=400, detail=f'Neznámy typ: {typ}')
+      if not ok:
+         raise HTTPException(status_code=404, detail='Nenájdené')
+      return JSONResponse(content={'ok': True}, status_code=200)
+   except HTTPException:
+      raise
+   except Exception as e:
+      request.app.state.logger.error(f'chyba setpaused: {e}')
+      raise HTTPException(status_code=400, detail=str(e))
+
+@router.post('/admin/changetime', response_class=HTMLResponse)
+async def changetime(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', start: StringFormOptional = None, stop: StringFormOptional = None, kluc: StringFormOptional = None):
+   def _modify(tree):
+      root = tree.getroot()
+
+      def _set_attr(node, attr, value):
+         if value is not None:
+            if value.strip() != '':
+               node.set(attr, value)
+            else:
+               node.attrib.pop(attr, None)
+
+      if kluc is None:
+         _set_attr(root, 'start', start)
+         _set_attr(root, 'stop', stop)
+      else:
+         tests = [t for t in tree.findall('.//test') if t.get('id') == kluc]
+         if not tests:
+            raise HTTPException(status_code=404, detail='Test nenájdený')
+         test = tests[0]
+         _set_attr(test, 'start', start)
+         _set_attr(test, 'stop', stop)
+   try:
+      modify_test_xml(test_xml_path(predmet, trieda, skupina, kapitola, fileid), _modify)
+      return HTMLResponse(content='ok', status_code=204)
+   except HTTPException:
+      raise
+   except Exception as e:
+      raise HTTPException(status_code=400, detail='chyba changetime: ' + str(e))

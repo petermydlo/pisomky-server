@@ -7,34 +7,17 @@ from saxonche import PySaxonProcessor
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from app.utils import find_test, xslt_to_string, get_test_metadata
-from app.routers.aihelp import _spocitaj_napovedy_testu
+from app.routers.ai import _spocitaj_napovedy_testu
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.mytypes import BoolQuery, StringPath, StringHeader
-from app.routers import saveanswers
-from app.routers import savemarks
-from app.routers import showresult
-from app.routers import downloadresult
-from app.routers import downloadtests
-from app.routers import downloadresults
-from app.routers import downloadcodes
-from app.routers import selectcreate
-from app.routers import createtests
-from app.routers import regeneratetests
-from app.routers import deletetests
-from app.routers import showquestions
-from app.routers import selectquestions
-from app.routers import changetime
-from app.routers import stoptime
-from app.routers import aihelp
-from app.routers import aifeedback
-from app.routers import aifeedbackreport
-from app.routers import groupstatistics
-from app.routers import processchapter
-from app.routers import processcategory
-from app.routers import processquestion
-from app.routers import setpaused
+from app.routers import tests
+from app.routers import testrun
+from app.routers import results
+from app.routers import downloads
+from app.routers import questions
+from app.routers import ai
 from app.routers import importanswers
 from app.routers import aievaluate
 from app.routers.aiproviders import get_provider
@@ -78,30 +61,13 @@ app.state.logger = logging.getLogger("pisomky")
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=[os.getenv('ALLOWED_HOST', 'pisomky.ternac.net')])
 
 #zakomponovanie ineho suboru
-app.include_router(saveanswers.router)
-app.include_router(savemarks.router)
-app.include_router(showresult.router)
-app.include_router(downloadresult.router)
-app.include_router(selectcreate.router)
-app.include_router(createtests.router)
-app.include_router(regeneratetests.router)
-app.include_router(deletetests.router)
-app.include_router(selectquestions.router)
-app.include_router(showquestions.router)
-app.include_router(downloadtests.router)
-app.include_router(downloadresults.router)
-app.include_router(downloadcodes.router)
-app.include_router(changetime.router)
-app.include_router(stoptime.router)
-app.include_router(aihelp.router)
-app.include_router(aifeedback.router)
-app.include_router(aifeedbackreport.router)
-app.include_router(groupstatistics.router)
+app.include_router(tests.router)
+app.include_router(testrun.router)
+app.include_router(results.router)
+app.include_router(downloads.router)
+app.include_router(questions.router)
+app.include_router(ai.router)
 app.include_router(importanswers.router)
-app.include_router(processchapter.router)
-app.include_router(processcategory.router)
-app.include_router(processquestion.router)
-app.include_router(setpaused.router)
 app.include_router(aievaluate.router)
 
 #adresar so statickymi zdrojmi

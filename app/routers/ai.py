@@ -8,14 +8,16 @@ from filelock import FileLock
 from lxml import etree as ET
 import ollama
 from dotenv import load_dotenv
-from app.utils import find_test, find_question, get_test_metadata
-from app.mytypes import StringQuery
+from app.utils import find_test, find_question, get_test_metadata, xquery_to_string, xslt_to_string
+from app.mytypes import StringQuery, IntForm, StringForm
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
+from fastapi.exceptions import HTTPException
 
 load_dotenv()
 
 router = APIRouter()
+
 
 def _najdi_napovedu(otazka_id: str, predmet: str, spravna_odpoved: str | None = None, logger=None) -> dict | None:
    otazka_el, cesta = find_question(otazka_id)
@@ -56,7 +58,6 @@ def _spocitaj_napovedy_testu(subor: str, test_id: str) -> int:
 
 
 def _nacitaj_predchadzajuce_keys(subor: str, otazka_id: str, limit: int = 10) -> list[dict]:
-   """Nacita klucove slova z predchadzajucich napovedi pre danu otazku."""
    if not os.path.exists(subor):
       return []
    try:
@@ -175,7 +176,6 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
                                headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
    predchadzajuce = _nacitaj_predchadzajuce_keys(subor, otazka_id)
-
    helped = [p['keys'] for p in predchadzajuce if p['val'] == '1']
    not_helped = [p['keys'] for p in predchadzajuce if p['val'] == '0']
 
@@ -243,3 +243,58 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       media_type='text/event-stream',
       headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
    )
+
+@router.post('/ai/feedback')
+async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis_id: StringForm):
+   try:
+      proc = request.app.state.proc
+      test_node = find_test(proc=proc, kluc=test_id, admin=True, cache=request.app.state.kluc_cache)
+      if not test_node:
+         return {'ok': False, 'error': 'Test nenájdený'}
+
+      predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, test_node)
+      subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
+
+      if not os.path.exists(subor):
+         return {'ok': False, 'error': 'Feedback súbor neexistuje'}
+
+      lock = FileLock(subor + '.lock')
+      with lock:
+         xmlParser = ET.XMLParser(remove_blank_text=True)
+         tree = ET.parse(subor, xmlParser)
+         root = tree.getroot()
+         zapis = next((z for z in root.findall('.//zapis') if z.get('id') == zapis_id), None)
+         if zapis is None:
+            return {'ok': False, 'error': 'Záznam nenájdený'}
+         zapis.set('val', str(val))
+         tree = ET.ElementTree(root)
+         ET.indent(tree, space='   ')
+         tree.write(subor, encoding='UTF-8', xml_declaration=True)
+
+      return {'ok': True}
+   except Exception as e:
+      request.app.state.logger.error(f'chyba feedback: {e}')
+      return {'ok': False, 'error': str(e)}
+
+@router.post('/admin/feedbackreport', response_class=HTMLResponse)
+async def feedbackreport(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
+   proc = request.app.state.proc
+   try:
+      params = {
+         'predmet': predmet,
+         'trieda': trieda,
+         'skupina': skupina,
+         'kapitola': kapitola,
+         'fileid': fileid
+      }
+      subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
+      if not os.path.exists(subor):
+         xml_data = ET.tostring(ET.Element('feedback', attrib={'predmet': predmet, 'trieda': trieda, 'skupina': skupina, 'kapitola': kapitola, 'fileid': fileid}), encoding='unicode')
+      else:
+         xml_data = xquery_to_string(proc, './res/xquery/feedback.xq', params=params)
+      xml_node = proc.parse_xml(xml_text=xml_data)
+      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/feedbackreport.xsl', xdm_node=xml_node, xslt_pools=request.app.state.xslt_pools)
+      return HTMLResponse(content=vysledok, status_code=200)
+   except Exception as e:
+      request.app.state.logger.error(f'chyba feedbackreport: {e}')
+      raise HTTPException(status_code=400, detail=str(e))
