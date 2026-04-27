@@ -1,12 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
 
    function skupinaData(el) {
+      const skupinaDiv = el.closest('div.skupina');
+      const skupinaRows = skupinaDiv.closest('[data-trieda]');
       return {
-         predmet: el.closest('.tab-pane.active').id,
-         trieda:  el.closest('div.skupina').querySelector('#trieda').textContent,
-         skupina: el.closest('div.skupina').querySelector('#skupina').textContent,
-         kapitola:el.closest('div.skupina').querySelector('#kapitola').textContent,
-         fileid:  el.closest('div.skupina').dataset.fileid
+         predmet:  el.closest('.tab-pane.active').id,
+         trieda:   skupinaRows.dataset.trieda,
+         skupina:  skupinaRows.dataset.skupina,
+         kapitola: skupinaDiv.querySelector('#kapitola').textContent,
+         fileid:   skupinaDiv.dataset.fileid
       };
    }
 

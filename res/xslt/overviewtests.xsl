@@ -69,20 +69,24 @@
                      <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
                      <xsl:for-each-group select="current-group()" group-by="@skupina">
                         <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
+                        <xsl:variable name="skupina_id" select="generate-id()"/>
+                        <div class="grid skupinaToggle bg-info bg-opacity-25" role="button"
+                             data-bs-toggle="collapse" data-bs-target="#{$skupina_id}">
+                           <div class="zalomenie">
+                              <span id="trieda"><xsl:value-of select="@trieda"/></span><span id="skupina"><xsl:value-of select="@skupina"/></span>
+                           </div>
+                           <div/><div/><div/><div/><div/><div/>
+                        </div>
+                        <div id="{$skupina_id}" class="collapse show"
+                             data-trieda="{@trieda}" data-skupina="{@skupina}">
                         <xsl:for-each-group select="current-group()" group-by="@kapitola">
                            <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
-                           <xsl:variable name="pozicia_kapitola" select="position()"/>
                            <xsl:for-each-group select="current-group()" group-by="string(@fileid)">
                            <xsl:sort select="@gendat" data-type="text" order="ascending"/>
                            <xsl:variable name="vybtesty" select="my:vybtesty(.)"/>
                            <div class="skupina" data-fileid="{@fileid}">
                               <div class="grid" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
-                                 <div class="zalomenie">
-                                    <xsl:if test="$pozicia_kapitola != 1 or position() != 1">
-                                       <xsl:attribute name="class">neviditelny</xsl:attribute>
-                                    </xsl:if>
-                                    <span id="trieda"><xsl:value-of select="@trieda"/></span><span id="skupina"><xsl:value-of select="@skupina"/></span>
-                                 </div>
+                                 <div/>
                                  <div id="kapitola"><xsl:value-of select="@kapitola"/></div>
                                  <div class="sive"><xsl:value-of select="@gendat"/></div>
                                  <div><span><xsl:value-of select="@start"/></span><span class="startS penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
@@ -116,6 +120,7 @@
                            </div>
                            </xsl:for-each-group>
                         </xsl:for-each-group>
+                        </div>
                      </xsl:for-each-group>
                   </xsl:for-each-group>
                </div>
