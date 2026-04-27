@@ -71,13 +71,14 @@
                         <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
                         <xsl:for-each-group select="current-group()" group-by="@kapitola">
                            <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
+                           <xsl:variable name="pozicia_kapitola" select="position()"/>
                            <xsl:for-each-group select="current-group()" group-by="string(@fileid)">
                            <xsl:sort select="@gendat" data-type="text" order="ascending"/>
                            <xsl:variable name="vybtesty" select="my:vybtesty(.)"/>
                            <div class="skupina" data-fileid="{@fileid}">
                               <div class="grid" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
                                  <div class="zalomenie">
-                                    <xsl:if test="not(position() = 1)">
+                                    <xsl:if test="$pozicia_kapitola != 1 or position() != 1">
                                        <xsl:attribute name="class">neviditelny</xsl:attribute>
                                     </xsl:if>
                                     <span id="trieda"><xsl:value-of select="@trieda"/></span><span id="skupina"><xsl:value-of select="@skupina"/></span>
