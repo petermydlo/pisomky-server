@@ -88,14 +88,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
    //zmeni cas skupiny testov alebo jedneho testu
    document.addEventListener('click', (event) => {
-      if (!event.target.matches('.startS, .stopS, .startT, .stopT')) return;
+      const pen = event.target.closest('.startS, .stopS, .startT, .stopT');
+      if (!pen) return;
       event.stopPropagation();
       event.preventDefault();
 
       //zatvorime vsetky ostatne otvorene inputy
       document.querySelectorAll('.casInput').forEach(el => { if (el._zavriet) el._zavriet(); });
 
-      const pen = event.target;
       const parentDiv = pen.parentElement;
       if (parentDiv.querySelector('.casInput')) return;
 
@@ -172,8 +172,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!event.target.closest('.autor')) return;
       event.stopPropagation();
       event.preventDefault();
-      fetch('/admin', { headers: {'Authorization': 'Basic xxx'} })
-         .then(() => zobrazNotifikaciu('Na odhlásenie, prosím, zatvorte toto okno prezerača.', 'info', 'Informácia'))
+      fetch('/admin', { headers: {'Authorization': 'Basic xxx'}, credentials: 'omit' })
+         .then(resp => {
+            if (resp.ok) zobrazNotifikaciu('Na odhlásenie, prosím, zatvorte toto okno prezerača.', 'info', 'Informácia');
+            else window.location = '/';
+         })
          .catch(() => { window.location = '/'; });
    });
 

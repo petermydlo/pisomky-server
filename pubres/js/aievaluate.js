@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const bh = document.getElementById('bh_' + vysledok.id);
             const input = bh ?? document.getElementById('h_' + vysledok.id);
             input.value = vysledok.body;
-            input.dispatchEvent(new Event('change'));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
             document.getElementById('k_' + vysledok.id).value = vysledok.dovod;
             uspesne++;
          }

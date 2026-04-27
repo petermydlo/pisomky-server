@@ -10,9 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
       udaje.append('kapitola', hlavicka.getAttribute('kapitola'));
       udaje.append('fileid',   hlavicka.getAttribute('fileid'));
       udaje.append('dat',      hlavicka.getAttribute('dat'));
-      document.querySelectorAll("#odpovede input[type='radio'][name^='h_']:checked, #odpovede input[type='radio'][name^='bh_']:checked").forEach(el => {
-         udaje.append(el.getAttribute('name'), el.parentElement.textContent);
-      });
       document.querySelectorAll("#odpovede input[type='number'][id^='h_'], #odpovede input[type='number'][id^='bh_'], #odpovede input[type='text'][id^='k_']").forEach(el => {
          udaje.append(el.id, el.value);
       });

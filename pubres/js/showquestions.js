@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
          method: 'POST',
          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
          body: new URLSearchParams({ id, typ, paused })
+      }).then(resp => {
+         if (!resp.ok) cb.checked = !cb.checked;
       }).catch(() => {
          cb.checked = !cb.checked;
       });

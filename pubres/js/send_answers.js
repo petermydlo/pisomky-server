@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
    function setIcon(stav) {
       const icon = document.getElementById('save-icon');
+      if (!icon) return;
       icon.classList.remove(...ikonClassy);
       if (stav === 'ok')           icon.classList.add('bi-cloud-check', 'text-success');
       else if (stav === 'saving')  icon.classList.add('bi-cloud-upload', 'text-primary');
@@ -23,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
       udaje.append('fileid',   hlavicka.getAttribute('fileid'));
       if (withAnswers) {
          document.querySelectorAll("#odpovede input[type='radio']:checked:not([form])").forEach(el => {
-            udaje.append(el.getAttribute('name'), el.getAttribute('value'));
+            udaje.append(el.name, el.value);
          });
          document.querySelectorAll("#odpovede input[type='text'].odpoved").forEach(el => {
             udaje.append(el.id, el.value);
@@ -55,23 +56,28 @@ document.addEventListener('DOMContentLoaded', () => {
       autosaveTimer = setTimeout(() => saveAnswers(true, false), 3000);
    }
 
-   document.getElementById('save-status').addEventListener('click', (e) => {
-      const btn = e.currentTarget;
-      if (btn.dataset.disabled) return;
-      btn.dataset.disabled = 'true';
-      btn.classList.add('disabled');
-      setTimeout(() => { delete btn.dataset.disabled; btn.classList.remove('disabled'); }, 10000);
-      clearTimeout(autosaveTimer);
-      saveAnswers(true, true);
-   });
+   const saveStatus = document.getElementById('save-status');
+   if (saveStatus) {
+      saveStatus.addEventListener('click', (e) => {
+         const btn = e.currentTarget;
+         if (btn.dataset.disabled) return;
+         btn.dataset.disabled = 'true';
+         btn.classList.add('disabled');
+         setTimeout(() => { delete btn.dataset.disabled; btn.classList.remove('disabled'); }, 10000);
+         clearTimeout(autosaveTimer);
+         saveAnswers(true, true);
+      });
+   }
 
    const odpovede = document.getElementById('odpovede');
-   odpovede.addEventListener('change', (e) => {
-      if (e.target.matches('input.odpoved')) scheduleAutosave();
-   });
-   odpovede.addEventListener('input', (e) => {
-      if (e.target.matches("input[type='text'].odpoved")) scheduleAutosave();
-   });
+   if (odpovede) {
+      odpovede.addEventListener('change', (e) => {
+         if (e.target.matches('input.odpoved')) scheduleAutosave();
+      });
+      odpovede.addEventListener('input', (e) => {
+         if (e.target.matches("input[type='text'].odpoved")) scheduleAutosave();
+      });
+   }
 
    if (!window.location.pathname.includes('/admin'))
       saveAnswers(false, false);

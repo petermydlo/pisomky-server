@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
          totalPoints = Math.max(Math.min(totalPoints, maxPoints), 0);
          const percenta = totalPoints / maxPoints * 100;
          document.getElementById('pocetbodov').textContent = totalPoints;
-         document.getElementById('pocetpercent').textContent = percenta.toFixed(2);
+         document.getElementById('pocetpercent').textContent = Math.floor(percenta);
          const znamka = document.getElementById('znamka');
          if (percenta >= min1) {
             znamka.textContent = '1';
@@ -47,5 +47,5 @@ document.addEventListener('DOMContentLoaded', () => {
    document.querySelectorAll('.radio.col-up input:checked').forEach(el => {
       el.dispatchEvent(new Event('change'));
    });
-   document.querySelector("input[type='number'][id^='h_']")?.dispatchEvent(new Event('change'));
+   document.querySelector("input[type='number'][id^='h_']")?.dispatchEvent(new Event('change', { bubbles: true }));
 });

@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
    // toggle vyberu bez nutnosti drzat Ctrl
    document.getElementById('trieda').addEventListener('mousedown', (e) => {
-      if (e.target.tagName !== 'OPTION') return;
+      if (!e.target.matches('option')) return;
       e.preventDefault();
       e.target.selected = !e.target.selected;
       e.target.closest('select').dispatchEvent(new Event('change'));
