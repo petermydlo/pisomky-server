@@ -85,7 +85,7 @@
                            <xsl:variable name="vybtesty" select="my:vybtesty(.)"/>
                            <div class="skupina" data-fileid="{@fileid}">
                               <div class="grid" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
-                                 <div/>
+                                 <div class="neviditelny"/>
                                  <div id="kapitola"><xsl:value-of select="@kapitola"/></div>
                                  <div class="sive"><xsl:value-of select="@gendat"/></div>
                                  <div><span><xsl:value-of select="@start"/></span><span class="startS penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
