@@ -71,6 +71,8 @@
                         <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
                         <xsl:for-each-group select="current-group()" group-by="@kapitola">
                            <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
+                           <xsl:for-each-group select="current-group()" group-by="@fileid">
+                           <xsl:sort select="@gendat" data-type="text" order="ascending"/>
                            <xsl:variable name="vybtesty" select="my:vybtesty(.)"/>
                            <div class="skupina" data-fileid="{@fileid}">
                               <div class="grid" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
@@ -111,6 +113,7 @@
                                  </div>
                               </div>
                            </div>
+                           </xsl:for-each-group>
                         </xsl:for-each-group>
                      </xsl:for-each-group>
                   </xsl:for-each-group>
