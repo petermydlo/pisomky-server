@@ -135,7 +135,6 @@
          <xsl:call-template name="cdn-js"/>
          <script src="/pubres/js/utils.js"><xsl:comment>MyUtils</xsl:comment></script>
          <script src="/pubres/js/test.js"><xsl:comment>MyJS</xsl:comment></script>
-         <script src="/pubres/js/send_answers.js"><xsl:comment>MyJS</xsl:comment></script>
       </body>
    </html>
 </xsl:template>
