@@ -15,8 +15,8 @@
 <xsl:param name="kapitola"/>
 <xsl:param name="start"/>
 <xsl:param name="stop"/>
-<xsl:param name="anonymne"/>
-<xsl:param name="identita"/>
+<xsl:param name="anonymne" select="/testy/@anonymne = 'true'"/>
+<xsl:param name="identita" select="/testy/@identita = 'true'"/>
 <xsl:param name="autor"/>
 
 <!-- Náhodné miešanie: fn:random-number-generator($seed)?permute(sekvencia)
@@ -41,7 +41,7 @@
 </xsl:template>
 
 <xsl:template match="/triedy">
-   <testy xml:lang="sk" predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}" fileid="{$fileid}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{$start}" stop="{$stop}" autor="{$autor}">
+   <testy xml:lang="sk" predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}" fileid="{$fileid}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{$start}" stop="{$stop}" autor="{$autor}" identita="{$identita}" anonymne="{$anonymne}">
       <xsl:if test="$vkapitola/@filesave = '1'">
          <xsl:attribute name="filesave">1</xsl:attribute>
       </xsl:if>
@@ -51,7 +51,7 @@
 
 <!-- Vstupný template pre regenerovanie: zdrojom su existujúce testy XML (root <testy>, nie <triedy>) -->
 <xsl:template match="/testy">
-   <testy xml:lang="sk" predmet="{@predmet}" trieda="{@trieda}" skupina="{@skupina}" kapitola="{@kapitola}" fileid="{@fileid}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{@start}" stop="{@stop}" autor="{@autor}">
+   <testy xml:lang="sk" predmet="{@predmet}" trieda="{@trieda}" skupina="{@skupina}" kapitola="{@kapitola}" fileid="{@fileid}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{@start}" stop="{@stop}" autor="{@autor}" identita="{@identita}" anonymne="{@anonymne}">
       <xsl:if test="$vkapitola/@filesave = '1'">
          <xsl:attribute name="filesave">1</xsl:attribute>
       </xsl:if>
