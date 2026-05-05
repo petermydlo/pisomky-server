@@ -127,7 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
    });
 
    //uzamkne test, a vrati uzivatela na domovsku stranku
-   document.getElementById('home').addEventListener('click', async () => {
+   document.getElementById('home').addEventListener('click', async (e) => {
+      e.preventDefault();
       const params = new URLSearchParams(window.location.search);
       let hlaska = 'POZOR! Chystáte sa ukončiť písomku!\nChcete pokračovať?';
       if (params.has('edit'))
