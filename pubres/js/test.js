@@ -151,7 +151,9 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (resp.status === 403) zobrazNotifikaciu('Nemáte oprávnenie na danú akciu. Kontaktujte svojho administrátora!');
             else if (resp.status === 500) zobrazNotifikaciu('Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr.');
             else zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
+            return;
          }
+         window.location.href = '/';
       } catch (err) {
          console.error('Chyba:', err);
          zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
