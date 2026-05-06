@@ -2,11 +2,13 @@
 
 import os
 import logging
-from fastapi import FastAPI, Request
+from contextlib import asynccontextmanager
+from typing import Annotated
+from fastapi import FastAPI, Header, Request
 from saxonche import PySaxonProcessor
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from app.utils import find_test, xslt_to_string, get_test_metadata
+from app.utils import find_test, xslt_to_string, get_test_metadata, get_time_state, get_score
 from app.routers.ai import _spocitaj_napovedy_testu
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
@@ -23,12 +25,26 @@ from app.routers import aievaluate
 from app.routers.aiproviders import get_provider
 
 
-async def custom_http_exception_handler(request: Request, exc: HTTPException):
+async def custom_http_exception_handler(request: Request, _: HTTPException):
    return app.state.templates.TemplateResponse('error404_pisomky.html', {'request': request}, status_code=404)
 
 exceptions = {404: custom_http_exception_handler}
 
-app = FastAPI(exception_handlers=exceptions, docs_url=None, redoc_url=None)  # type: ignore[arg-type]
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+   try:
+      import ollama
+      await ollama.AsyncClient().chat(
+         model=os.getenv('OLLAMA_MODEL', 'llama3.1'),
+         messages=[{'role': 'user', 'content': ''}],
+         options={'num_predict': 1, 'keep_alive': '45m'}
+      )
+   except Exception:
+      pass
+   yield
+   app.state.proc.close()
+
+app = FastAPI(lifespan=lifespan, exception_handlers=exceptions, docs_url=None, redoc_url=None)  # type: ignore[arg-type]
 
 #globalny Saxon procesor aby sa nemusel vytvarat niekolkokrat
 app.state.proc = PySaxonProcessor(license=False)
@@ -73,9 +89,6 @@ app.include_router(aievaluate.router)
 #adresar so statickymi zdrojmi
 app.mount('/pubres', StaticFiles(directory='./pubres'), name='pubres')
 
-@app.on_event('shutdown')
-def shutdown_event():
-   app.state.proc.close()
 
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request):
@@ -96,10 +109,18 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
    if not (kluc := kluc.strip()): #ked uzivatel zada kluc z prazdnych znakov
       return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'wrongKey'}, status_code=400)
    proc = request.app.state.proc
-   node = find_test(proc, kluc, False, cache=request.app.state.kluc_cache)
+   node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
       return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'missingTest'}, status_code=404)
    try:
+      stav = get_time_state(node, node.get_parent())
+      if stav == 'before':
+         return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'beforeTime'})
+      if stav == 'after':
+         score = get_score(proc, kluc, request.app.state.kluc_cache)
+         if score:
+            return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'scored', 'score': score})
+         return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'pending'})
       xp = proc.new_xpath_processor()
       xp.set_context(xdm_item=node)
       pocet_otazok = int(xp.evaluate_single('count(otazka)') or 0)
@@ -116,7 +137,7 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
       raise HTTPException(status_code=400, detail=str(e))
 
 @app.get('/admin/{kluc}', response_class=HTMLResponse)
-async def adminview(request: Request, X_Remote_User: StringHeader, kluc: StringPath, edit: BoolQuery = False):
+async def adminview(request: Request, _: Annotated[str, Header(alias='X-Remote-User')], kluc: StringPath, edit: BoolQuery = False):
    proc = request.app.state.proc
    node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
    if node is None: #ked nenajdem test prisluchajuci danemu klucu

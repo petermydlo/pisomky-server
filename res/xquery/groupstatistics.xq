@@ -21,7 +21,7 @@ declare function local:poslednyOhodnotenyPokus($testy as element()*) as element(
 };
 
 declare function local:pismeno($pozicia as xs:integer) as xs:string {
-   substring('abcdefghij', $pozicia, 1)
+   codepoints-to-string(string-to-codepoints('a') + $pozicia - 1)
 };
 
 let $tests_subor := if (doc-available(concat('../xml/tests/', $predmet, '/', $predmet, '_', $trieda, $skupina, '_', $kapitola, '_', $fileid, '.xml')))

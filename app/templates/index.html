@@ -12,6 +12,12 @@
          <div class="alert alert-danger">Zadaný zlý kľúč, skúste znovu!</div>
          {%- elif "missingTest" == detail %}
          <div class="alert alert-danger">Test nenájdený, skúste znovu!</div>
+         {%- elif "beforeTime" == detail %}
+         <div class="alert alert-info">Čas na spustenie testu ešte nenastal.</div>
+         {%- elif "pending" == detail %}
+         <div class="alert alert-warning">Test ešte nebol ohodnotený.</div>
+         {%- elif "scored" == detail %}
+         <div class="alert alert-success">Výsledok: <strong>{{ score.ziskane }} / {{ score.maximum }} b</strong> ({{ score.percento }} %)</div>
          {%- endif %}
          <form id="loginForm" class="odsadenieH d-flex flex-column align-items-center">
             <div class="form-group">

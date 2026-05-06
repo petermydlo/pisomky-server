@@ -743,14 +743,48 @@ def check_time(proc: 'PySaxonProcessor', kluc: str) -> bool:
       return _check_time_node(test_node, rodic_node)
    return False
 
-def _check_time_node(test_node: 'PyXdmNode', rodic_node: 'PyXdmNode') -> bool:
-   def parse_time(node: 'PyXdmNode', attr: str) -> dat.datetime | None:
-      try:
-         return dat.datetime.fromisoformat(node.get_attribute_value(attr).strip())
-      except Exception:
-         return None
+def _parse_time(node: 'PyXdmNode', attr: str) -> dat.datetime | None:
+   try:
+      return dat.datetime.fromisoformat(node.get_attribute_value(attr).strip())
+   except Exception:
+      return None
 
-   start = parse_time(test_node, 'start') or parse_time(rodic_node, 'start')
-   stop = parse_time(test_node, 'stop') or parse_time(rodic_node, 'stop')
+def _check_time_node(test_node: 'PyXdmNode', rodic_node: 'PyXdmNode') -> bool:
+   start = _parse_time(test_node, 'start') or _parse_time(rodic_node, 'start')
+   stop = _parse_time(test_node, 'stop') or _parse_time(rodic_node, 'stop')
    teraz = dat.datetime.now()
    return (not start or teraz >= start) and (not stop or teraz <= stop)
+
+def get_time_state(test_node: 'PyXdmNode', rodic_node: 'PyXdmNode') -> str:
+   """Vrati 'before', 'during' alebo 'after' podla aktualneho casu voči start/stop."""
+   start = _parse_time(test_node, 'start') or _parse_time(rodic_node, 'start')
+   stop = _parse_time(test_node, 'stop') or _parse_time(rodic_node, 'stop')
+   teraz = dat.datetime.now()
+   if start and teraz < start:
+      return 'before'
+   if stop and teraz > stop:
+      return 'after'
+   return 'during'
+
+def get_score(proc: 'PySaxonProcessor', kluc: str, cache: dict | None = None) -> dict | None:
+   """Vypocita skore testu cez XQuery. Vracia dict so ziskane/maximum/percento, alebo None."""
+   test_subor = find_test_file(kluc, cache)
+   if not test_subor:
+      return None
+   # Cesty relativne k umiestneniu XQuery suboru (res/xquery/)
+   rel = test_subor.removeprefix('./res/')
+   test_cesta   = '../' + rel
+   answer_cesta = '../' + rel.replace('tests/', 'answers/', 1)
+   try:
+      params = {'kluc': kluc, 'test_cesta': test_cesta, 'answer_cesta': answer_cesta}
+      xml_result = xquery_to_string(proc, './res/xquery/score.xq', params=params)
+      node = ET.fromstring(xml_result.encode())
+      if node.tag == 'neohodnoteny':
+         return None
+      return {
+         'ziskane':  int(node.get('ziskane', 0)),
+         'maximum':  int(node.get('maximum', 0)),
+         'percento': int(node.get('percento', 0)),
+      }
+   except Exception:
+      return None

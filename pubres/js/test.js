@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
             return;
          }
-         window.location.href = '/';
+         window.location.href = '/' + kluc;
       } catch (err) {
          console.error('Chyba:', err);
          zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
