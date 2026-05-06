@@ -19,8 +19,8 @@ load_dotenv()
 router = APIRouter()
 
 
-def _najdi_napovedu(otazka_id: str, predmet: str, spravna_odpoved: str | None = None, logger=None) -> dict | None:
-   otazka_el, cesta = find_question(otazka_id)
+def _najdi_napovedu(otazka_id: str, spravna_odpoved: str | None = None, logger=None) -> dict | None:
+   otazka_el, _ = find_question(otazka_id)
    if otazka_el is None:
       return None
    try:
@@ -52,7 +52,7 @@ def _spocitaj_napovedy_testu(subor: str, test_id: str) -> int:
       return 0
    try:
       tree = ET.parse(subor)
-      return sum(1 for z in tree.findall('.//zapis') if z.get('test_id') == test_id)
+      return len(tree.xpath('.//zapis[@test_id=$id]', id=test_id))  # type: ignore[arg-type]
    except Exception:
       return 0
 
@@ -62,15 +62,12 @@ def _nacitaj_predchadzajuce_keys(subor: str, otazka_id: str, limit: int = 10) ->
       return []
    try:
       tree = ET.parse(subor)
-      zaznamy = [z for z in tree.findall('.//zapis') if z.get('otazka_id') == otazka_id]
-      zaznamy = zaznamy[-limit:]
-      result = []
-      for z in zaznamy:
-         keys_el = z.find('keys')
-         if keys_el is not None and keys_el.text:
-            val = z.get('val', '')
-            result.append({'keys': keys_el.text.strip(), 'val': val})
-      return result
+      zaznamy = tree.xpath('.//zapis[@otazka_id=$id]', id=otazka_id)[-limit:]  # type: ignore[arg-type]
+      return [
+         {'keys': keys_el.text.strip(), 'val': z.get('val', '')}
+         for z in zaznamy
+         if (keys_el := z.find('keys')) is not None and keys_el.text
+      ]
    except Exception:
       return []
 
@@ -161,7 +158,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
    xsltpath.set_context(xdm_item=test_node)
    pocet_otazok = int(xsltpath.evaluate_single('count(otazka)') or 0)
 
-   napovedy_data = _najdi_napovedu(otazka_id, predmet, spravna_odpoved, request.app.state.logger) if predmet else None
+   napovedy_data = _najdi_napovedu(otazka_id, spravna_odpoved, request.app.state.logger) if predmet else None
    napovedy = napovedy_data.get('napovedy') if isinstance(napovedy_data, dict) else napovedy_data
    vzor = napovedy_data.get('vzor') if isinstance(napovedy_data, dict) else None
    klucove = napovedy_data.get('klucove') if isinstance(napovedy_data, dict) else []
@@ -212,7 +209,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
             model=os.getenv('OLLAMA_MODEL', 'llama3.1'),
             messages=messages,
             stream=True,
-            options={'temperature': 0.3, 'num_ctx': 32768}
+            options={'temperature': 0.3, 'num_ctx': 32768, 'keep_alive': '45m'}
          ):
             text = chunk['message']['content']
             if text:

@@ -21,28 +21,25 @@ return
    if (empty($test_node) or empty($answer_node)) then
       <neohodnoteny/>
    else
-      let $otazky := $test_node/otazka[not(@rating)]
-      (: manualne otazky musia mat @body — inak este nie su ohodnotene :)
-      let $manual_neohodnotene :=
-         for $o in $otazky
-         where local:spravnaodpoved($o) = '' and empty($answer_node/otazka[@id = $o/@id]/@body)
-         return $o
-      return
-         if (exists($manual_neohodnotene)) then
-            <neohodnoteny/>
-         else
-            let $maximum := xs:integer(sum($test_node/otazka[not(@bonus)][not(@rating)]/@body))
-            let $raw :=
-               xs:integer(sum(
-                  for $otazka in $otazky
-                  let $spravna := local:spravnaodpoved($otazka)
-                  return
-                     if ($spravna != '') then
-                        if (string($answer_node/otazka[@id = $otazka/@id]) = $spravna)
-                        then xs:integer($otazka/@body) else 0
-                     else
-                        xs:integer($answer_node/otazka[@id = $otazka/@id]/@body)
-               ))
-            let $ziskane  := min(($raw, $maximum))
-            let $percento := if ($maximum > 0) then round($ziskane div $maximum * 100) else 0
-            return <skore ziskane="{$ziskane}" maximum="{$maximum}" percento="{$percento}"/>
+      let $otazky  := $test_node/otazka[not(@rating)]
+      let $maximum := xs:integer(sum($test_node/otazka[not(@bonus)][not(@rating)]/@body))
+      let $raw :=
+         xs:integer(sum(
+            for $otazka in $otazky
+            let $spravna := local:spravnaodpoved($otazka)
+            return
+               if ($spravna != '') then
+                  if (string($answer_node/otazka[@id = $otazka/@id]) = $spravna)
+                  then xs:integer($otazka/@body) else 0
+               else
+                  xs:integer(($answer_node/otazka[@id = $otazka/@id]/@body, 0)[1])
+         ))
+      let $neuplne :=
+         exists(
+            for $o in $otazky
+            where local:spravnaodpoved($o) = '' and empty($answer_node/otazka[@id = $o/@id]/@body)
+            return $o
+         )
+      let $ziskane  := min(($raw, $maximum))
+      let $percento := if ($maximum > 0) then round($ziskane div $maximum * 100) else 0
+      return <skore ziskane="{$ziskane}" maximum="{$maximum}" percento="{$percento}" neuplne="{$neuplne}"/>

@@ -17,7 +17,7 @@
          {%- elif "pending" == detail %}
          <div class="alert alert-warning">Test ešte nebol ohodnotený.</div>
          {%- elif "scored" == detail %}
-         <div class="alert alert-success">Výsledok: <strong>{{ score.ziskane }} / {{ score.maximum }} b</strong> ({{ score.percento }} %)</div>
+         <div class="alert alert-success">{%- if score.neuplne %}<span class="text-danger fw-bold me-1">!</span>{% endif %}Výsledok: <strong>{{ score.ziskane }} / {{ score.maximum }} b</strong> ({{ score.percento }} %)</div>
          {%- endif %}
          <form id="loginForm" class="odsadenieH d-flex flex-column align-items-center">
             <div class="form-group">

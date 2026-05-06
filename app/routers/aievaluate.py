@@ -3,12 +3,11 @@
 import os
 import re
 import json
-import glob
 import unicodedata
 from pathlib import Path
 import lxml.etree as ET
 from app.mytypes import StringForm
-from app.utils import find_test_file
+from app.utils import find_test_file, xquery_to_string
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
 
@@ -70,71 +69,34 @@ def _nacitaj_udaje_ziaka(cesta_tst: str, test_id: str, trieda: str) -> dict:
    return {'meno': meno, 'priezvisko': priezvisko, 'trieda': trieda_ziak, 'kod': test_id}
 
 
-def _nacitaj_otazku_questions(predmet: str, otazka_id: str) -> dict | None:
-   """Načíta znenie, vzor a kľúčové slová z questions XML. None ak nemá vzor."""
-   for cesta in glob.iglob(f'./res/xml/questions/{predmet}/*.xml'):
-      try:
-         tree = ET.parse(cesta)
-         otazka = next(iter(tree.xpath(".//otazka[@id=$id]", id=otazka_id)), None)
-         if otazka is None:
-            continue
-         vzor_el = otazka.find('vzor')
-         if vzor_el is None or not vzor_el.text:
-            return None
-         znenie_el = otazka.find('znenie')
-         znenie = ET.tostring(znenie_el, encoding='unicode', method='text').strip() if znenie_el is not None else ''
-         klucove = [s.text.strip() for s in otazka.findall('klucove_slova/slovo') if s.text]
-         return {'znenie': znenie, 'vzor': vzor_el.text.strip(), 'klucove': klucove}
-      except Exception:
-         continue
-   return None
-
-
-def _nacitaj_otvorene_otazky(cesta_tst: str, test_id: str, predmet: str, trieda: str, skupina: str, kapitola: str) -> list[dict]:
-   """Načíta všetky otvorené otázky testu s odpoveďami žiaka."""
-   cesta_ans = f'./res/xml/answers/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}.xml'
-
-   odpovede = {}
+def _nacitaj_otvorene_otazky(proc, cesta_tst: str, test_id: str, predmet: str, kapitola: str) -> list[dict]:
+   """Načíta otvorené otázky testu s odpoveďami žiaka cez XQuery."""
+   rel = cesta_tst.removeprefix('./res/')
+   test_cesta      = '../' + rel
+   answer_cesta    = '../' + rel.replace('tests/', 'answers/', 1)
+   questions_cesta = f'../xml/questions/{predmet}/{predmet}_{kapitola}.xml'
+   params = {
+      'kluc':            test_id,
+      'test_cesta':      test_cesta,
+      'answer_cesta':    answer_cesta,
+      'questions_cesta': questions_cesta,
+   }
    try:
-      tree = ET.parse(cesta_ans)
-      for otazka in tree.xpath(".//test[@id=$id]/otazka", id=test_id):
-         if otazka.text:
-            odpovede[otazka.get('id', '')] = otazka.text.strip()
-   except Exception:
-      pass
-
-   otazky_testu = []
-   try:
-      tree = ET.parse(cesta_tst)
-      test = next(iter(tree.xpath(".//test[@id=$id]", id=test_id)), None)
-      if test is None:
-         return []
-      for otazka in test.findall('otazka'):
-         if otazka.find('odpoved') is not None:
-            continue   # single choice — preskočíme
-         otazky_testu.append({'id': otazka.get('id', ''), 'body': otazka.get('body', '1')})
+      xml_result = xquery_to_string(proc, './res/xquery/openquestions.xq', params=params)
+      root = ET.fromstring(xml_result.encode())
+      return [
+         {
+            'id':      o.get('id', ''),
+            'body':    o.get('body', '1'),
+            'znenie':  (o.findtext('znenie') or '').strip(),
+            'vzor':    (o.findtext('vzor') or '').strip(),
+            'klucove': [k.text.strip() for k in o.findall('klucove') if k.text],
+            'odpoved': (o.findtext('odpoved') or '').strip(),
+         }
+         for o in root.findall('otazka')
+      ]
    except Exception:
       return []
-
-   vysledok = []
-   for ot in otazky_testu:
-      oid = ot['id']
-      odpoved = odpovede.get(oid)
-      if not odpoved:
-         continue
-      q_data = _nacitaj_otazku_questions(predmet, oid)
-      if q_data is None:
-         continue   # no_vzor — ticho preskočíme
-      vysledok.append({
-         'id':      oid,
-         'body':    ot['body'],
-         'znenie':  q_data['znenie'],
-         'vzor':    q_data['vzor'],
-         'klucove': q_data['klucove'],
-         'odpoved': odpoved,
-      })
-
-   return vysledok
 
 
 def _evaluate_test(otazky: list[dict], ziak: dict) -> list[dict]:
@@ -185,9 +147,10 @@ async def evaluate_open(
 ):
    """Vyhodnotí všetky otvorené odpovede žiaka naraz. Vráti zoznam {id, body, dovod}."""
    try:
+      proc = request.app.state.proc
       cesta_tst = find_test_file(test_id) or ''
       ziak = await run_in_threadpool(_nacitaj_udaje_ziaka, cesta_tst, test_id, trieda)
-      otazky = await run_in_threadpool(_nacitaj_otvorene_otazky, cesta_tst, test_id, predmet, trieda, skupina, kapitola)
+      otazky = await run_in_threadpool(_nacitaj_otvorene_otazky, proc, cesta_tst, test_id, predmet, kapitola)
 
       if not otazky:
          return {'ok': False, 'kod': 'no_questions'}

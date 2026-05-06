@@ -785,6 +785,7 @@ def get_score(proc: 'PySaxonProcessor', kluc: str, cache: dict | None = None) ->
          'ziskane':  int(node.get('ziskane', 0)),
          'maximum':  int(node.get('maximum', 0)),
          'percento': int(node.get('percento', 0)),
+         'neuplne':  node.get('neuplne') == 'true',
       }
    except Exception:
       return None
