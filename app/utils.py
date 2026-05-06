@@ -766,6 +766,47 @@ def get_time_state(test_node: 'PyXdmNode', rodic_node: 'PyXdmNode') -> str:
       return 'after'
    return 'during'
 
+def store_mcq_scores(kluc: str, cache: dict | None = None) -> None:
+   """Zapise @body pre MCQ otazky do answer XML, ak este nie su zapisane."""
+   test_subor = find_test_file(kluc, cache)
+   if not test_subor:
+      return
+   answer_subor = test_subor.replace('/tests/', '/answers/', 1)
+   if not os.path.exists(answer_subor):
+      return
+   lock = FileLock(f'{answer_subor}.lock')
+   try:
+      xmlParser = ET.XMLParser(remove_blank_text=True)
+      test_node = next(iter(ET.parse(test_subor, xmlParser).xpath('.//test[@id=$id]', id=kluc)), None)  # type: ignore[arg-type]
+      if test_node is None:
+         return
+      with lock:
+         answer_tree = ET.parse(answer_subor, xmlParser)
+         answer_test = next(iter(answer_tree.xpath('.//test[@id=$id]', id=kluc)), None)  # type: ignore[arg-type]
+         if answer_test is None:
+            return
+         changed = False
+         for otazka in test_node.findall('otazka'):
+            if otazka.get('rating'):
+               continue
+            odpovedove = otazka.findall('odpoved')
+            spravna = ''.join(chr(ord('a') + i) for i, o in enumerate(odpovedove) if o.get('spravna') == '1')
+            if not spravna:
+               continue
+            oid = otazka.get('id')
+            answer_otazka = next(iter(answer_test.xpath('.//otazka[@id=$id]', id=oid)), None)  # type: ignore[arg-type]
+            if answer_otazka is None or answer_otazka.get('body') is not None:
+               continue
+            student_answer = (answer_otazka.text or '').strip()
+            body = int(otazka.get('body', 0)) if student_answer == spravna else 0
+            answer_otazka.set('body', str(body))
+            changed = True
+         if changed:
+            ET.indent(answer_tree, space='   ')
+            answer_tree.write(answer_subor, encoding='utf-8', xml_declaration=True, pretty_print=True)
+   except Exception:
+      pass
+
 def get_score(proc: 'PySaxonProcessor', kluc: str, cache: dict | None = None) -> dict | None:
    """Vypocita skore testu cez XQuery. Vracia dict so ziskane/maximum/percento, alebo None."""
    test_subor = find_test_file(kluc, cache)

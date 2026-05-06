@@ -3,7 +3,7 @@
 from datetime import datetime
 from pathlib import Path
 from app.mytypes import StringForm, StringPath, StringFormOptional, FileListOptional
-from app.utils import check_time, modify_test_xml, find_test_file, test_xml_path, update_category, update_question
+from app.utils import check_time, modify_test_xml, find_test_file, test_xml_path, update_category, update_question, store_mcq_scores
 import lxml.etree as ET
 from fastapi.concurrency import run_in_threadpool
 from filelock import FileLock
@@ -88,6 +88,7 @@ async def stoptime(request: Request, kluc: StringPath, stop: StringForm):
       if not cesta:
          raise HTTPException(status_code=404, detail='Test nenájdený')
       modify_test_xml(cesta, _modify)
+      await run_in_threadpool(store_mcq_scores, kluc, request.app.state.kluc_cache)
       return HTMLResponse(content='ok', status_code=204)
    except HTTPException:
       raise

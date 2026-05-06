@@ -7,8 +7,9 @@ from typing import Annotated
 from fastapi import FastAPI, Header, Request
 from saxonche import PySaxonProcessor
 from fastapi.responses import HTMLResponse
+from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
-from app.utils import find_test, xslt_to_string, get_test_metadata, get_time_state, get_score
+from app.utils import find_test, xslt_to_string, get_test_metadata, get_time_state, get_score, store_mcq_scores
 from app.routers.ai import _spocitaj_napovedy_testu
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
@@ -117,6 +118,7 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
       if stav == 'before':
          return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'beforeTime'})
       if stav == 'after':
+         await run_in_threadpool(store_mcq_scores, kluc, request.app.state.kluc_cache)
          score = get_score(proc, kluc, request.app.state.kluc_cache)
          if score:
             return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'scored', 'score': score})
