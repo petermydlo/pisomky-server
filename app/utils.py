@@ -822,11 +822,13 @@ def get_score(proc: 'PySaxonProcessor', kluc: str, cache: dict | None = None) ->
       node = ET.fromstring(xml_result.encode())
       if node.tag == 'neohodnoteny':
          return None
+      znamka_cislo = node.get('znamka', '')
       return {
          'ziskane':  int(node.get('ziskane', 0)),
          'maximum':  int(node.get('maximum', 0)),
          'percento': int(node.get('percento', 0)),
          'neuplne':  node.get('neuplne') == 'true',
+         'znamka':   znamka_cislo or None,
       }
    except Exception:
       return None
