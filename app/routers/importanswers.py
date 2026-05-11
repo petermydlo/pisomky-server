@@ -17,12 +17,12 @@ load_dotenv()
 
 router = APIRouter()
 
-def write_answers_import(lock: 'FileLock', cesta: 'Path | str', form_data: dict, kluc: str) -> None:
+def write_answers_import(lock: 'FileLock', cesta: 'Path | str', form_data: dict, kluc: str, predmet: str = '', trieda: str = '', skupina: str = '', kapitola: str = '', fileid: str = '') -> None:
    with lock:
       if not Path(cesta).is_file():
          with open(cesta, 'w') as sub:
             sub.write('<?xml version="1.1" encoding="UTF-8"?>\n')
-            sub.write('<odpovede xml:lang="sk">')
+            sub.write(f'<odpovede xml:lang="sk" predmet="{predmet}" trieda="{trieda}" skupina="{skupina}" kapitola="{kapitola}" fileid="{fileid}">')
             sub.write('</odpovede>')
       xmlParser = ET.XMLParser(remove_blank_text=True)
       tree = ET.parse(str(cesta), xmlParser)
@@ -96,7 +96,7 @@ async def importmanual(request: Request, kluc: StringPath, predmet: StringForm, 
    async with request.form() as form:
       form_data = {k: v for k, v in form.items() if k not in {'predmet', 'trieda', 'skupina', 'kapitola', 'fileid'}}
    try:
-      await run_in_threadpool(write_answers_import, lock, cesta, form_data,  kluc)
+      await run_in_threadpool(write_answers_import, lock, cesta, form_data, kluc, predmet, trieda, skupina, kapitola, fileid)
    except Exception as e:
       request.app.state.logger.error(f'chyba importmanual: {e}')
       raise HTTPException(status_code=400, detail=str(e))
@@ -161,7 +161,7 @@ async def _spracuj_subor(subor, cache, provider, vysledky):
       form_data = {o['id']: o['odpoved'] for o in entry.get('odpovede', [])}
 
       try:
-         await run_in_threadpool(write_answers_import, lock, cesta_ans, form_data, tid)
+         await run_in_threadpool(write_answers_import, lock, cesta_ans, form_data, tid, predmet, trieda, skupina, kapitola, fileid)
          vysledky.append({
             'subor': subor.filename,
             'test_id': tid,

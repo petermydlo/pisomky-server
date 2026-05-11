@@ -47,7 +47,7 @@ def write_answers(lock: FileLock, cesta: Path, form_data: dict, adresar: str, pr
       if not(cesta.is_file()):
          with open(cesta, 'w') as sub:
             sub.write('<?xml version="1.1" encoding="UTF-8"?>\n')
-            sub.write('<odpovede xml:lang="sk">')
+            sub.write(f'<odpovede xml:lang="sk" predmet="{predmet}" trieda="{trieda}" skupina="{skupina}" kapitola="{kapitola}" fileid="{fileid}">')
             sub.write('</odpovede>')
       try:
          xmlParser = ET.XMLParser(remove_blank_text=True)

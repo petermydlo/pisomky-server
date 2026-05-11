@@ -97,7 +97,7 @@ def _aktualizuj_zapis(subor: str, zapis_id: str, hint: str | None = None, keys: 
       tree.write(subor, encoding='UTF-8', xml_declaration=True)
 
 
-def _uloz_zapis(subor: str, zapis_id: str, otazka_id: str, test_id: str) -> None:
+def _uloz_zapis(subor: str, zapis_id: str, otazka_id: str, test_id: str, predmet: str = '', trieda: str = '', skupina: str = '', kapitola: str = '', fileid: str = '') -> None:
    os.makedirs(os.path.dirname(subor), exist_ok=True)
    lock = FileLock(subor + '.lock')
    with lock:
@@ -106,7 +106,7 @@ def _uloz_zapis(subor: str, zapis_id: str, otazka_id: str, test_id: str) -> None
          tree = ET.parse(subor, xmlParser)
          root = tree.getroot()
       else:
-         root = ET.Element('feedback')
+         root = ET.Element('feedback', attrib={'predmet': predmet, 'trieda': trieda, 'skupina': skupina, 'kapitola': kapitola, 'fileid': fileid})
          tree = ET.ElementTree(root)
       zapis = ET.SubElement(root, 'zapis')
       zapis.set('id', zapis_id)
@@ -196,7 +196,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
 
    zapis_id = secrets.token_hex(8)
    remaining = pocet_otazok - pouzite - 1
-   _uloz_zapis(subor, zapis_id, otazka_id, test_id)
+   _uloz_zapis(subor, zapis_id, otazka_id, test_id, predmet, trieda, skupina, kapitola, fileid)
 
    async def generate():
       try:
