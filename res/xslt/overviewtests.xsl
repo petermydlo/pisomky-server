@@ -11,6 +11,11 @@
 <xsl:param name="autor"/>
 
 <xsl:template name="xsl:initial-template">
+   <xsl:variable name="vsetky" select="
+      collection('../xml/tests?select=*.xml;recurse=yes;on-error=ignore')/testy[@autor=$autor or @autor='' or not(@autor)] |
+      collection('../xml/answers?select=*.xml;recurse=yes;on-error=ignore')/odpovede[@fileid != ''][@autor=$autor or @autor='' or not(@autor)] |
+      collection('../xml/feedback?select=*.xml;recurse=yes;on-error=ignore')/feedback[@fileid != ''][@autor=$autor or @autor='' or not(@autor)]
+   "/>
    <html lang="sk">
       <head>
          <title>Prehľad testov</title>
@@ -34,7 +39,7 @@
             </div>
          </div>
          <div class="nav nav-tabs flex-container-tab bg-info-subtle bold">
-            <xsl:for-each-group select="collection('../xml/tests?select=*.xml;recurse=yes;on-error=ignore')/testy[@autor=$autor or @autor='' or not(@autor)]" group-by="@predmet">
+            <xsl:for-each-group select="$vsetky" group-by="@predmet">
                <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
                <div>
                   <a class="nav-link navbar-brand" data-bs-toggle="tab" href="#{@predmet}">
@@ -47,7 +52,7 @@
             </xsl:for-each-group>
          </div>
          <div class="tab-content">
-            <xsl:for-each-group select="collection('../xml/tests?select=*.xml;recurse=yes;on-error=ignore')/testy[@autor=$autor or @autor='' or not(@autor)]" group-by="@predmet">
+            <xsl:for-each-group select="$vsetky" group-by="@predmet">
                <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
                <div class="tab-pane" id="{@predmet}">
                   <xsl:if test="position() = 1">
@@ -81,46 +86,66 @@
                         <xsl:for-each-group select="current-group()" group-by="@kapitola">
                            <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
                            <xsl:for-each-group select="current-group()" group-by="string(@fileid)">
-                           <xsl:sort select="@gendat" data-type="text" order="ascending"/>
-                           <xsl:variable name="vybtesty" select="my:vybtesty(.)"/>
+                           <xsl:sort select="(@gendat, '')[1]" data-type="text" order="ascending"/>
+                           <xsl:variable name="testy-el"    select="current-group()[local-name() = 'testy']"/>
+                           <xsl:variable name="ma-test"     select="exists($testy-el)"/>
+                           <xsl:variable name="ma-answers"  select="exists(current-group()[local-name() = 'odpovede'])"/>
+                           <xsl:variable name="ma-feedback" select="exists(current-group()[local-name() = 'feedback'])"/>
+                           <xsl:variable name="vybtesty"    select="my:vybtesty(current-group()[1])"/>
                            <div class="skupina" data-fileid="{@fileid}">
                               <div class="grid" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
-                                 <div class="neviditelny"/>
+                                 <div class="subory-ikony">
+                                    <xsl:if test="$ma-feedback"><i class="bi bi-chat-right-text text-purple" title="Feedback"/></xsl:if>
+                                    <xsl:if test="$ma-answers"><i class="bi bi-pencil text-warning" title="Odpovede"/></xsl:if>
+                                    <xsl:if test="$ma-test"><i class="bi bi-journal-text text-blue" title="Test"/></xsl:if>
+                                 </div>
                                  <div id="kapitola">
                                     <xsl:value-of select="@kapitola"/>
                                     <xsl:if test="@fileid">
                                        <span class="sive"> (<xsl:value-of select="@fileid"/>)</span>
                                     </xsl:if>
                                  </div>
-                                 <div class="sive"><xsl:value-of select="@gendat"/></div>
-                                 <div><span><xsl:value-of select="@start"/></span><span class="startS penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
-                                 <div><span><xsl:value-of select="@stop"/></span><span class="stopS penIcon" title="Stop time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
+                                 <div class="sive"><xsl:value-of select="$testy-el/@gendat"/></div>
+                                 <div>
+                                    <span><xsl:value-of select="$testy-el/@start"/></span>
+                                    <xsl:if test="$ma-test"><span class="startS penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></xsl:if>
+                                 </div>
+                                 <div>
+                                    <span><xsl:value-of select="$testy-el/@stop"/></span>
+                                    <xsl:if test="$ma-test"><span class="stopS penIcon" title="Stop time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></xsl:if>
+                                 </div>
                                  <div><xsl:value-of select="sort($vybtesty/odpovede/test, (), function($t) { xs:dateTime($t/@dat) })[last()]/@dat"/></div>
                                  <div>
-                                    <span class="codes" title="Download codes" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-file-earmark"/></span>
-                                    <span class="tests" title="Download tests" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-printer"/></span>
-                                    <span class="results" title="Download results" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-download"/></span>
-                                    <span class="groupstatistics" title="Show statistics" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-bar-chart"/></span>
-                                    <span class="feedback" title="Show feedback" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-chat-left-text"/></span>
+                                    <xsl:if test="$ma-test">
+                                       <span class="codes" title="Download codes" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-file-earmark"/></span>
+                                       <span class="tests" title="Download tests" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-printer"/></span>
+                                       <span class="results" title="Download results" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-download"/></span>
+                                       <span class="groupstatistics" title="Show statistics" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-bar-chart"/></span>
+                                    </xsl:if>
+                                    <xsl:if test="$ma-feedback"><span class="feedback" title="Show feedback" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-chat-left-text"/></span></xsl:if>
                                     <span class="del" title="Delete tests" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-dash-square"/></span>
-                                    <span class="regenerate{if (exists($vybtesty/odpovede/test[@dat])) then ' disabled' else ''}" title="Regenerovať otázky" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-arrow-repeat"/></span>
+                                    <xsl:if test="$ma-test">
+                                       <span class="regenerate{if (exists($vybtesty/odpovede/test[@dat])) then ' disabled' else ''}" title="Regenerovať otázky" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-arrow-repeat"/></span>
+                                    </xsl:if>
                                  </div>
                               </div>
-                              <div class="collapse {generate-id()}">
-                                 <div class="grid">
-                                    <div class="neviditelny grid-span span2"/>
-                                    <div class="bold bg-info bg-opacity-25">Kód</div>
-                                    <div class="bold bg-info bg-opacity-25">Start</div>
-                                    <div class="bold bg-info bg-opacity-25">Stop</div>
-                                    <div class="bold bg-info bg-opacity-25">Odovzdané</div>
-                                    <div class="neviditelny"/>
-                                 <xsl:apply-templates select="current-group()/test">
-                                    <xsl:with-param name="vybtesty" select="$vybtesty"/>
-                                    <xsl:with-param name="id" select="generate-id()"/>
-                                    <xsl:sort select="@priezvisko" lang="sk" data-type="text"/>
-                                 </xsl:apply-templates>
+                              <xsl:if test="$ma-test">
+                                 <div class="collapse {generate-id()}">
+                                    <div class="grid">
+                                       <div class="neviditelny grid-span span2"/>
+                                       <div class="bold bg-info bg-opacity-25">Kód</div>
+                                       <div class="bold bg-info bg-opacity-25">Start</div>
+                                       <div class="bold bg-info bg-opacity-25">Stop</div>
+                                       <div class="bold bg-info bg-opacity-25">Odovzdané</div>
+                                       <div class="neviditelny"/>
+                                    <xsl:apply-templates select="$testy-el/test">
+                                       <xsl:with-param name="vybtesty" select="$vybtesty"/>
+                                       <xsl:with-param name="id" select="generate-id()"/>
+                                       <xsl:sort select="@priezvisko" lang="sk" data-type="text"/>
+                                    </xsl:apply-templates>
+                                    </div>
                                  </div>
-                              </div>
+                              </xsl:if>
                            </div>
                            </xsl:for-each-group>
                         </xsl:for-each-group>

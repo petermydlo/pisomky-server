@@ -11,7 +11,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.concurrency import run_in_threadpool
 from app.mytypes import StringForm, StringPath
-from app.utils import find_test_file
+from app.utils import find_test_file, get_testy_autor
 
 load_dotenv()
 
@@ -20,9 +20,10 @@ router = APIRouter()
 def write_answers_import(lock: 'FileLock', cesta: 'Path | str', form_data: dict, kluc: str, predmet: str = '', trieda: str = '', skupina: str = '', kapitola: str = '', fileid: str = '') -> None:
    with lock:
       if not Path(cesta).is_file():
+         autor = get_testy_autor(predmet, trieda, skupina, kapitola, fileid)
          with open(cesta, 'w') as sub:
             sub.write('<?xml version="1.1" encoding="UTF-8"?>\n')
-            sub.write(f'<odpovede xml:lang="sk" predmet="{predmet}" trieda="{trieda}" skupina="{skupina}" kapitola="{kapitola}" fileid="{fileid}">')
+            sub.write(f'<odpovede xml:lang="sk" predmet="{predmet}" trieda="{trieda}" skupina="{skupina}" kapitola="{kapitola}" fileid="{fileid}" autor="{autor}">')
             sub.write('</odpovede>')
       xmlParser = ET.XMLParser(remove_blank_text=True)
       tree = ET.parse(str(cesta), xmlParser)

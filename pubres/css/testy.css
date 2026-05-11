@@ -528,6 +528,26 @@ div:hover > span.penIcon {
 .skryte      { display: none !important; }
 .neviditelny { visibility: hidden; }
 
+.grid > div.subory-ikony {
+   outline: none;
+   display: flex;
+   justify-content: flex-end;
+   align-items: center;
+   gap: 0.25rem;
+}
+
+.subory-ikony .bi {
+   font-size: 14px;
+}
+
+.text-purple {
+   color: var(--bs-purple);
+}
+
+.text-blue {
+   color: blue;
+}
+
 /* 7. MEDIA QUERIES (Responzivita a Tlač) */
 @media screen and (max-width: 1400px) {
    .flex-container-icon {

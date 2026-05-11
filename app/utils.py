@@ -664,6 +664,13 @@ def add_question(kategoria_id: str, nova_otazka: dict, za_otazka_id: str | None 
 def test_xml_path(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str:
    return f'./res/xml/tests/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
 
+def get_testy_autor(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str:
+   """Vrati atribut autor z root elementu testy suboru."""
+   try:
+      return ET.parse(test_xml_path(predmet, trieda, skupina, kapitola, fileid)).getroot().get('autor', '')
+   except Exception:
+      return ''
+
 def modify_test_xml(cesta: str, callback: 'Callable[[ET._ElementTree], None]') -> None:
    """Upravi xml subor testov podla callbacku."""
    xmlParser = ET.XMLParser(remove_blank_text=True)

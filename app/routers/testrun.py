@@ -3,7 +3,7 @@
 from datetime import datetime
 from pathlib import Path
 from app.mytypes import StringForm, StringPath, StringFormOptional, FileListOptional
-from app.utils import check_time, modify_test_xml, find_test_file, test_xml_path, update_category, update_question, store_mcq_scores
+from app.utils import check_time, modify_test_xml, find_test_file, test_xml_path, get_testy_autor, update_category, update_question, store_mcq_scores
 import lxml.etree as ET
 from fastapi.concurrency import run_in_threadpool
 from filelock import FileLock
@@ -45,9 +45,10 @@ async def saveanswers(request: Request, response: Response, kluc: StringPath, pr
 def write_answers(lock: FileLock, cesta: Path, form_data: dict, adresar: str, predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str, kluc: str) -> None:
    with lock:
       if not(cesta.is_file()):
+         autor = get_testy_autor(predmet, trieda, skupina, kapitola, fileid)
          with open(cesta, 'w') as sub:
             sub.write('<?xml version="1.1" encoding="UTF-8"?>\n')
-            sub.write(f'<odpovede xml:lang="sk" predmet="{predmet}" trieda="{trieda}" skupina="{skupina}" kapitola="{kapitola}" fileid="{fileid}">')
+            sub.write(f'<odpovede xml:lang="sk" predmet="{predmet}" trieda="{trieda}" skupina="{skupina}" kapitola="{kapitola}" fileid="{fileid}" autor="{autor}">')
             sub.write('</odpovede>')
       try:
          xmlParser = ET.XMLParser(remove_blank_text=True)

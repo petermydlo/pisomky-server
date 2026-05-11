@@ -8,7 +8,7 @@ from filelock import FileLock
 from lxml import etree as ET
 import ollama
 from dotenv import load_dotenv
-from app.utils import find_test, find_question, get_test_metadata, xquery_to_string, xslt_to_string
+from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, xquery_to_string, xslt_to_string
 from app.mytypes import StringQuery, IntForm, StringForm
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
@@ -106,7 +106,8 @@ def _uloz_zapis(subor: str, zapis_id: str, otazka_id: str, test_id: str, predmet
          tree = ET.parse(subor, xmlParser)
          root = tree.getroot()
       else:
-         root = ET.Element('feedback', attrib={'predmet': predmet, 'trieda': trieda, 'skupina': skupina, 'kapitola': kapitola, 'fileid': fileid})
+         autor = get_testy_autor(predmet, trieda, skupina, kapitola, fileid)
+         root = ET.Element('feedback', attrib={'predmet': predmet, 'trieda': trieda, 'skupina': skupina, 'kapitola': kapitola, 'fileid': fileid, 'autor': autor})
          tree = ET.ElementTree(root)
       zapis = ET.SubElement(root, 'zapis')
       zapis.set('id', zapis_id)
