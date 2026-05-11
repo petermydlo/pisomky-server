@@ -86,7 +86,12 @@
                            <div class="skupina" data-fileid="{@fileid}">
                               <div class="grid" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
                                  <div class="neviditelny"/>
-                                 <div id="kapitola"><xsl:value-of select="@kapitola"/></div>
+                                 <div id="kapitola">
+                                    <xsl:value-of select="@kapitola"/>
+                                    <xsl:if test="@fileid">
+                                       <span class="sive"> (<xsl:value-of select="@fileid"/>)</span>
+                                    </xsl:if>
+                                 </div>
                                  <div class="sive"><xsl:value-of select="@gendat"/></div>
                                  <div><span><xsl:value-of select="@start"/></span><span class="startS penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
                                  <div><span><xsl:value-of select="@stop"/></span><span class="stopS penIcon" title="Stop time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
@@ -124,6 +129,35 @@
                   </xsl:for-each-group>
                </div>
             </xsl:for-each-group>
+         </div>
+         <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+               <div class="modal-content">
+                  <div class="modal-header">
+                     <h5 class="modal-title" id="deleteModalLabel">Vymazať súbory</h5>
+                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavrieť"/>
+                  </div>
+                  <div class="modal-body">
+                     <p id="deleteModalDesc"/>
+                     <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="delTest" checked="true"/>
+                        <label class="form-check-label" for="delTest">Test</label>
+                     </div>
+                     <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="delAnswers" checked="true"/>
+                        <label class="form-check-label" for="delAnswers">Odpovede</label>
+                     </div>
+                     <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="delFeedback" checked="true"/>
+                        <label class="form-check-label" for="delFeedback">Feedback</label>
+                     </div>
+                  </div>
+                  <div class="modal-footer">
+                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                     <button type="button" class="btn btn-danger" id="deleteModalConfirm">Vymazať</button>
+                  </div>
+               </div>
+            </div>
          </div>
          <xsl:call-template name="cdn-js"/>
          <script src="/pubres/js/utils.js"><xsl:comment>MyUtils</xsl:comment></script>

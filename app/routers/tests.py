@@ -79,14 +79,21 @@ async def regeneratetests(request: Request, predmet: StringForm, trieda: StringF
       raise HTTPException(status_code=400, detail='chyba regeneratetests2: ' + str(e))
 
 @router.delete('/admin/deletetests', response_class=PlainTextResponse)
-async def delete(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
-   adresar = f'./res/xml/tests/{predmet}'
-   cesta = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
-   if not os.path.exists(cesta):
+async def delete(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', del_test: BoolForm = True, del_answers: BoolForm = False, del_feedback: BoolForm = False):
+   cesta_test = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
+   cesta_answers  = Path(cesta_test.replace('/tests/', '/answers/', 1))
+   cesta_feedback = Path(cesta_test.replace('/tests/', '/feedback/', 1))
+   if del_test and not os.path.exists(cesta_test):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
    try:
-      os.remove(cesta)
-      if os.listdir(adresar):
+      if del_test and os.path.exists(cesta_test):
+         os.remove(cesta_test)
+      if del_answers and cesta_answers.exists():
+         cesta_answers.unlink()
+      if del_feedback and cesta_feedback.exists():
+         cesta_feedback.unlink()
+      adresar = f'./res/xml/tests/{predmet}'
+      if os.path.exists(adresar) and os.listdir(adresar):
          return PlainTextResponse(content='#' + predmet, status_code=200)
       else:
          return PlainTextResponse(content='', status_code=200)

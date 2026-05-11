@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
          predmet:  el.closest('.tab-pane.active').id,
          trieda:   skupinaRows.dataset.trieda,
          skupina:  skupinaRows.dataset.skupina,
-         kapitola: skupinaDiv.querySelector('#kapitola').textContent,
+         kapitola: skupinaDiv.querySelector('#kapitola').firstChild.textContent,
          fileid:   skupinaDiv.dataset.fileid
       };
    }
@@ -183,13 +183,29 @@ document.addEventListener('DOMContentLoaded', () => {
    });
 
    //vymaze skupinu testov
-   document.addEventListener('click', async (event) => {
+   let _deleteData = null;
+   document.addEventListener('click', (event) => {
       if (!event.target.closest('.del')) return;
       event.stopPropagation();
       event.preventDefault();
       const el = event.target.closest('.del');
-      const d = skupinaData(el);
-      if (!confirm(`Naozaj chcete vymazať test ${d.predmet}:${d.trieda}${d.skupina}:${d.kapitola}?`)) return;
+      _deleteData = skupinaData(el);
+      document.getElementById('deleteModalDesc').textContent =
+         `Čo vymazať pre ${_deleteData.predmet}:${_deleteData.trieda}${_deleteData.skupina}:${_deleteData.kapitola}?`;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).show();
+   });
+
+   document.getElementById('deleteModalConfirm').addEventListener('click', async () => {
+      const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal'));
+      modal.hide();
+      if (!_deleteData) return;
+      const d = {
+         ..._deleteData,
+         del_test:     document.getElementById('delTest').checked     ? '1' : '0',
+         del_answers:  document.getElementById('delAnswers').checked  ? '1' : '0',
+         del_feedback: document.getElementById('delFeedback').checked ? '1' : '0',
+      };
+      _deleteData = null;
       try {
          const resp = await fetch('/admin/deletetests', {
             method: 'DELETE',
