@@ -19,3 +19,4 @@ pytest
 ruff
 mypy
 lxml-stubs
+pyright
