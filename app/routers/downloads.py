@@ -51,7 +51,7 @@ async def downloadtests(request: Request, background_tasks: BackgroundTasks, pre
    if not os.path.exists(cesta):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
    try:
-      nazov = f'{predmet}_{trieda}{skupina}_{kapitola}_tests.pdf'
+      nazov = f'{predmet}_{trieda}{skupina}_{kapitola}{"_" + fileid if fileid else ""}_tests.pdf'
       proc = request.app.state.proc
       qrdir = await run_in_threadpool(_generuj_qr_kody, cesta)
       background_tasks.add_task(shutil.rmtree, qrdir, ignore_errors=True)
@@ -68,7 +68,7 @@ async def downloadresults(request: Request, background_tasks: BackgroundTasks, p
    if not os.path.exists(cesta):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
    try:
-      nazov = f'{predmet}_{trieda}{skupina}_{kapitola}_results.pdf'
+      nazov = f'{predmet}_{trieda}{skupina}_{kapitola}{"_" + fileid if fileid else ""}_results.pdf'
       proc = request.app.state.proc
       pdffile = xslt_to_pdf(proc, stylesheet='./res/xslt/downloadresult.xsl', source_file=cesta, xslt_pools=request.app.state.xslt_pools)
       background_tasks.add_task(os.remove, pdffile.name)
@@ -83,7 +83,7 @@ async def downloadcodes(request: Request, background_tasks: BackgroundTasks, pre
    if not os.path.exists(cesta):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
    try:
-      nazov = f'{predmet}_{trieda}{skupina}_{kapitola}_codes.pdf'
+      nazov = f'{predmet}_{trieda}{skupina}_{kapitola}{"_" + fileid if fileid else ""}_codes.pdf'
       proc = request.app.state.proc
       pdffile = xslt_to_pdf(proc, stylesheet='./res/xslt/downloadcodes.xsl', source_file=cesta)
       background_tasks.add_task(os.remove, pdffile.name)
