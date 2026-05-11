@@ -192,6 +192,15 @@ document.addEventListener('DOMContentLoaded', () => {
       _deleteData = skupinaData(el);
       document.getElementById('deleteModalDesc').textContent =
          `Čo vymazať pre ${_deleteData.predmet}:${_deleteData.trieda}${_deleteData.skupina}:${_deleteData.kapitola}?`;
+      const ikony = el.closest('div.skupina').querySelector('.subory-ikony');
+      const maTest     = !!ikony.querySelector('.bi-journal-text');
+      const maAnswers  = !!ikony.querySelector('.bi-pencil');
+      const maFeedback = !!ikony.querySelector('.bi-chat-right-text');
+      for (const [id, exists] of [['delTest', maTest], ['delAnswers', maAnswers], ['delFeedback', maFeedback]]) {
+         const chk = document.getElementById(id);
+         chk.checked  = exists;
+         chk.disabled = !exists;
+      }
       bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).show();
    });
 
