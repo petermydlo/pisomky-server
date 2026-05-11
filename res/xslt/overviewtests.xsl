@@ -125,7 +125,7 @@
                                     <span class="feedback{if ($ma-feedback) then '' else ' disabled'}" title="Show feedback" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-chat-left-text"/></span>
                                     <span class="del" title="Delete tests" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-dash-square"/></span>
                                     <xsl:if test="$ma-test">
-                                       <span class="regenerate{if (exists($vybtesty/odpovede/test[@dat])) then ' disabled' else ''}" title="Regenerovať otázky" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-arrow-repeat"/></span>
+                                       <span class="regenerate{if (exists($vybtesty/odpovede/test[@dat])) then ' disabled' else ''}" title="Regenerate tests" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-arrow-repeat"/></span>
                                     </xsl:if>
                                  </div>
                               </div>
