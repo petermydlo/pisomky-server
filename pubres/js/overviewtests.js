@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
    //zobrazi feedback report pre skupinu testov
    document.addEventListener('click', (event) => {
-      if (!event.target.closest('.feedback')) return;
+      if (!event.target.closest('.feedback:not(.disabled)')) return;
       event.stopPropagation();
       event.preventDefault();
       odosliForm('/admin/feedbackreport', skupinaData(event.target.closest('.feedback')));

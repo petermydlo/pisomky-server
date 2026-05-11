@@ -502,7 +502,8 @@ div:hover > span.penIcon {
 .tests   { color: blue; padding: 0.2rem; }
 .results { color: orange; padding: 0.2rem; font-weight: bold; }
 .groupstatistics { color: brown; padding: 0.2rem; font-weight: bold; }
-.feedback { color: purple; padding: 0.2rem; font-weight: bold; }
+.feedback { color: purple; padding: 0.2rem; font-weight: bold; cursor: pointer; }
+.feedback.disabled { color: lightgrey; cursor: not-allowed; }
 .del        { color: red; padding: 0.2rem; font-weight: bold; }
 #save-status { cursor: pointer; }
 #save-status.disabled { cursor: not-allowed; }
