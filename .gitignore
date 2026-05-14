@@ -11,6 +11,8 @@ __pycache__/
 .backup/
 .pytest_cache/
 
+res/xml/archiv/
+
 # XML dáta — commitujú sa len example súbory
 res/xml/**/*.xml
 res/xml/**/*.xml.old
