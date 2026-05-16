@@ -87,7 +87,7 @@
                                  </input>
                               </xsl:otherwise>
                            </xsl:choose>
-                           <div class="okraj bold bg-info bg-opacity-50 flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
+                           <div class="okraj bold bg-info bg-opacity-50 flex-grow-1 d-flex align-items-center" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
                            <xsl:if test="@deprecated='1'">
                                  <i class="bi bi-x" title="archivovaná"/>
                            </xsl:if>
@@ -106,6 +106,12 @@
                            </span>
                            <xsl:if test="@pocet">
                               (<xsl:value-of select="@pocet"/>)
+                           </xsl:if>
+                           <xsl:if test="@autor">
+                              <span class="ms-auto autor-badge">
+                                 <xsl:if test="@nahrada_za"><i class="bi bi-arrow-down-up" title="{@nahrada_za}"/>&#160;</xsl:if>
+                                 <xsl:value-of select="@autor"/>
+                              </span>
                            </xsl:if>
                         </div>
                         </div>
@@ -194,6 +200,12 @@
                </xsl:choose>
             </xsl:variable>
             <i class="bi {if ($idealny_vyber > 0 and $stat_otazka and abs($stat_otazka/@vyber_kat_percento - $idealny_vyber) le max((round($idealny_vyber * 0.1), 10))) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Rovnomernosť výberu"/>
+            <xsl:if test="@autor">
+               <span class="ms-auto">
+                  <xsl:if test="@nahrada_za"><i class="bi bi-arrow-down-up" title="{@nahrada_za}"/>&#160;</xsl:if>
+                  <xsl:value-of select="@autor"/>
+               </span>
+            </xsl:if>
          </div>
          <xsl:if test="@deprecated='1' or ../@deprecated='1'">
             <i class="bi bi-x" title="archivovaná"/>

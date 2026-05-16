@@ -215,6 +215,9 @@ button {
    justify-content: flex-start;
 }
 
+.autor-badge { font-size: 0.55em; }
+.autor-badge .bi { font-size: 1em; vertical-align: middle; }
+
 .kval-hviezdicky .bi {
    font-size: 1em;
    line-height: 1;
