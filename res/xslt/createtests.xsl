@@ -26,6 +26,10 @@
      aj pri rovnomenných žiakoch v rovnakej triede. -->
 <xsl:strip-space elements="*"/>
 
+<!-- Kľúče pre vyhľadávanie náhrad podľa autora -->
+<xsl:key name="nahrada-kat" match="kategoria[@nahrada_za]" use="@nahrada_za || '|' || @autor"/>
+<xsl:key name="nahrada-otazka" match="otazka[@nahrada_za]" use="@nahrada_za || '|' || @autor"/>
+
 <xsl:variable name="vkapitola" select="document('../xml/questions/' || $predmet || '/' || $predmet || '_' || $kapitola || '.xml')/kapitola"/>
 
 <xsl:variable name="vsetkycesty">
@@ -70,7 +74,7 @@
       <xsl:copy-of select="@*"/>
       <xsl:copy-of copy-namespaces="no" select="pokyny"/>
       <xsl:variable name="otazky">
-         <xsl:apply-templates select="$vkapitola/kategoria[not(@deprecated) and not(@paused='1')]">
+         <xsl:apply-templates select="$vkapitola/kategoria[not(@deprecated) and not(@paused='1')][not(@autor) and not(key('nahrada-kat', @id || '|' || $autor, $vkapitola)) or @autor=$autor]">
             <xsl:with-param name="seed" select="$seed"/>
             <xsl:with-param name="meno" select="@meno" tunnel="yes"/>
             <xsl:with-param name="priezvisko" select="@priezvisko" tunnel="yes"/>
@@ -135,7 +139,7 @@
          <xsl:with-param name="kod" select="$id" tunnel="yes"/>
       </xsl:apply-templates>
       <xsl:variable name="otazky">
-         <xsl:apply-templates select="$vkapitola/kategoria[not(@deprecated) and not(@paused='1')]">
+         <xsl:apply-templates select="$vkapitola/kategoria[not(@deprecated) and not(@paused='1')][not(@autor) and not(key('nahrada-kat', @id || '|' || $autor, $vkapitola)) or @autor=$autor]">
             <xsl:with-param name="seed" select="$seed"/>
             <xsl:with-param name="meno" select="@meno" tunnel="yes"/>
             <xsl:with-param name="priezvisko" select="@priezvisko" tunnel="yes"/>
@@ -177,12 +181,12 @@
    <!-- vyberiem spravny pocet otazok -->
    <xsl:variable name="otazkystaticke">
       <xsl:if test="$vc != ''">
-         <xsl:apply-templates select="otazka[not(@deprecated)][not(@paused='1')][@static = '1'][tokenize(@cesta, ',') = $vc or not(@cesta)][position() = 1 to $pocetotazok]">
+         <xsl:apply-templates select="otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][@static = '1'][tokenize(@cesta, ',') = $vc or not(@cesta)][position() = 1 to $pocetotazok]">
             <xsl:with-param name="seed" select="$seed"/>
          </xsl:apply-templates>
       </xsl:if>
       <xsl:if test="$vc = ''">
-         <xsl:apply-templates select="otazka[not(@deprecated)][not(@paused='1')][@static = '1'][position() = 1 to $pocetotazok]">
+         <xsl:apply-templates select="otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][@static = '1'][position() = 1 to $pocetotazok]">
             <xsl:with-param name="seed" select="$seed"/>
          </xsl:apply-templates>
       </xsl:if>
@@ -191,12 +195,12 @@
    <xsl:variable name="seed4" select="'4' || $seed || position() || generate-id()"/>
    <xsl:variable name="otazkydynamicke">
       <xsl:if test="$vc != ''">
-         <xsl:apply-templates select="fn:random-number-generator($seed4)?permute(otazka[not(@deprecated)][not(@paused='1')][not(@static)][tokenize(@cesta, ',') = $vc or not(@cesta)])[position() = 1 to $zostatok]">
+         <xsl:apply-templates select="fn:random-number-generator($seed4)?permute(otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][not(@static)][tokenize(@cesta, ',') = $vc or not(@cesta)])[position() = 1 to $zostatok]">
             <xsl:with-param name="seed" select="$seed"/>
          </xsl:apply-templates>
       </xsl:if>
       <xsl:if test="$vc = ''">
-         <xsl:apply-templates select="fn:random-number-generator($seed4)?permute(otazka[not(@deprecated)][not(@paused='1')][not(@static)])[position() = 1 to $zostatok]">
+         <xsl:apply-templates select="fn:random-number-generator($seed4)?permute(otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][not(@static)])[position() = 1 to $zostatok]">
             <xsl:with-param name="seed" select="$seed"/>
          </xsl:apply-templates>
       </xsl:if>
