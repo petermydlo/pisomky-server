@@ -20,11 +20,11 @@ async def downloadresult(request: Request, background_tasks: BackgroundTasks, kl
    proc = request.app.state.proc
    node = find_test(proc, kluc, admin=True, cache=request.app.state.kluc_cache)
    if node is None:
-      return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'missingTest'}, status_code=404)
+      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
    try:
       pdffile = xslt_to_pdf(proc, stylesheet='./res/xslt/downloadresult.xsl', xdm_node=node.get_parent(), params={'kluc': kluc}, xslt_pools=request.app.state.xslt_pools)
       background_tasks.add_task(os.remove, pdffile.name)
-      return FileResponse(path=pdffile.name, media_type='application/pdf', filename=kluc + '_result.pdf')
+      return FileResponse(path=pdffile.name, headers={'Content-Disposition': f'attachment; filename="{kluc}_result.pdf"'}, media_type='application/pdf')
    except Exception as e:
       request.app.state.logger.error(f'chyba downloadresult: {e}')
       raise HTTPException(status_code=400, detail=str(e))

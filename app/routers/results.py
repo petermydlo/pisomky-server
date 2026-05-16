@@ -17,7 +17,7 @@ async def showresult(request: Request, kluc: StringPath):
    proc = request.app.state.proc
    node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
    if node is None:
-      return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'missingTest'}, status_code=404)
+      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
    try:
       vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showresult.xsl', xdm_node=node, xslt_pools=request.app.state.xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)

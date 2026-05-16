@@ -27,7 +27,7 @@ from app.routers.aiproviders import get_provider
 
 
 async def custom_http_exception_handler(request: Request, _: HTTPException):
-   return app.state.templates.TemplateResponse('error404_pisomky.html', {'request': request}, status_code=404)
+   return app.state.templates.TemplateResponse(request, 'error404_pisomky.html', status_code=404)
 
 exceptions = {404: custom_http_exception_handler}
 
@@ -93,7 +93,7 @@ app.mount('/pubres', StaticFiles(directory='./pubres'), name='pubres')
 
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request):
-   return request.app.state.templates.TemplateResponse('index.html', {'request': request})
+   return request.app.state.templates.TemplateResponse(request, 'index.html')
 
 @app.get('/admin', response_class=HTMLResponse)
 async def admin(request: Request, X_Remote_User: StringHeader):
@@ -108,21 +108,21 @@ async def admin(request: Request, X_Remote_User: StringHeader):
 @app.get('/{kluc}', response_class=HTMLResponse)
 async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
    if not (kluc := kluc.strip()): #ked uzivatel zada kluc z prazdnych znakov
-      return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'wrongKey'}, status_code=400)
+      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'wrongKey'}, status_code=400)
    proc = request.app.state.proc
    node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
-      return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'missingTest'}, status_code=404)
+      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
    try:
       stav = get_time_state(node, node.get_parent())
       if stav == 'before':
-         return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'beforeTime'})
+         return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'beforeTime'})
       if stav == 'after':
          await run_in_threadpool(store_mcq_scores, kluc, request.app.state.kluc_cache)
          score = get_score(proc, kluc, request.app.state.kluc_cache)
          if score:
-            return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'scored', 'score': score})
-         return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'pending'})
+            return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'scored', 'score': score})
+         return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'pending'})
       xp = proc.new_xpath_processor()
       xp.set_context(xdm_item=node)
       pocet_otazok = int(xp.evaluate_single('count(otazka)') or 0)
@@ -143,7 +143,7 @@ async def adminview(request: Request, _: Annotated[str, Header(alias='X-Remote-U
    proc = request.app.state.proc
    node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
-      return request.app.state.templates.TemplateResponse('index.html', {'request': request, 'detail': 'missingTest'}, status_code=404)
+      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
    try:
       xp = proc.new_xpath_processor()
       xp.set_context(xdm_item=node)

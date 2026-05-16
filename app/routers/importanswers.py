@@ -85,7 +85,7 @@ def precitaj_qr_kody(obsah: bytes, mime_type: str) -> list[str]:
 
 @router.get('/admin/ai/importanswers', response_class=HTMLResponse)
 async def importanswers_page(request: Request):
-   return request.app.state.templates.TemplateResponse('importanswers.html', {'request': request})
+   return request.app.state.templates.TemplateResponse(request, 'importanswers.html')
 
 
 @router.post('/admin/ai/importmanual/{kluc}')
@@ -180,8 +180,8 @@ async def _spracuj_subor(subor, cache, provider, vysledky):
 
 @router.post('/admin/ai/importanswers')
 async def importanswers(request: Request):
-   form = await request.form()
-   subory = form.getlist('obrazky')
+   async with request.form() as form:
+      subory = form.getlist('obrazky')
    if not subory:
       raise HTTPException(status_code=400, detail='Žiadne súbory neboli nahrané.')
 
