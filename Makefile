@@ -1,4 +1,4 @@
-VENV = /srv/venv
+VENV = .venv
 
 .PHONY: test lint run dev
 
