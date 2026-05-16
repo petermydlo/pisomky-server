@@ -12,9 +12,9 @@
 
 <xsl:template name="xsl:initial-template">
    <xsl:variable name="vsetky" select="
-      collection('../xml/tests?select=*.xml;recurse=yes;on-error=ignore')/testy[@autor=$autor or @autor='' or not(@autor)] |
-      collection('../xml/answers?select=*.xml;recurse=yes;on-error=ignore')/odpovede[@fileid != ''][@autor=$autor or @autor='' or not(@autor)] |
-      collection('../xml/feedback?select=*.xml;recurse=yes;on-error=ignore')/feedback[@fileid != ''][@autor=$autor or @autor='' or not(@autor)]
+      collection('../xml/tests?select=*.xml;recurse=yes;on-error=ignore')/testy[@predmet != 'DEMO'][@autor=$autor or @autor='' or not(@autor)] |
+      collection('../xml/answers?select=*.xml;recurse=yes;on-error=ignore')/odpovede[@predmet != 'DEMO'][@autor=$autor or @autor='' or not(@autor)] |
+      collection('../xml/feedback?select=*.xml;recurse=yes;on-error=ignore')/feedback[@predmet != 'DEMO'][@autor=$autor or @autor='' or not(@autor)]
    "/>
    <html lang="sk">
       <head>
@@ -85,7 +85,7 @@
                              data-trieda="{@trieda}" data-skupina="{@skupina}">
                         <xsl:for-each-group select="current-group()" group-by="@kapitola">
                            <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
-                           <xsl:for-each-group select="current-group()" group-by="string(@fileid)">
+                           <xsl:for-each-group select="current-group()" group-by="@fileid">
                            <xsl:sort select="(@gendat, '')[1]" data-type="text" order="ascending"/>
                            <xsl:variable name="testy-el"    select="current-group()[local-name() = 'testy']"/>
                            <xsl:variable name="ma-test"     select="exists($testy-el)"/>
