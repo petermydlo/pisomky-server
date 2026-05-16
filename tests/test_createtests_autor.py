@@ -20,40 +20,49 @@ TRIEDY_XML = """\
 </triedy>
 """
 
-# Otázky: spoločná kategória kat-spolocna, Novákova náhrada kat-novak,
-# Mydlova vlastná kat-mydlo, a v spoločnej kategórii aj náhrada jednej otázky.
+# kat-spolocna-a: spoločná, Novák v nej nahrádza jednu otázku (nie celú kategóriu)
+# kat-spolocna-b: spoločná, Novák ju nahrádza celou vlastnou kat-novak
+# kat-novak: Novákova náhrada kat-spolocna-b
+# kat-mydlo: Mydlova vlastná kategória (bez nahrada_za)
 QUESTIONS_XML = """\
 <?xml version='1.1' encoding='UTF-8'?>
 <kapitola predmet="TST" id="01" nazov="Test">
-   <kategoria id="kat-spolocna" pocet="1">
-      <otazka id="q-spolocna-1">
-         <znenie>Spoločná otázka 1</znenie>
+   <kategoria id="kat-spolocna-a" pocet="1">
+      <otazka id="q-a-1">
+         <znenie>Spoločná A otázka 1</znenie>
          <odpoved spravna="1">A</odpoved>
          <odpoved spravna="0">B</odpoved>
       </otazka>
-      <otazka id="q-spolocna-2">
-         <znenie>Spoločná otázka 2 (nahradená Novákom)</znenie>
+      <otazka id="q-a-2">
+         <znenie>Spoločná A otázka 2 (nahradená Novákom)</znenie>
          <odpoved spravna="1">C</odpoved>
          <odpoved spravna="0">D</odpoved>
       </otazka>
-      <otazka id="q-nahrada-novak" autor="novak" nahrada_za="q-spolocna-2">
-         <znenie>Novákova náhrada otázky 2</znenie>
+      <otazka id="q-a-nahrada-novak" autor="novak" nahrada_za="q-a-2">
+         <znenie>Novákova náhrada otázky q-a-2</znenie>
          <odpoved spravna="1">E</odpoved>
          <odpoved spravna="0">F</odpoved>
       </otazka>
    </kategoria>
-   <kategoria id="kat-novak" autor="novak" nahrada_za="kat-spolocna" pocet="1">
-      <otazka id="q-novak-1">
-         <znenie>Novákova kategória, otázka 1</znenie>
+   <kategoria id="kat-spolocna-b" pocet="1">
+      <otazka id="q-b-1">
+         <znenie>Spoločná B otázka 1</znenie>
          <odpoved spravna="1">G</odpoved>
          <odpoved spravna="0">H</odpoved>
+      </otazka>
+   </kategoria>
+   <kategoria id="kat-novak" autor="novak" nahrada_za="kat-spolocna-b" pocet="1">
+      <otazka id="q-novak-1">
+         <znenie>Novákova náhrada celej kat-spolocna-b</znenie>
+         <odpoved spravna="1">I</odpoved>
+         <odpoved spravna="0">J</odpoved>
       </otazka>
    </kategoria>
    <kategoria id="kat-mydlo" autor="mydlo" pocet="1">
       <otazka id="q-mydlo-1">
          <znenie>Mydlova vlastná otázka</znenie>
-         <odpoved spravna="1">I</odpoved>
-         <odpoved spravna="0">J</odpoved>
+         <odpoved spravna="1">K</odpoved>
+         <odpoved spravna="0">L</odpoved>
       </otazka>
    </kategoria>
 </kapitola>
@@ -105,12 +114,11 @@ def run_xslt(proc, autor):
    return [o.get('id') for o in tree.findall('.//otazka')]
 
 
-def test_novak_dostane_svoju_kategoriu_namiesto_spolocnej(proc):
-   """Novák má @nahrada_za na kat-spolocna — dostane kat-novak, nie kat-spolocna."""
+def test_novak_dostane_kat_spolocna_b_nahradenu(proc):
+   """Novák má kat-novak s nahrada_za=kat-spolocna-b — dostane kat-novak, nie kat-spolocna-b."""
    ids = run_xslt(proc, 'novak')
    assert 'q-novak-1' in ids
-   assert 'q-spolocna-1' not in ids
-   assert 'q-spolocna-2' not in ids
+   assert 'q-b-1' not in ids
 
 
 def test_novak_nedostane_mydlovu_kategoriu(proc):
@@ -118,34 +126,33 @@ def test_novak_nedostane_mydlovu_kategoriu(proc):
    assert 'q-mydlo-1' not in ids
 
 
-def test_mydlo_dostane_spolocnu_kategoriu(proc):
-   """Mydlo nemá náhradu kat-spolocna — dostane ju pôvodnú."""
-   ids = run_xslt(proc, 'mydlo')
-   assert 'q-spolocna-1' in ids or 'q-spolocna-2' in ids
+def test_novak_dostane_kat_spolocna_a_s_nahradou_otazky(proc):
+   """Novák zdedí kat-spolocna-a, ale q-a-2 mu nahrádza q-a-nahrada-novak."""
+   ids = run_xslt(proc, 'novak')
+   assert 'q-a-2' not in ids
+   assert 'q-a-nahrada-novak' in ids or 'q-a-1' in ids  # pocet=1, jedna z dvoch
 
 
-def test_mydlo_nedostane_novakovu_kategoriu(proc):
+def test_novak_nedostane_povodnu_nahradenu_otazku(proc):
+   """q-a-2 je nahradená Novákom — Novák ju nesmie dostať."""
+   ids = run_xslt(proc, 'novak')
+   assert 'q-a-2' not in ids
+
+
+def test_mydlo_dostane_kat_spolocna_a_bez_nahrad(proc):
+   """Mydlo nemá náhrady v kat-spolocna-a — dostane q-a-1 alebo q-a-2, nie Novákovu náhradu."""
    ids = run_xslt(proc, 'mydlo')
+   assert 'q-a-nahrada-novak' not in ids
+   assert 'q-a-1' in ids or 'q-a-2' in ids
+
+
+def test_mydlo_dostane_kat_spolocna_b(proc):
+   """Mydlo nemá náhradu kat-spolocna-b — dostane ju pôvodnú."""
+   ids = run_xslt(proc, 'mydlo')
+   assert 'q-b-1' in ids
    assert 'q-novak-1' not in ids
 
 
 def test_mydlo_dostane_vlastnu_kategoriu(proc):
    ids = run_xslt(proc, 'mydlo')
    assert 'q-mydlo-1' in ids
-
-
-def test_mydlo_nedostane_novakovu_nahradnu_otazku(proc):
-   """q-nahrada-novak patrí Novákovi — Mydlo ju nesmie dostať."""
-   ids = run_xslt(proc, 'mydlo')
-   assert 'q-nahrada-novak' not in ids
-
-
-def test_novak_dostane_nahradnu_otazku_namiesto_spolocnej_2(proc):
-   """
-   Novák má náhradu q-spolocna-2 → dostane q-nahrada-novak namiesto nej.
-   Keďže kat-spolocna je celá nahradená kat-novak, tento test overuje
-   že Novák nedostane q-spolocna-2 ani cez náhradnú kategóriu.
-   """
-   ids = run_xslt(proc, 'novak')
-   assert 'q-spolocna-2' not in ids
-   assert 'q-nahrada-novak' not in ids  # je v kat-spolocna ktorú novak nezdedí
