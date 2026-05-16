@@ -801,7 +801,7 @@ def store_mcq_scores(kluc: str, cache: dict | None = None) -> None:
             if not spravna:
                continue
             oid = otazka.get('id')
-            answer_otazka = next(iter(answer_test.xpath('.//otazka[@id=$id]', id=oid)), None)  # type: ignore[arg-type]
+            answer_otazka = next(iter(answer_test.xpath('.//otazka[@id=$id]', id=oid)), None)
             if answer_otazka is None or answer_otazka.get('body') is not None:
                continue
             student_answer = (answer_otazka.text or '').strip()

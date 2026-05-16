@@ -3,6 +3,7 @@
 import json
 import os
 import secrets
+from typing import cast
 from datetime import datetime
 from filelock import FileLock
 from lxml import etree as ET
@@ -62,7 +63,7 @@ def _nacitaj_predchadzajuce_keys(subor: str, otazka_id: str, limit: int = 10) ->
       return []
    try:
       tree = ET.parse(subor)
-      zaznamy = tree.xpath('.//zapis[@otazka_id=$id]', id=otazka_id)[-limit:]  # type: ignore[arg-type]
+      zaznamy = cast(list, tree.xpath('.//zapis[@otazka_id=$id]', id=otazka_id))[-limit:]
       return [
          {'keys': keys_el.text.strip(), 'val': z.get('val', '')}
          for z in zaznamy
