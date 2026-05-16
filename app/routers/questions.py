@@ -31,6 +31,7 @@ async def selectquestions(request: Request):
 @router.post('/admin/showquestions', response_class=HTMLResponse)
 async def showquestions(request: Request, predmet: StringForm, X_Remote_User: StringHeader):
    proc = request.app.state.proc
+   tmp_path = None
    try:
       for cesta in glob.iglob(f'./res/xml/questions/{predmet}/*.xml'):
          ensure_ids(cesta)
@@ -44,7 +45,7 @@ async def showquestions(request: Request, predmet: StringForm, X_Remote_User: St
       request.app.state.logger.error(f'chyba showquestions: {e}')
       raise HTTPException(status_code=400, detail=str(e))
    finally:
-      if 'tmp_path' in locals() and os.path.exists(tmp_path):
+      if tmp_path is not None and os.path.exists(tmp_path):
          os.remove(tmp_path)
 
 @router.post('/admin/process_chapter', response_class=JSONResponse)

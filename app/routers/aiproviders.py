@@ -48,7 +48,8 @@ class ClaudeProvider(AIImportProvider):
             ]
          }]
       )
-      return [s.strip() for s in resp.content[0].text.split(',') if s.strip()]
+      text = next((b.text for b in resp.content if b.type == 'text'), '')
+      return [s.strip() for s in text.split(',') if s.strip()]
 
    def get_answers(self, obsah: bytes, mime_type: str, xml_context: str) -> dict:
       resp = self.client.messages.create(
@@ -64,7 +65,7 @@ class ClaudeProvider(AIImportProvider):
             ]
          }]
       )
-      raw = resp.content[0].text.strip()
+      raw = next((b.text for b in resp.content if b.type == 'text'), '').strip()
       if '```' in raw:
          raw = raw.split('```')[1]
          if raw.startswith('json'):
@@ -87,7 +88,7 @@ class GeminiProvider(AIImportProvider):
          model=self.model,
          contents=[doc_part, 'List all unique test IDs found in this document. The test ID appears as a text code in the top-right corner (e.g. aut303d3676e37) and as a QR code in the top-left corner. Return as a plain comma-separated string.'],
       )
-      return [s.strip() for s in resp.text.split(',') if s.strip()]
+      return [s.strip() for s in (resp.text or '').split(',') if s.strip()]
 
    def get_answers(self, obsah: bytes, mime_type: str, xml_context: str) -> dict:
       doc_part = self.types.Part.from_bytes(data=obsah, mime_type=mime_type)
@@ -96,7 +97,7 @@ class GeminiProvider(AIImportProvider):
          contents=[doc_part, f'{SYSTEM_PROMPT}\n\nXML Contexts:\n{xml_context}'],
          config=self.types.GenerateContentConfig(response_mime_type='application/json'),
       )
-      return json.loads(resp.text)
+      return json.loads(resp.text or 'null')
 
 
 class OllamaProvider(AIImportProvider):

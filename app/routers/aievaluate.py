@@ -5,6 +5,7 @@ import re
 import json
 import unicodedata
 from pathlib import Path
+from typing import cast
 import lxml.etree as ET
 from app.mytypes import StringForm
 from app.utils import find_test_file, xquery_to_string
@@ -59,7 +60,8 @@ def _nacitaj_udaje_ziaka(cesta_tst: str, test_id: str, trieda: str) -> dict:
    trieda_ziak = trieda
    try:
       tree = ET.parse(cesta_tst)
-      test = next(iter(tree.xpath(".//test[@id=$id]", id=test_id)), None)
+      results = cast(list, tree.xpath('.//test[@id=$id]', id=test_id))
+      test = results[0] if results else None
       if test is not None:
          meno = test.get('meno', '')
          priezvisko = test.get('priezvisko', '')
@@ -127,7 +129,7 @@ Question {i} (id: {ot['id']}, max points: {ot['body']}):
       system=SYSTEM_PROMPT,
       messages=[{'role': 'user', 'content': prompt}]
    )
-   raw = resp.content[0].text.strip()
+   raw = next((b.text for b in resp.content if b.type == 'text'), '').strip()
    if '```' in raw:
       raw = raw.split('```')[1]
       if raw.startswith('json'):
