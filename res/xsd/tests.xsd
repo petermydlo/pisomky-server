@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+   <!-- Hodnota príznaku: vždy "1" -->
+   <xs:simpleType name="Flag">
+      <xs:restriction base="xs:string">
+         <xs:enumeration value="1"/>
+      </xs:restriction>
+   </xs:simpleType>
+
+   <!-- Hodnota spravna: "0" alebo "1" -->
+   <xs:simpleType name="BoolVal">
+      <xs:restriction base="xs:string">
+         <xs:enumeration value="0"/>
+         <xs:enumeration value="1"/>
+      </xs:restriction>
+   </xs:simpleType>
+
+   <!--
+      Zmiešaný inline obsah: text + formátovacie elementy.
+      Rovnaká sada ako v questions.xsd — testy kopírujú znenia otázok 1:1.
+   -->
+   <xs:complexType name="InlineMixed" mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+         <xs:element name="italic" type="InlineMixed"/>
+         <xs:element name="underline" type="InlineMixed"/>
+         <xs:element name="bold" type="InlineMixed"/>
+         <xs:element name="sub" type="xs:string"/>
+         <xs:element name="alter" type="InlineMixed"/>
+         <xs:element name="choice" type="InlineMixed"/>
+         <xs:element name="upp" type="xs:string"/>
+         <xs:element name="placeholder">
+            <xs:complexType>
+               <xs:attribute name="typ" type="xs:string" use="required"/>
+               <xs:attribute name="transform" type="xs:string"/>
+            </xs:complexType>
+         </xs:element>
+         <xs:element name="obrazok">
+            <xs:complexType>
+               <xs:attribute name="src" type="xs:string"/>
+               <xs:attribute name="alt" type="xs:string"/>
+               <xs:attribute name="vyska" type="xs:string"/>
+            </xs:complexType>
+         </xs:element>
+         <xs:element name="file">
+            <xs:complexType mixed="true">
+               <xs:attribute name="src" type="xs:string"/>
+               <xs:attribute name="name" type="xs:string"/>
+               <xs:attribute name="nazov" type="xs:string"/>
+               <xs:attribute name="meno" type="xs:string"/>
+            </xs:complexType>
+         </xs:element>
+         <xs:element name="ref">
+            <xs:complexType>
+               <xs:attribute name="id" type="xs:string" use="required"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:choice>
+   </xs:complexType>
+
+   <!-- Odpoveď v teste: text + @spravna -->
+   <xs:complexType name="Odpoved" mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+         <xs:element name="italic" type="InlineMixed"/>
+         <xs:element name="underline" type="InlineMixed"/>
+         <xs:element name="bold" type="InlineMixed"/>
+      </xs:choice>
+      <xs:attribute name="spravna" type="BoolVal" use="required"/>
+   </xs:complexType>
+
+   <!-- Otázka v teste: znenie + odpovede (MCQ), alebo len znenie (otvorená otázka) -->
+   <xs:complexType name="Otazka">
+      <xs:sequence>
+         <xs:element name="znenie" type="InlineMixed" minOccurs="0"/>
+         <xs:element name="odpoved" type="Odpoved" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="id" type="xs:string" use="required"/>
+      <xs:attribute name="body" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="static" type="Flag"/>
+      <!-- bonus: bonusová otázka (body navyše) -->
+      <xs:attribute name="bonus" type="Flag"/>
+      <xs:attribute name="rating" type="xs:string"/>
+   </xs:complexType>
+
+   <!-- Pokyny pre konkrétneho žiaka: voliteľný úvod (head) a záver (tail) -->
+   <xs:complexType name="Pokyny">
+      <xs:sequence>
+         <xs:element name="head" minOccurs="0">
+            <xs:complexType mixed="true">
+               <xs:choice minOccurs="0" maxOccurs="unbounded">
+                  <xs:element name="italic" type="InlineMixed"/>
+                  <xs:element name="placeholder">
+                     <xs:complexType>
+                        <xs:attribute name="typ" type="xs:string" use="required"/>
+                        <xs:attribute name="transform" type="xs:string"/>
+                     </xs:complexType>
+                  </xs:element>
+               </xs:choice>
+               <xs:attribute name="static" type="Flag"/>
+            </xs:complexType>
+         </xs:element>
+         <xs:element name="tail" minOccurs="0">
+            <xs:complexType mixed="true">
+               <xs:choice minOccurs="0" maxOccurs="unbounded">
+                  <xs:element name="italic" type="InlineMixed"/>
+                  <xs:element name="placeholder">
+                     <xs:complexType>
+                        <xs:attribute name="typ" type="xs:string" use="required"/>
+                        <xs:attribute name="transform" type="xs:string"/>
+                     </xs:complexType>
+                  </xs:element>
+               </xs:choice>
+               <xs:attribute name="static" type="Flag"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
+   </xs:complexType>
+
+   <!-- Jeden test (jeden žiak) -->
+   <xs:complexType name="Test">
+      <xs:sequence>
+         <xs:element name="pokyny" type="Pokyny" minOccurs="0"/>
+         <xs:element name="otazka" type="Otazka" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="id" type="xs:string" use="required"/>
+      <!-- uuid: UUID v4 pridelený pri generovaní testu -->
+      <xs:attribute name="uuid" type="xs:string"/>
+      <!-- meno/priezvisko/trieda: vyplnené pre praktické písomky s personalizovanými zadaniami -->
+      <xs:attribute name="meno" type="xs:string"/>
+      <xs:attribute name="priezvisko" type="xs:string"/>
+      <xs:attribute name="trieda" type="xs:string"/>
+      <!-- start/stop: čas písania konkrétneho žiaka (pre prípad predĺženia) -->
+      <xs:attribute name="start" type="xs:string"/>
+      <xs:attribute name="stop" type="xs:string"/>
+   </xs:complexType>
+
+   <!-- Koreňový element: celý súbor testov pre jednu písomku -->
+   <xs:element name="testy">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element name="test" type="Test" minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:attribute name="predmet" type="xs:string" use="required"/>
+         <xs:attribute name="trieda" type="xs:string" use="required"/>
+         <xs:attribute name="skupina" type="xs:string" use="required"/>
+         <xs:attribute name="kapitola" type="xs:string" use="required"/>
+         <xs:attribute name="fileid" type="xs:string"/>
+         <xs:attribute name="gendat" type="xs:dateTime" use="required"/>
+         <!-- start/stop: čas písania (môže byť prázdny ak nie je nastavený) -->
+         <xs:attribute name="start" type="xs:string"/>
+         <xs:attribute name="stop" type="xs:string"/>
+         <xs:attribute name="autor" type="xs:string"/>
+         <xs:attribute name="identita" type="xs:string"/>
+         <xs:attribute name="anonymne" type="xs:string"/>
+         <!-- xml:lang z iného menného priestoru -->
+         <xs:anyAttribute namespace="##other" processContents="lax"/>
+      </xs:complexType>
+   </xs:element>
+
+</xs:schema>

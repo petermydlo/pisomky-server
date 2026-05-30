@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+   <!-- Jeden AI feedback záznam pre konkrétnu otázku a pokus -->
+   <xs:complexType name="Zapis">
+      <xs:simpleContent>
+         <xs:extension base="xs:string">
+            <!-- id: hash záznamu (voliteľný, nie vždy prítomný) -->
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="datum" type="xs:dateTime" use="required"/>
+            <xs:attribute name="otazka_id" type="xs:string" use="required"/>
+            <xs:attribute name="test_id" type="xs:string" use="required"/>
+            <!-- val: výsledok hodnotenia — "1" (správne), "0" (nesprávne), "" (neohodnotené) -->
+            <xs:attribute name="val" use="required">
+               <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                     <xs:enumeration value="1"/>
+                     <xs:enumeration value="0"/>
+                     <xs:enumeration value=""/>
+                  </xs:restriction>
+               </xs:simpleType>
+            </xs:attribute>
+         </xs:extension>
+      </xs:simpleContent>
+   </xs:complexType>
+
+   <!-- Koreňový element: zoznam AI feedbackov pre jednu písomku -->
+   <xs:element name="feedback">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element name="zapis" type="Zapis" minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:attribute name="predmet" type="xs:string"/>
+         <xs:attribute name="trieda" type="xs:string"/>
+         <xs:attribute name="skupina" type="xs:string"/>
+         <xs:attribute name="kapitola" type="xs:string"/>
+         <xs:attribute name="fileid" type="xs:string" use="required"/>
+         <!-- autor: meno učiteľa, ktorý písomku vygeneroval -->
+         <xs:attribute name="autor" type="xs:string"/>
+      </xs:complexType>
+   </xs:element>
+
+</xs:schema>

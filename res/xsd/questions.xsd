@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+   <!-- Typ pre 8-znakový hex identifikátor (SHA-256 hash) -->
+   <xs:simpleType name="HexId">
+      <xs:restriction base="xs:string">
+         <xs:pattern value="[0-9a-f]{8}"/>
+      </xs:restriction>
+   </xs:simpleType>
+
+   <!-- Hodnota príznaku: vždy "1" -->
+   <xs:simpleType name="Flag">
+      <xs:restriction base="xs:string">
+         <xs:enumeration value="1"/>
+      </xs:restriction>
+   </xs:simpleType>
+
+   <!-- Hodnota spravna: "0" alebo "1" -->
+   <xs:simpleType name="BoolVal">
+      <xs:restriction base="xs:string">
+         <xs:enumeration value="0"/>
+         <xs:enumeration value="1"/>
+      </xs:restriction>
+   </xs:simpleType>
+
+   <!--
+      Zmiešaný obsah pre inline text: text + formátovacie elementy.
+      Používa sa v znenie, odpoved, tail.
+      Elementy:
+        italic, underline, bold  — formátovanie textu
+        sub                      — dolný index
+        alter                    — alternatívna formulácia (vykresľuje sa náhodne)
+        placeholder              — zástupný symbol (napr. meno žiaka)
+        obrazok                  — odkaz na obrázok
+        file                     — odkaz na súbor
+        ref                      — odkaz na inú otázku podľa @id
+   -->
+   <xs:complexType name="InlineMixed" mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+         <xs:element name="italic" type="InlineMixed"/>
+         <xs:element name="underline" type="InlineMixed"/>
+         <xs:element name="bold" type="InlineMixed"/>
+         <xs:element name="sub" type="xs:string"/>
+         <xs:element name="alter" type="InlineMixed"/>
+         <xs:element name="placeholder">
+            <xs:complexType>
+               <xs:attribute name="typ" type="xs:string" use="required"/>
+               <xs:attribute name="transform" type="xs:string"/>
+            </xs:complexType>
+         </xs:element>
+         <xs:element name="obrazok">
+            <xs:complexType>
+               <xs:attribute name="src" type="xs:string"/>
+               <xs:attribute name="alt" type="xs:string"/>
+               <xs:attribute name="vyska" type="xs:string"/>
+            </xs:complexType>
+         </xs:element>
+         <xs:element name="file">
+            <xs:complexType mixed="true">
+               <xs:attribute name="src" type="xs:string"/>
+               <xs:attribute name="name" type="xs:string"/>
+               <!-- nazov/meno: alternatívne pomenovanie súboru zobrazené v UI -->
+               <xs:attribute name="nazov" type="xs:string"/>
+               <xs:attribute name="meno" type="xs:string"/>
+            </xs:complexType>
+         </xs:element>
+         <xs:element name="ref">
+            <xs:complexType>
+               <xs:attribute name="id" type="xs:string" use="required"/>
+            </xs:complexType>
+         </xs:element>
+         <!-- choice: vetva zo zoznamu alternatív (napr. výber z viacerých variantov úlohy) -->
+         <xs:element name="choice" type="InlineMixed"/>
+         <!-- upp: veľké písmená -->
+         <xs:element name="upp" type="xs:string"/>
+      </xs:choice>
+   </xs:complexType>
+
+   <!-- Odpoveď: zmiešaný obsah (text + inline elementy) -->
+   <xs:complexType name="Odpoved" mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+         <xs:element name="italic" type="InlineMixed"/>
+         <xs:element name="underline" type="InlineMixed"/>
+         <xs:element name="bold" type="InlineMixed"/>
+      </xs:choice>
+      <xs:attribute name="spravna" type="BoolVal" use="required"/>
+      <!-- napoveda ako atribút odpovede (zobrazuje sa pri tejto konkrétnej odpovedi) -->
+      <xs:attribute name="napoveda" type="xs:string"/>
+   </xs:complexType>
+
+   <!-- Nápoveda k otázke: text s voliteľnou väzbou na konkrétnu odpoveď -->
+   <xs:complexType name="Napoveda">
+      <xs:simpleContent>
+         <xs:extension base="xs:string">
+            <!-- pre: zobrazí sa len keď žiak odpovie hodnotou tohto atribútu -->
+            <xs:attribute name="pre" type="xs:string"/>
+         </xs:extension>
+      </xs:simpleContent>
+   </xs:complexType>
+
+   <!-- Otázka -->
+   <xs:complexType name="Otazka" mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+         <xs:element name="znenie" type="InlineMixed"/>
+         <xs:element name="odpoved" type="Odpoved"/>
+         <!-- vzor: vzorová odpoveď pre otvorené otázky -->
+         <xs:element name="vzor" type="xs:string"/>
+         <!-- napoveda: nápoveda k celej otázke alebo k odpovedi podľa @pre -->
+         <xs:element name="napoveda" type="Napoveda"/>
+      </xs:choice>
+      <xs:attribute name="id" type="xs:string" use="required"/>
+      <xs:attribute name="deprecated" type="Flag"/>
+      <xs:attribute name="paused" type="Flag"/>
+      <xs:attribute name="static" type="Flag"/>
+      <xs:attribute name="body" type="xs:nonNegativeInteger"/>
+      <!-- pomer: napr. "1:4" pre partial scoring -->
+      <xs:attribute name="pomer" type="xs:string"/>
+      <xs:attribute name="rating" type="xs:string"/>
+      <!-- cesta: čiarkou oddelené identifikátory vetiev -->
+      <xs:attribute name="cesta" type="xs:string"/>
+      <!-- autor: meno učiteľa, ktorému otázka patrí -->
+      <xs:attribute name="autor" type="xs:string"/>
+      <!-- nahrada_za: id otázky, ktorú táto nahrádza pre daného autora -->
+      <xs:attribute name="nahrada_za" type="xs:string"/>
+   </xs:complexType>
+
+   <!-- Kategória -->
+   <xs:complexType name="Kategoria">
+      <xs:sequence>
+         <xs:element name="otazka" type="Otazka" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="id" type="xs:string" use="required"/>
+      <xs:attribute name="pocet" type="xs:nonNegativeInteger" use="required"/>
+      <xs:attribute name="body" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="nazov" type="xs:string"/>
+      <xs:attribute name="deprecated" type="Flag"/>
+      <xs:attribute name="paused" type="Flag"/>
+      <xs:attribute name="static" type="Flag"/>
+      <!-- bonus: bonusová kategória (body navyše, nezapočítavajú sa do maxima) -->
+      <xs:attribute name="bonus" type="Flag"/>
+      <xs:attribute name="autor" type="xs:string"/>
+      <xs:attribute name="nahrada_za" type="xs:string"/>
+   </xs:complexType>
+
+   <!-- Pokyny k písomke: voliteľný úvod (head) a záver (tail) -->
+   <xs:complexType name="Pokyny">
+      <xs:sequence>
+         <xs:element name="head" minOccurs="0">
+            <xs:complexType mixed="true">
+               <xs:choice minOccurs="0" maxOccurs="unbounded">
+                  <xs:element name="italic" type="InlineMixed"/>
+                  <xs:element name="placeholder">
+                     <xs:complexType>
+                        <xs:attribute name="typ" type="xs:string" use="required"/>
+                        <xs:attribute name="transform" type="xs:string"/>
+                     </xs:complexType>
+                  </xs:element>
+               </xs:choice>
+               <xs:attribute name="static" type="Flag"/>
+            </xs:complexType>
+         </xs:element>
+         <xs:element name="tail" minOccurs="0">
+            <xs:complexType mixed="true">
+               <xs:choice minOccurs="0" maxOccurs="unbounded">
+                  <xs:element name="italic" type="InlineMixed"/>
+                  <xs:element name="placeholder">
+                     <xs:complexType>
+                        <xs:attribute name="typ" type="xs:string" use="required"/>
+                        <xs:attribute name="transform" type="xs:string"/>
+                     </xs:complexType>
+                  </xs:element>
+               </xs:choice>
+               <xs:attribute name="static" type="Flag"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
+   </xs:complexType>
+
+   <!-- Koreňový element kapitola -->
+   <xs:element name="kapitola">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element name="pokyny" type="Pokyny" minOccurs="0"/>
+            <xs:element name="kategoria" type="Kategoria" minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:attribute name="predmet" type="xs:string" use="required"/>
+         <xs:attribute name="id" type="xs:string" use="required"/>
+         <xs:attribute name="nazov" type="xs:string"/>
+      </xs:complexType>
+   </xs:element>
+
+</xs:schema>

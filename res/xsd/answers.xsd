@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+   <!-- Odpoveď žiaka na jednu otázku: text (napr. "a", "b", alebo voľný text) -->
+   <xs:complexType name="OtazkaOdpoved">
+      <xs:simpleContent>
+         <xs:extension base="xs:string">
+            <xs:attribute name="id" type="xs:string" use="required"/>
+         </xs:extension>
+      </xs:simpleContent>
+   </xs:complexType>
+
+   <!-- Jeden pokus žiaka: obsahuje odpovede na všetky otázky v teste -->
+   <xs:complexType name="Test">
+      <xs:sequence>
+         <xs:element name="otazka" type="OtazkaOdpoved" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <!-- id: identifikátor pokusu (napr. predmet+kapitola+fileid+priezvisko) -->
+      <xs:attribute name="id" type="xs:string" use="required"/>
+      <!-- dat: dátum a čas odovzdania vo formáte ISO 8601 -->
+      <xs:attribute name="dat" type="xs:dateTime" use="required"/>
+   </xs:complexType>
+
+   <!-- Koreňový element: zoznam odovzdaní pre jednu skupinu/triedu/písomku -->
+   <xs:element name="odpovede">
+      <xs:complexType>
+         <xs:sequence>
+            <xs:element name="test" type="Test" minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:attribute name="predmet" type="xs:string" use="required"/>
+         <xs:attribute name="trieda" type="xs:string" use="required"/>
+         <xs:attribute name="skupina" type="xs:string" use="required"/>
+         <xs:attribute name="kapitola" type="xs:string" use="required"/>
+         <xs:attribute name="fileid" type="xs:string" use="required"/>
+         <!-- autor: meno učiteľa, ktorý písomku vygeneroval -->
+         <xs:attribute name="autor" type="xs:string"/>
+         <!-- xml:lang a iné atribúty z cudzích menných priestorov (napr. xml:lang="sk") -->
+         <xs:anyAttribute namespace="##other" processContents="lax"/>
+      </xs:complexType>
+   </xs:element>
+
+</xs:schema>
