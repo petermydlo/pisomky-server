@@ -80,7 +80,7 @@ class GeminiProvider(AIImportProvider):
       from google.genai import types
       self.client = genai.Client()
       self.types = types
-      self.model = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+      self.model = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash')
 
    def get_test_ids(self, obsah: bytes, mime_type: str) -> list[str]:
       doc_part = self.types.Part.from_bytes(data=obsah, mime_type=mime_type)

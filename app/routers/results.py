@@ -47,6 +47,8 @@ def write_marks(lock: FileLock, cesta: Path, form_data: dict, kluc: str, dat: st
          tree = ET.parse(cesta, xmlParser)
          root = tree.getroot()
          testxml = next(iter(root.xpath('.//test[@id=$kluc][@dat=$dat]', kluc=kluc, dat=dat)), None)  # type: ignore[arg-type]
+         if testxml is None:
+            raise Exception(f'test {kluc} nenájdený v súbore')
          for key, value in form_data.items():
             typ, idotazky = key.split('_', 1)
             otazkaxml = next(iter(testxml.xpath('.//otazka[@id=$id]', id=idotazky)), None)  # type: ignore[union-attr]

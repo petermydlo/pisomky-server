@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
 import glob
 import hashlib
 import tempfile
@@ -661,7 +662,12 @@ def add_question(kategoria_id: str, nova_otazka: dict, za_otazka_id: str | None 
    return None, True
 
 # --- Testy a cas ---
+_SAFE_PARAM = re.compile(r'^[A-Za-z0-9_-]*$')
+
 def test_xml_path(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str:
+   for val in (predmet, trieda, skupina, kapitola, fileid):
+      if not _SAFE_PARAM.match(val):
+         raise ValueError(f'Neplatný parameter: {val!r}')
    return f'./res/xml/tests/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
 
 def get_testy_autor(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str:

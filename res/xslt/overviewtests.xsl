@@ -122,10 +122,10 @@
                                        <span class="results" title="Download results" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-download"/></span>
                                        <span class="groupstatistics" title="Show statistics" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-bar-chart"/></span>
                                     </xsl:if>
-                                    <span class="feedback{if ($ma-feedback) then '' else ' disabled'}" title="Show feedback" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-chat-left-text"/></span>
+                                    <span class="feedback{if ($ma-feedback) then '' else ' disabled'}" title="{if ($ma-feedback) then 'Show feedback' else 'No feedback yet'}" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-chat-left-text"/></span>
                                     <span class="del" title="Delete tests" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-dash-square"/></span>
                                     <xsl:if test="$ma-test">
-                                       <span class="regenerate{if (exists($vybtesty/odpovede/test[@dat])) then ' disabled' else ''}" title="Regenerate tests" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-arrow-repeat"/></span>
+                                       <span class="regenerate{if (exists($vybtesty/odpovede/test[@dat])) then ' disabled' else ''}" title="{if (exists($vybtesty/odpovede/test[@dat])) then 'Cannot regenerate — answers exist' else 'Regenerate tests'}" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-arrow-repeat"/></span>
                                     </xsl:if>
                                  </div>
                               </div>
