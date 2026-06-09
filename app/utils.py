@@ -28,11 +28,11 @@ def get_test_metadata(proc: 'PySaxonProcessor', test_node: 'PyXdmNode') -> tuple
    xp = proc.new_xpath_processor()
    xp.set_context(xdm_item=test_node.get_parent())
    return (
-      xp.evaluate_single('string(@predmet)'),
-      xp.evaluate_single('string(@trieda)'),
-      xp.evaluate_single('string(@skupina)'),
-      xp.evaluate_single('string(@kapitola)'),
-      xp.evaluate_single('string(@fileid)'),
+      xp.evaluate_single('string(@predmet)').string_value,
+      xp.evaluate_single('string(@trieda)').string_value,
+      xp.evaluate_single('string(@skupina)').string_value,
+      xp.evaluate_single('string(@kapitola)').string_value,
+      xp.evaluate_single('string(@fileid)').string_value,
    )
 
 # --- Konverzie do inych formatov ---
@@ -663,10 +663,14 @@ def add_question(kategoria_id: str, nova_otazka: dict, za_otazka_id: str | None 
 
 # --- Testy a cas ---
 _SAFE_PARAM = re.compile(r'^[A-Za-z0-9_-]*$')
+_SAFE_TRIEDA = re.compile(r'^[A-Za-z0-9_.,-]*$')
 
 def test_xml_path(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str:
-   for val in (predmet, trieda, skupina, kapitola, fileid):
+   for val in (predmet, kapitola, fileid):
       if not _SAFE_PARAM.match(val):
+         raise ValueError(f'Neplatný parameter: {val!r}')
+   for val in (trieda, skupina):
+      if not _SAFE_TRIEDA.match(val):
          raise ValueError(f'Neplatný parameter: {val!r}')
    return f'./res/xml/tests/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
 
