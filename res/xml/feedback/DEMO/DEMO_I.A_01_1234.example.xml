@@ -1,5 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <feedback fileid="1234">
-   <zapis datum="2025-01-08T09:20:00" otazka_id="otq00003" test_id="demo01xnovaka" val="1">Hint: Think about what happens to the source code before it can be executed.</zapis>
-   <zapis datum="2025-01-08T09:25:00" otazka_id="otq00003" test_id="demo01xkovacam" val="0">Hint: Consider the step-by-step execution model used by interpreted languages.</zapis>
+   <zapis id="a1b2c3d4e5f6a7b8" datum="2025-01-08T09:20:00" otazka_id="otq00003" test_id="demo01xnovaka" val="1">
+      <hint>Think about what happens to the source code before it can be executed.</hint>
+      <keys>interpreter, kompilátor, zdrojový kód</keys>
+   </zapis>
+   <zapis id="b2c3d4e5f6a7b8a1" datum="2025-01-08T09:25:00" otazka_id="otq00003" test_id="demo01xkovacam" val="0">
+      <hint>Consider the step-by-step execution model used by interpreted languages.</hint>
+      <keys>interpreter, riadok po riadku</keys>
+   </zapis>
 </feedback>

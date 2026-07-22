@@ -107,6 +107,14 @@
          <xs:element name="vzor" type="xs:string"/>
          <!-- napoveda: nápoveda k celej otázke alebo k odpovedi podľa @pre -->
          <xs:element name="napoveda" type="Napoveda"/>
+         <!-- klucove_slova: kľúčové slová pre otvorenú otázku (AI hodnotenie/nápoveda) -->
+         <xs:element name="klucove_slova" minOccurs="0">
+            <xs:complexType>
+               <xs:sequence>
+                  <xs:element name="slovo" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+               </xs:sequence>
+            </xs:complexType>
+         </xs:element>
       </xs:choice>
       <xs:attribute name="id" type="xs:string" use="required"/>
       <xs:attribute name="deprecated" type="Flag"/>

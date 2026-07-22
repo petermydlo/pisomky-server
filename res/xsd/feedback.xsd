@@ -1,27 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-   <!-- Jeden AI feedback záznam pre konkrétnu otázku a pokus -->
+   <!-- Jeden AI feedback záznam pre konkrétnu otázku a pokus (ai.py _uloz_zapis/_aktualizuj_zapis). -->
    <xs:complexType name="Zapis">
-      <xs:simpleContent>
-         <xs:extension base="xs:string">
-            <!-- id: hash záznamu (voliteľný, nie vždy prítomný) -->
-            <xs:attribute name="id" type="xs:string"/>
-            <xs:attribute name="datum" type="xs:dateTime" use="required"/>
-            <xs:attribute name="otazka_id" type="xs:string" use="required"/>
-            <xs:attribute name="test_id" type="xs:string" use="required"/>
-            <!-- val: výsledok hodnotenia — "1" (správne), "0" (nesprávne), "" (neohodnotené) -->
-            <xs:attribute name="val" use="required">
-               <xs:simpleType>
-                  <xs:restriction base="xs:string">
-                     <xs:enumeration value="1"/>
-                     <xs:enumeration value="0"/>
-                     <xs:enumeration value=""/>
-                  </xs:restriction>
-               </xs:simpleType>
-            </xs:attribute>
-         </xs:extension>
-      </xs:simpleContent>
+      <xs:sequence>
+         <!-- hint: text AI nápovedy zobrazenej žiakovi -->
+         <xs:element name="hint" type="xs:string" minOccurs="0"/>
+         <!-- keys: kľúčové slová z KEYS: riadku AI odpovede -->
+         <xs:element name="keys" type="xs:string" minOccurs="0"/>
+      </xs:sequence>
+      <!-- id: hash záznamu (voliteľný, nie vždy prítomný) -->
+      <xs:attribute name="id" type="xs:string"/>
+      <xs:attribute name="datum" type="xs:dateTime" use="required"/>
+      <xs:attribute name="otazka_id" type="xs:string" use="required"/>
+      <xs:attribute name="test_id" type="xs:string" use="required"/>
+      <!-- val: výsledok hodnotenia — "1" (správne), "0" (nesprávne), "" (neohodnotené) -->
+      <xs:attribute name="val" use="required">
+         <xs:simpleType>
+            <xs:restriction base="xs:string">
+               <xs:enumeration value="1"/>
+               <xs:enumeration value="0"/>
+               <xs:enumeration value=""/>
+            </xs:restriction>
+         </xs:simpleType>
+      </xs:attribute>
    </xs:complexType>
 
    <!-- Koreňový element: zoznam AI feedbackov pre jednu písomku -->

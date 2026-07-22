@@ -28,7 +28,7 @@ let $otazky :=
          <napovedy>
             {for $z in $zaznamy
              return <napoveda val="{$z/@val}" datum="{$z/@datum}" keys="{$z/keys}">
-                       {if ($z/hint) then $z/hint/string() else $z/string()}
+                       {$z/hint/string()}
                     </napoveda>}
          </napovedy>
       </otazka>

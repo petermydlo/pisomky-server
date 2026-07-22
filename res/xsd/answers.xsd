@@ -6,6 +6,10 @@
       <xs:simpleContent>
          <xs:extension base="xs:string">
             <xs:attribute name="id" type="xs:string" use="required"/>
+            <!-- body: body pridelené učiteľom pri ručnom hodnotení (savemarks) -->
+            <xs:attribute name="body" type="xs:string"/>
+            <!-- koment: poznámka učiteľa k oprave tejto otázky -->
+            <xs:attribute name="koment" type="xs:string"/>
          </xs:extension>
       </xs:simpleContent>
    </xs:complexType>

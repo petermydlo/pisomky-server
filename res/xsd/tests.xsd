@@ -80,6 +80,10 @@
       <!-- bonus: bonusová otázka (body navyše) -->
       <xs:attribute name="bonus" type="Flag"/>
       <xs:attribute name="rating" type="xs:string"/>
+      <!-- alter-vyber: zaznamenaná zvolená pozícia každého <alter> v znení
+           (formát "genid:pozicia;..."), kvôli susedskému vylučovaniu pri
+           sedenie-vedomom generovaní -->
+      <xs:attribute name="alter-vyber" type="xs:string"/>
    </xs:complexType>
 
    <!-- Pokyny pre konkrétneho žiaka: voliteľný úvod (head) a záver (tail) -->
@@ -132,6 +136,11 @@
       <!-- start/stop: čas písania konkrétneho žiaka (pre prípad predĺženia) -->
       <xs:attribute name="start" type="xs:string"/>
       <xs:attribute name="stop" type="xs:string"/>
+      <!-- sedenie: miesto žiaka v učebni (napr. "1A" = rad+stĺpec), prítomné len
+           pri sedenie-vedomom generovaní proti odpisovaniu -->
+      <xs:attribute name="sedenie" type="xs:string"/>
+      <!-- cesta: zvolená vetva/variant zadania pre tohto žiaka -->
+      <xs:attribute name="cesta" type="xs:string"/>
    </xs:complexType>
 
    <!-- Koreňový element: celý súbor testov pre jednu písomku -->
