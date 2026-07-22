@@ -31,9 +31,9 @@ Vytvor súbor `.env` v koreňovom adresári projektu:
 ```env
 AI_PROVIDER=claude              # claude | gemini | ollama
 ANTHROPIC_API_KEY=xxxxxx
-ANTHROPIC_MODEL=claude-sonnet-4-6
+ANTHROPIC_MODEL=claude-sonnet-5
 GEMINI_API_KEY=yyyyyy
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.6-flash
 OLLAMA_MODEL=llama3.1
 OLLAMA_VISION_MODEL=gemma4:26b
 ALLOWED_HOST=your.domain.here

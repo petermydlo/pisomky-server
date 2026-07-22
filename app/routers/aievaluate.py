@@ -123,7 +123,7 @@ Question {i} (id: {ot['id']}, max points: {ot['body']}):
    prompt = f"Student: {meno_str}\n{otazky_text}"
 
    resp = client.messages.create(
-      model=os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-4-6'),
+      model=os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-5'),
       max_tokens=500 + len(otazky) * 200,
       output_config={'effort': 'low'},
       system=SYSTEM_PROMPT,

@@ -211,7 +211,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
             model=os.getenv('OLLAMA_MODEL', 'llama3.1'),
             messages=messages,
             stream=True,
-            options={'temperature': 0.3, 'num_ctx': 32768, 'keep_alive': '45m'}
+            options={'temperature': 0.3, 'num_ctx': 4096, 'keep_alive': '45m'}
          ):
             text = chunk['message']['content']
             if text:

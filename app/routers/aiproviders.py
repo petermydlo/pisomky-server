@@ -26,7 +26,7 @@ class ClaudeProvider(AIImportProvider):
    def __init__(self):
       import anthropic
       self.client = anthropic.Anthropic()
-      self.model = os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-4-6')
+      self.model = os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-5')
 
    def _content_block(self, obsah: bytes, mime_type: str) -> dict:
       import base64
@@ -80,7 +80,7 @@ class GeminiProvider(AIImportProvider):
       from google.genai import types
       self.client = genai.Client()
       self.types = types
-      self.model = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash')
+      self.model = os.getenv('GEMINI_MODEL', 'gemini-3.6-flash')
 
    def get_test_ids(self, obsah: bytes, mime_type: str) -> list[str]:
       doc_part = self.types.Part.from_bytes(data=obsah, mime_type=mime_type)
