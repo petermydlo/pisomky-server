@@ -154,6 +154,11 @@
                   </xsl:for-each-group>
                </div>
             </xsl:for-each-group>
+            <xsl:if test="empty($vsetky)">
+               <div class="grid bold bg-info">
+                  <div class="grid-span span7">Žiadne testy (<span class="autor"><xsl:value-of select="$autor"/></span>)</div>
+               </div>
+            </xsl:if>
          </div>
          <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
             <div class="modal-dialog">

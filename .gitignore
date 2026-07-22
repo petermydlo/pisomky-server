@@ -8,6 +8,7 @@ __pycache__/
 *.lock
 *.pdf
 *.fo
+.fop
 .backup/
 .pytest_cache/
 
