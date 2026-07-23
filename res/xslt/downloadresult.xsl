@@ -11,7 +11,7 @@
 
 <xsl:param name="kluc"/>
 
-<xsl:template match="/testy">
+<xsl:template match="testy">
    <fo:root xml:lang="sk">
       <fo:layout-master-set>
          <fo:simple-page-master master-name="strana" page-height="29.7cm" page-width="21cm" margin-top="0.5cm" margin-bottom="0.5cm" margin-left="1.5cm" margin-right="1.5cm">

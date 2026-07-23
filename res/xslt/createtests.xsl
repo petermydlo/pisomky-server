@@ -44,7 +44,7 @@
    <xsl:sequence select="tokenize(@cesta, ',')"/>
 </xsl:template>
 
-<xsl:template match="/triedy">
+<xsl:template match="triedy">
    <!-- sedenie moze presahovat vybrane triedy (spolocna miestnost) - preto sa
         rozdelenie a susedske vylucovanie pocita raz naprieč vsetkymi vybranymi
         triedami, nie samostatne pre kazdu -->
@@ -70,7 +70,7 @@
 </xsl:template>
 
 <!-- Vstupný template pre regenerovanie: zdrojom su existujúce testy XML (root <testy>, nie <triedy>) -->
-<xsl:template match="/testy">
+<xsl:template match="testy">
    <!-- sedení žiaci uz maju @sedenie z povodneho createtests - netreba nic
         dopocitavat z roster.xml, len znova zaructit odlisnost od susedov -->
    <xsl:variable name="nesedeni" as="element(test)*"
@@ -387,7 +387,7 @@
    <xsl:sequence select="if ($skupina = '' or empty($index)) then '' else (tokenize($student/@sedenie, ',')[$index[1]], '')[1]"/>
 </xsl:function>
 
-<!-- rad/stlpec zo zapisu sedenia typu "1A" (rad = vedduce cislice, stlpec: A=1,B=2...) -->
+<!-- rad/stlpec zo zapisu sedenia typu "1A" (rad = veduce cislice, stlpec: A=1,B=2...) -->
 <xsl:function name="my:seat-rad" as="xs:integer">
    <xsl:param name="sedenie" as="xs:string"/>
    <xsl:sequence select="xs:integer(replace($sedenie, '[^0-9]', ''))"/>
