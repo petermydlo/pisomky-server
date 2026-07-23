@@ -251,7 +251,7 @@ Text v `<znenie>` a `<odpoved>` podporuje formátovacie inline elementy: `<itali
 </otazka>
 ```
 
-**Bonusová a náhodná (`alter`) otázka** (`res/xml/questions/PIT4/PIT4_c01.xml`):
+**Náhodná (`alter`) otázka** (`res/xml/questions/PIT4/PIT4_c01.xml`):
 
 ```xml
 <otazka static="1" id="0b9ea41c">
@@ -437,7 +437,7 @@ Príklad (`res/xml/answers/DEMO/DEMO_I.A_01_1234.example.xml`):
 ## 8. Import odpovedí z fotiek/PDF cez AI
 
 Pre papierové (ceruzka na papieri) písomky slúži stránka `GET
-/admin/ai/importanswers` (ikona QR skeneru v `/admin`).
+/admin/ai/importanswers` (ikona QR kódu v `/admin`).
 
 ### 8.1 Automatický import (`POST /admin/ai/importanswers`)
 
