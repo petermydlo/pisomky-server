@@ -16,6 +16,7 @@ google-genai
 zxing-cpp
 qrcode
 pymupdf
+Pillow
 pytest
 ruff
 mypy
