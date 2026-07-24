@@ -58,21 +58,18 @@
                      <xsl:attribute name="class">tab-pane active</xsl:attribute>
                   </xsl:if>
                   <div class="flex-container-table">
-                     <!-- pokyny heads -->
                      <xsl:if test="current-group()/kapitola/pokyny/head">
                         <div class="okraj bold bg-info bg-opacity-50" role="button" data-bs-toggle="collapse" data-bs-target=".h{generate-id()}">Heads</div>
                            <xsl:apply-templates select="current-group()/kapitola/pokyny" mode="head">
                               <xsl:with-param name="id" select="concat('h', generate-id())"/>
                            </xsl:apply-templates>
                      </xsl:if>
-                     <!-- pokyny tails -->
                      <xsl:if test="current-group()/kapitola/pokyny/tail">
                         <div class="okraj bold bg-info bg-opacity-50" role="button" data-bs-toggle="collapse" data-bs-target=".t{generate-id()}">Tails</div>
                            <xsl:apply-templates select="current-group()/kapitola/pokyny" mode="tail">
                               <xsl:with-param name="id" select="concat('t', generate-id())"/>
                            </xsl:apply-templates>
                      </xsl:if>
-                     <!-- kategorie -->
                      <xsl:for-each select="current-group()/kapitola/kategoria">
                         <div class="pause-row">
                            <xsl:choose>
@@ -151,7 +148,6 @@
 <xsl:template match="otazka">
    <xsl:param name="id"/>
    <xsl:param name="stat"/>
-   <!-- vypocet otazka id -->
    <xsl:variable name="otazka_id" select="@id"/>
    <xsl:variable name="stat_otazka" select="$stat/statistika/otazka[@id = $otazka_id]"/>
    <div class="collapse flex-container-table-otazka {$id}">
@@ -173,7 +169,6 @@
          </xsl:choose>
          <div class="okraj flex-container-table-znenie flex-wrap bg-info-subtle flex-grow-1">
          <div class="kval-hviezdicky">
-            <!-- h1/h2: MCQ alebo otvorena -->
             <xsl:if test="odpoved">
                <i class="bi {if (count(odpoved[@spravna='1']) > 1) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Správne odpovede"/>
                <i class="bi {if (count(odpoved[not(@spravna='1')]) > 3) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Nesprávne odpovede"/>
@@ -182,12 +177,9 @@
                <i class="bi {if (vzor) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Vzor"/>
                <i class="bi {if (klucove_slova/slovo) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Kľúčové slová"/>
             </xsl:if>
-            <!-- h3: napoveda -->
             <i class="bi {if (napoveda[not(@pre)]) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Nápoveda"/>
             <span class="kval-separator"/>
-            <!-- h4: uspesnost >= 90% -->
             <i class="bi {if ($stat_otazka and round($stat_otazka/@percento) >= 90) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Úspešnosť ≥ 90%"/>
-            <!-- h5: rovnomernost vyberu -->
             <xsl:variable name="idealny_vyber">
                <xsl:choose>
                   <xsl:when test="@static and $stat_otazka/@pocet_vyber_kat">

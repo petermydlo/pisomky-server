@@ -14,7 +14,6 @@
       </xs:simpleContent>
    </xs:complexType>
 
-   <!-- Jeden pokus žiaka: obsahuje odpovede na všetky otázky v teste -->
    <xs:complexType name="Test">
       <xs:sequence>
          <xs:element name="otazka" type="OtazkaOdpoved" minOccurs="0" maxOccurs="unbounded"/>
@@ -25,7 +24,6 @@
       <xs:attribute name="dat" type="xs:dateTime" use="required"/>
    </xs:complexType>
 
-   <!-- Koreňový element: zoznam odovzdaní pre jednu skupinu/triedu/písomku -->
    <xs:element name="odpovede">
       <xs:complexType>
          <xs:sequence>
@@ -36,7 +34,6 @@
          <xs:attribute name="skupina" type="xs:string" use="required"/>
          <xs:attribute name="kapitola" type="xs:string" use="required"/>
          <xs:attribute name="fileid" type="xs:string" use="required"/>
-         <!-- autor: meno učiteľa, ktorý písomku vygeneroval -->
          <xs:attribute name="autor" type="xs:string"/>
          <!-- xml:lang a iné atribúty z cudzích menných priestorov (napr. xml:lang="sk") -->
          <xs:anyAttribute namespace="##other" processContents="lax"/>

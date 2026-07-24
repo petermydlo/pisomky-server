@@ -200,7 +200,6 @@
    <xsl:param name="vylucene-otazky-lavy" tunnel="yes" select="()" as="xs:string*"/>
    <xsl:param name="vylucene-otazky-horny" tunnel="yes" select="()" as="xs:string*"/>
    <xsl:variable name="pocetotazok" select="if (@pocet) then xs:integer(@pocet) else 1"/>
-   <!-- vyberiem spravny pocet otazok -->
    <xsl:variable name="otazkystaticke">
       <xsl:if test="$vc != ''">
          <xsl:apply-templates select="otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][@static = '1'][tokenize(@cesta, ',') = $vc or not(@cesta)][position() = 1 to $pocetotazok]">
@@ -215,7 +214,6 @@
    </xsl:variable>
    <xsl:variable name="zostatok" select="$pocetotazok - count($otazkystaticke/otazka)"/>
    <xsl:variable name="seed4" select="'4' || $seed || position() || generate-id()"/>
-   <!-- kandidati na dynamicky (nahodny) vyber v tejto kategorii -->
    <xsl:variable name="dynamicki-kandidati" select="otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][not(@static)][$vc = '' or tokenize(@cesta, ',') = $vc or not(@cesta)]"/>
    <!-- vyber s prioritnym vylucenim susedov (lavy+horny, potom len lavy, potom bez vylucenia) -->
    <xsl:variable name="vybrane-id" select="my:vyber-s-vylucenim($dynamicki-kandidati/@id, $vylucene-otazky-lavy, $vylucene-otazky-horny, $zostatok, $seed4)"/>
@@ -362,8 +360,8 @@
 </xsl:template>
 
 <xsl:template match="br | bold | italic | underline | upp | low | sup | sub">
-   <xsl:copy copy-namespaces="no"> <!-- skopiruje cely tag ... -->
-      <xsl:apply-templates/> <!-- ... a na vnutro aplikuje transformacie -->
+   <xsl:copy copy-namespaces="no">
+      <xsl:apply-templates/>
    </xsl:copy>
 </xsl:template>
 

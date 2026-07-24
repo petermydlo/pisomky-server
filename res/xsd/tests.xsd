@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-   <!-- Hodnota príznaku: vždy "1" -->
    <xs:simpleType name="Flag">
       <xs:restriction base="xs:string">
          <xs:enumeration value="1"/>
       </xs:restriction>
    </xs:simpleType>
 
-   <!-- Hodnota spravna: "0" alebo "1" -->
    <xs:simpleType name="BoolVal">
       <xs:restriction base="xs:string">
          <xs:enumeration value="0"/>
@@ -58,7 +56,6 @@
       </xs:choice>
    </xs:complexType>
 
-   <!-- Odpoveď v teste: text + @spravna -->
    <xs:complexType name="Odpoved" mixed="true">
       <xs:choice minOccurs="0" maxOccurs="unbounded">
          <xs:element name="italic" type="InlineMixed"/>
@@ -77,7 +74,6 @@
       <xs:attribute name="id" type="xs:string" use="required"/>
       <xs:attribute name="body" type="xs:nonNegativeInteger"/>
       <xs:attribute name="static" type="Flag"/>
-      <!-- bonus: bonusová otázka (body navyše) -->
       <xs:attribute name="bonus" type="Flag"/>
       <xs:attribute name="rating" type="xs:string"/>
       <!-- alter-vyber: zaznamenaná zvolená pozícia každého <alter> v znení
@@ -86,7 +82,6 @@
       <xs:attribute name="alter-vyber" type="xs:string"/>
    </xs:complexType>
 
-   <!-- Pokyny pre konkrétneho žiaka: voliteľný úvod (head) a záver (tail) -->
    <xs:complexType name="Pokyny">
       <xs:sequence>
          <xs:element name="head" minOccurs="0">
@@ -120,7 +115,6 @@
       </xs:sequence>
    </xs:complexType>
 
-   <!-- Jeden test (jeden žiak) -->
    <xs:complexType name="Test">
       <xs:sequence>
          <xs:element name="pokyny" type="Pokyny" minOccurs="0"/>
@@ -143,7 +137,6 @@
       <xs:attribute name="cesta" type="xs:string"/>
    </xs:complexType>
 
-   <!-- Koreňový element: celý súbor testov pre jednu písomku -->
    <xs:element name="testy">
       <xs:complexType>
          <xs:sequence>
@@ -161,6 +154,7 @@
          <xs:attribute name="autor" type="xs:string"/>
          <xs:attribute name="identita" type="xs:string"/>
          <xs:attribute name="anonymne" type="xs:string"/>
+         <xs:attribute name="filesave" type="Flag"/>
          <!-- xml:lang z iného menného priestoru -->
          <xs:anyAttribute namespace="##other" processContents="lax"/>
       </xs:complexType>

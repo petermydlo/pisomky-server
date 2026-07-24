@@ -26,7 +26,6 @@
       </xs:attribute>
    </xs:complexType>
 
-   <!-- Koreňový element: zoznam AI feedbackov pre jednu písomku -->
    <xs:element name="feedback">
       <xs:complexType>
          <xs:sequence>
@@ -37,7 +36,6 @@
          <xs:attribute name="skupina" type="xs:string"/>
          <xs:attribute name="kapitola" type="xs:string"/>
          <xs:attribute name="fileid" type="xs:string" use="required"/>
-         <!-- autor: meno učiteľa, ktorý písomku vygeneroval -->
          <xs:attribute name="autor" type="xs:string"/>
       </xs:complexType>
    </xs:element>

@@ -17,14 +17,14 @@
          </fo:page-sequence-master>
       </fo:layout-master-set>
       <fo:page-sequence master-reference="strany">
-         <fo:static-content flow-name="xsl-region-before"> <!-- pisem do headera -->
+         <fo:static-content flow-name="xsl-region-before">
             <fo:block font-family="DejaVu Serif" font-size="8pt" text-align="center">
                <fo:block>STREDNÁ PRIEMYSELNÁ ŠKOLA JOZEFA MURGAŠA</fo:block>
                <fo:block>Predmet:&#160; <xsl:value-of select="@predmet"/>,&#160;Trieda:&#160;<xsl:value-of select="@trieda"/>,&#160;Skupina:&#160;<xsl:value-of select="@skupina"/>,&#160;Kapitola:&#160;<xsl:value-of select="@kapitola"/></fo:block>
                <fo:block>Začiatok:&#160;<xsl:value-of select="@start"/>,&#160;Koniec:&#160;<xsl:value-of select="@stop"/></fo:block>
             </fo:block>
          </fo:static-content>
-         <fo:flow flow-name="xsl-region-body" line-height="1.5"> <!-- pisem do tela -->
+         <fo:flow flow-name="xsl-region-body" line-height="1.5">
             <fo:block break-before="page" font-size="12pt" font-family="DejaVu Serif">
                <xsl:apply-templates select="test"/>
             </fo:block>

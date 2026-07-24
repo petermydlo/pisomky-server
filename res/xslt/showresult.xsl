@@ -233,13 +233,13 @@
       <span>
          <span class="bold">
             <xsl:if test="@spravna = 1">
-               <xsl:attribute name="class">bold bg-warning</xsl:attribute> <!-- spravnu podfarbit zlto -->
+               <xsl:attribute name="class">bold bg-warning</xsl:attribute>
             </xsl:if>
             <xsl:if test="@spravna = 1 and $pismodpoved = $vybodpoved">
-               <xsl:attribute name="class">bold bg-success</xsl:attribute> <!-- spravnu ziakovu podfarbit zeleno -->
+               <xsl:attribute name="class">bold bg-success</xsl:attribute>
             </xsl:if>
             <xsl:if test="@spravna = 0 and $pismodpoved = $vybodpoved">
-               <xsl:attribute name="class">bold bg-danger</xsl:attribute> <!-- nespravnu ziakovu podfarbit cerveno -->
+               <xsl:attribute name="class">bold bg-danger</xsl:attribute>
             </xsl:if>
             <xsl:value-of select="$pismodpoved"/><xsl:text>)</xsl:text>
          </span>

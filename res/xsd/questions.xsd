@@ -8,14 +8,12 @@
       </xs:restriction>
    </xs:simpleType>
 
-   <!-- Hodnota príznaku: vždy "1" -->
    <xs:simpleType name="Flag">
       <xs:restriction base="xs:string">
          <xs:enumeration value="1"/>
       </xs:restriction>
    </xs:simpleType>
 
-   <!-- Hodnota spravna: "0" alebo "1" -->
    <xs:simpleType name="BoolVal">
       <xs:restriction base="xs:string">
          <xs:enumeration value="0"/>
@@ -76,7 +74,6 @@
       </xs:choice>
    </xs:complexType>
 
-   <!-- Odpoveď: zmiešaný obsah (text + inline elementy) -->
    <xs:complexType name="Odpoved" mixed="true">
       <xs:choice minOccurs="0" maxOccurs="unbounded">
          <xs:element name="italic" type="InlineMixed"/>
@@ -88,7 +85,6 @@
       <xs:attribute name="napoveda" type="xs:string"/>
    </xs:complexType>
 
-   <!-- Nápoveda k otázke: text s voliteľnou väzbou na konkrétnu odpoveď -->
    <xs:complexType name="Napoveda">
       <xs:simpleContent>
          <xs:extension base="xs:string">
@@ -98,7 +94,6 @@
       </xs:simpleContent>
    </xs:complexType>
 
-   <!-- Otázka -->
    <xs:complexType name="Otazka" mixed="true">
       <xs:choice minOccurs="0" maxOccurs="unbounded">
          <xs:element name="znenie" type="InlineMixed"/>
@@ -126,13 +121,11 @@
       <xs:attribute name="rating" type="xs:string"/>
       <!-- cesta: čiarkou oddelené identifikátory vetiev -->
       <xs:attribute name="cesta" type="xs:string"/>
-      <!-- autor: meno učiteľa, ktorému otázka patrí -->
       <xs:attribute name="autor" type="xs:string"/>
       <!-- nahrada_za: id otázky, ktorú táto nahrádza pre daného autora -->
       <xs:attribute name="nahrada_za" type="xs:string"/>
    </xs:complexType>
 
-   <!-- Kategória -->
    <xs:complexType name="Kategoria">
       <xs:sequence>
          <xs:element name="otazka" type="Otazka" minOccurs="0" maxOccurs="unbounded"/>
@@ -150,7 +143,6 @@
       <xs:attribute name="nahrada_za" type="xs:string"/>
    </xs:complexType>
 
-   <!-- Pokyny k písomke: voliteľný úvod (head) a záver (tail) -->
    <xs:complexType name="Pokyny">
       <xs:sequence>
          <xs:element name="head" minOccurs="0">
@@ -184,7 +176,6 @@
       </xs:sequence>
    </xs:complexType>
 
-   <!-- Koreňový element kapitola -->
    <xs:element name="kapitola">
       <xs:complexType>
          <xs:sequence>
@@ -194,6 +185,7 @@
          <xs:attribute name="predmet" type="xs:string" use="required"/>
          <xs:attribute name="id" type="xs:string" use="required"/>
          <xs:attribute name="nazov" type="xs:string"/>
+         <xs:attribute name="filesave" type="Flag"/>
       </xs:complexType>
    </xs:element>
 

@@ -46,7 +46,7 @@
 
 <xsl:template match="test">
    <fo:page-sequence master-reference="strany">
-      <fo:static-content flow-name="xsl-region-before"> <!-- pisem do headera -->
+      <fo:static-content flow-name="xsl-region-before">
          <fo:block font-family="DejaVu Serif">
             <fo:table table-layout="fixed" width="100%">
                <fo:table-column column-width="proportional-column-width(1)"/>
@@ -73,25 +73,25 @@
             </fo:table>
          </fo:block>
       </fo:static-content>
-      <fo:static-content flow-name="nie-prazdna-neparna-footer"> <!-- pisem do footera nie poslednej neparnej strany -->
+      <fo:static-content flow-name="nie-prazdna-neparna-footer">
          <fo:block font-family="DejaVu Serif">
             <fo:block font-size="8pt" text-align-last="justify">▶ Vždy je správna len jedna odpoveď.<fo:leader leader-pattern="space" leader-length.minimum="3cm"/><fo:inline font-size="10pt" font-weight="bold">OBRÁŤ MA</fo:inline></fo:block>
             <fo:block font-size="8pt">▶ V prípade omylu prečiarknite nesprávnu odpoveď a zakrúžkujte správnu.</fo:block>
          </fo:block>
       </fo:static-content>
-      <fo:static-content flow-name="nie-prazdna-parna-footer"> <!-- pisem do footera nie poslednej parnej strany -->
+      <fo:static-content flow-name="nie-prazdna-parna-footer">
          <fo:block font-family="DejaVu Serif">
             <fo:block font-size="8pt" text-align-last="justify">▶ Vždy je správna len jedna odpoveď.<fo:leader leader-pattern="space" leader-length.minimum="3cm"/><fo:inline font-size="10pt" font-weight="bold">POKRAČUJ NA ĎALŠOM LISTE</fo:inline></fo:block>
             <fo:block font-size="8pt">▶ V prípade omylu prečiarknite nesprávnu odpoveď a zakrúžkujte správnu.</fo:block>
          </fo:block>
       </fo:static-content>
-      <fo:static-content flow-name="nie-prazdna-posledna-footer"> <!-- pisem do footera poslednej strany -->
+      <fo:static-content flow-name="nie-prazdna-posledna-footer">
          <fo:block font-family="DejaVu Serif">
             <fo:block font-size="8pt">▶ Vždy je správna len jedna odpoveď.</fo:block>
             <fo:block font-size="8pt">▶ V prípade omylu prečiarknite nesprávnu odpoveď a zakrúžkujte správnu.</fo:block>
          </fo:block>
       </fo:static-content>
-      <fo:flow flow-name="xsl-region-body" line-height="1.5"> <!-- pisem do tela -->
+      <fo:flow flow-name="xsl-region-body" line-height="1.5">
          <fo:block break-before="page" font-size="10pt" font-family="DejaVu Serif">
             <fo:table table-layout="fixed" width="100%" border-collapse="collapse">
                <fo:table-column column-width="40%"/>

@@ -41,7 +41,7 @@
    <xsl:variable name="testid" select="@id"/>
    <xsl:variable name="riestest" select="my:riestest(.)"/>
    <fo:page-sequence master-reference="strany">
-      <fo:static-content flow-name="xsl-region-before"> <!-- pisem do headera -->
+      <fo:static-content flow-name="xsl-region-before">
          <fo:block font-family="DejaVu Serif">
             <fo:block>
                <fo:block font-size="8pt" text-align="center" space-after="-10pt">STREDNÁ PRIEMYSELNÁ ŠKOLA JOZEFA MURGAŠA</fo:block>
@@ -51,7 +51,7 @@
 <xsl:value-of select="$max1"/>%-<xsl:value-of select="$min1"/>%:1&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max2"/>%-<xsl:value-of select="$min2"/>%:2&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max3"/>%-<xsl:value-of select="$min3"/>%:3&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max4"/>%-<xsl:value-of select="$min4"/>%:4&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max5"/>%-<xsl:value-of select="$min5"/>%:5</fo:block>
          </fo:block>
       </fo:static-content>
-      <fo:flow flow-name="xsl-region-body" line-height="1.5"> <!-- pisem do tela -->
+      <fo:flow flow-name="xsl-region-body" line-height="1.5">
          <fo:block break-before="page" font-size="10pt" font-family="DejaVu Serif">
             <fo:table table-layout="fixed" width="100%" border-collapse="collapse">
                <fo:table-column column-width="40%"/>
@@ -222,13 +222,13 @@
          <xsl:variable name="pismodp"><xsl:number count="odpoved" format="a"/></xsl:variable>
          <fo:inline font-weight="bold">
             <xsl:if test="@spravna = 1">
-               <xsl:attribute name="background-color">yellow</xsl:attribute> <!-- spravnu podfarbit zlto -->
+               <xsl:attribute name="background-color">yellow</xsl:attribute>
             </xsl:if>
             <xsl:if test="@spravna = 1 and $pismodp = $vybodpoved">
-               <xsl:attribute name="background-color">green</xsl:attribute> <!-- spravnu ziakovu podfarbit zeleno -->
+               <xsl:attribute name="background-color">green</xsl:attribute>
             </xsl:if>
             <xsl:if test="@spravna = 0 and $pismodp = $vybodpoved">
-               <xsl:attribute name="background-color">red</xsl:attribute> <!-- nespravnu ziakovu podfarbit cerveno -->
+               <xsl:attribute name="background-color">red</xsl:attribute>
             </xsl:if>
             <xsl:value-of select="$pismodp"/><xsl:text>)</xsl:text>
          </fo:inline>
