@@ -184,12 +184,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
    //vymaze skupinu testov
    let _deleteData = null;
+   let _deleteEl = null;
    document.addEventListener('click', (event) => {
       if (!event.target.closest('.del')) return;
       event.stopPropagation();
       event.preventDefault();
       const el = event.target.closest('.del');
       _deleteData = skupinaData(el);
+      _deleteEl = el.closest('div.skupina');
       document.getElementById('deleteModalDesc').textContent =
          `Čo vymazať pre ${_deleteData.predmet}:${_deleteData.trieda}${_deleteData.skupina}:${_deleteData.kapitola}?`;
       const ikony = el.closest('div.skupina').querySelector('.subory-ikony');
@@ -204,17 +206,20 @@ document.addEventListener('DOMContentLoaded', () => {
       bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).show();
    });
 
-   document.getElementById('deleteModalConfirm').addEventListener('click', async () => {
+   document.getElementById('deleteModalConfirm').addEventListener('click', async (event) => {
       const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal'));
+      event.currentTarget.blur();
       modal.hide();
-      if (!_deleteData) return;
+      if (!_deleteData || !_deleteEl) return;
       const d = {
          ..._deleteData,
          del_test:     document.getElementById('delTest').checked     ? '1' : '0',
          del_answers:  document.getElementById('delAnswers').checked  ? '1' : '0',
          del_feedback: document.getElementById('delFeedback').checked ? '1' : '0',
       };
+      const deleteEl = _deleteEl;
       _deleteData = null;
+      _deleteEl = null;
       try {
          const resp = await fetch('/admin/deletetests', {
             method: 'DELETE',
@@ -222,8 +227,21 @@ document.addEventListener('DOMContentLoaded', () => {
             body: new URLSearchParams(d)
          });
          if (resp.ok) {
-            parent.location.hash = await resp.text();
-            location.reload();
+            const tabPane = deleteEl.closest('.tab-pane');
+            const bolPosledny = tabPane.querySelectorAll('div.skupina').length <= 1;
+
+            if (bolPosledny) {
+               parent.location.hash = await resp.text();
+               location.reload();
+            } else {
+               const collapseGroup = deleteEl.closest('.collapse[data-trieda]');
+               deleteEl.remove();
+               //ak bol posledny v ramci trieda/skupina, zmaz aj prazdny toggle header
+               if (collapseGroup && !collapseGroup.querySelector('div.skupina')) {
+                  collapseGroup.previousElementSibling?.remove();
+                  collapseGroup.remove();
+               }
+            }
          } else {
             chybaNotifikaciu(resp.status);
          }
