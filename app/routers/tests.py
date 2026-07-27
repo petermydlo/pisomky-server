@@ -2,6 +2,7 @@
 
 import os
 import secrets
+import lxml.etree as ET
 from pathlib import Path
 from app.utils import xslt_to_string, ensure_ids, test_xml_path
 from app.mytypes import StringForm, StringListForm, StringHeader, BoolForm
@@ -55,7 +56,7 @@ async def createtests(request: Request, predmet: StringForm, trieda: StringListF
       request.app.state.logger.error(f'chyba createtests2: {e}')
       raise HTTPException(status_code=400, detail='chyba createtests2: ' + str(e))
 
-@router.post('/admin/regeneratetests', response_class=RedirectResponse)
+@router.post('/admin/regeneratetests', response_class=PlainTextResponse)
 async def regeneratetests(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
    try:
       proc = request.app.state.proc
@@ -70,7 +71,8 @@ async def regeneratetests(request: Request, predmet: StringForm, trieda: StringF
          executable = xsltproc.compile_stylesheet(stylesheet_file='./res/xslt/createtests.xsl')
          executable.set_output_file(subor)
          executable.transform_to_file(source_file=subor)
-         return RedirectResponse(url='/admin#' + predmet, status_code=302)
+         novy_gendat = ET.parse(subor).getroot().get('gendat')
+         return PlainTextResponse(content=novy_gendat)
       except Exception as e:
          request.app.state.logger.error(f'chyba regeneratetests1: {e}')
          raise HTTPException(status_code=400, detail='chyba regenerates1: ' + str(e))

@@ -306,14 +306,29 @@ document.addEventListener('DOMContentLoaded', () => {
    });
 
    //regeneruje otazky v skupine testov (len ak nie su odpovede)
-   document.addEventListener('click', (event) => {
+   document.addEventListener('click', async (event) => {
       const btn = event.target.closest('.regenerate:not(.disabled)');
       if (!btn) return;
       event.stopPropagation();
       event.preventDefault();
       const d = skupinaData(btn);
       if (!confirm(`Naozaj chcete regenerovať otázky pre ${d.predmet}:${d.trieda}${d.skupina}:${d.kapitola}?`)) return;
-      odosliForm('/admin/regeneratetests', d);
+      try {
+         const resp = await fetch('/admin/regeneratetests', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams(d)
+         });
+         if (resp.ok) {
+            const novyGendat = await resp.text();
+            btn.closest('div.skupina').querySelector('#gendat').textContent = novyGendat;
+         } else {
+            chybaNotifikaciu(resp.status);
+         }
+      } catch (err) {
+         console.error('Chyba:', err);
+         zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
+      }
    });
 
    window.addEventListener('hashchange', onHashChange, false);

@@ -105,7 +105,7 @@
                                        <span class="sive"> (<xsl:value-of select="@fileid"/>)</span>
                                     </xsl:if>
                                  </div>
-                                 <div class="sive"><xsl:value-of select="$testy-el/@gendat"/></div>
+                                 <div id="gendat" class="sive"><xsl:value-of select="$testy-el/@gendat"/></div>
                                  <div>
                                     <span><xsl:value-of select="$testy-el/@start"/></span>
                                     <xsl:if test="$ma-test"><span class="startS penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></xsl:if>
