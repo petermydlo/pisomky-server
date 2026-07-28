@@ -130,8 +130,14 @@
                               <xsl:if test="@nazov"><xsl:attribute name="title"><xsl:value-of select="@id"/></xsl:attribute></xsl:if>
                               <xsl:value-of select="if (@nazov != '') then @nazov else @id"/>
                            </span>
+                           <xsl:if test="@body and @body != 0">
+                              (<xsl:value-of select="@body"/>b)
+                           </xsl:if>
+                           <xsl:if test="@body and @body != 0 and @pocet">
+                              <xsl:text> </xsl:text>
+                           </xsl:if>
                            <xsl:if test="@pocet">
-                              (<xsl:value-of select="@pocet"/>)
+                              [<xsl:value-of select="@pocet"/>]
                            </xsl:if>
                            </span>
                            <xsl:if test="@autor">
