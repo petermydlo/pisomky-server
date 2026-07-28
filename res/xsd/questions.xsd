@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:vc="http://www.w3.org/2007/XMLSchema-versioning" vc:minVersion="1.1">
 
    <!-- Typ pre 8-znakový hex identifikátor (SHA-256 hash) -->
    <xs:simpleType name="HexId">
@@ -125,10 +126,10 @@
       <xs:attribute name="cesta" type="xs:string"/>
       <!-- bonus: bonusová otázka (body navyše, nezapočítavajú sa do maxima) -->
       <xs:attribute name="bonus" type="Flag"/>
-      <!-- autor/nahrada_za: smú byť prítomné len spolu (nevynucované, XSD 1.0) -->
       <xs:attribute name="autor" type="xs:string"/>
       <!-- nahrada_za: id otázky, ktorú táto nahrádza pre daného autora -->
       <xs:attribute name="nahrada_za" type="xs:string"/>
+      <xs:assert test="not(@autor) = not(@nahrada_za)"/>
    </xs:complexType>
 
    <xs:complexType name="Kategoria">
@@ -144,9 +145,9 @@
       <xs:attribute name="static" type="Flag"/>
       <!-- bonus: bonusová kategória (body navyše, nezapočítavajú sa do maxima) -->
       <xs:attribute name="bonus" type="Flag"/>
-      <!-- autor/nahrada_za: smú byť prítomné len spolu (nevynucované, XSD 1.0) -->
       <xs:attribute name="autor" type="xs:string"/>
       <xs:attribute name="nahrada_za" type="xs:string"/>
+      <xs:assert test="not(@autor) = not(@nahrada_za)"/>
    </xs:complexType>
 
    <xs:complexType name="Pokyny">

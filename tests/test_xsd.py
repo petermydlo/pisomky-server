@@ -2,7 +2,7 @@
 
 import tarfile
 import pytest
-import lxml.etree as ET
+import xmlschema
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -10,8 +10,13 @@ XSD_DIR = ROOT / 'res' / 'xsd'
 ARCHIV_DIR = ROOT / 'res' / 'xml' / 'archiv'
 
 
-def _load_schema(name: str) -> ET.XMLSchema:
-   return ET.XMLSchema(ET.parse(str(XSD_DIR / name)))
+def _load_schema(name: str) -> xmlschema.XMLSchema11:
+   return xmlschema.XMLSchema11(str(XSD_DIR / name))
+
+
+def _assert_valid(schema: xmlschema.XMLSchema11, source) -> None:
+   errors = list(schema.iter_errors(source))
+   assert not errors, '\n'.join(str(e.reason) for e in errors)
 
 
 def _questions_files():
@@ -59,8 +64,7 @@ def _feedback_files():
 @pytest.mark.parametrize('xml_path', _questions_files())
 def test_questions_schema(xml_path: Path):
    schema = _load_schema('questions.xsd')
-   doc = ET.parse(str(xml_path))
-   assert schema.validate(doc), _format_errors(schema)
+   _assert_valid(schema, str(xml_path))
 
 
 @pytest.mark.parametrize('src', _tests_files())
@@ -68,26 +72,20 @@ def test_tests_schema(src):
    schema = _load_schema('tests.xsd')
    kind, path, member_name = src
    if kind == 'file':
-      doc = ET.parse(str(path))
+      source = str(path)
    else:
       with tarfile.open(path, 'r:xz') as tar:
-         doc = ET.fromstring(tar.extractfile(member_name).read())
-   assert schema.validate(doc), _format_errors(schema)
+         source = tar.extractfile(member_name).read()
+   _assert_valid(schema, source)
 
 
 @pytest.mark.parametrize('xml_path', _answers_files())
 def test_answers_schema(xml_path: Path):
    schema = _load_schema('answers.xsd')
-   doc = ET.parse(str(xml_path))
-   assert schema.validate(doc), _format_errors(schema)
+   _assert_valid(schema, str(xml_path))
 
 
 @pytest.mark.parametrize('xml_path', _feedback_files())
 def test_feedback_schema(xml_path: Path):
    schema = _load_schema('feedback.xsd')
-   doc = ET.parse(str(xml_path))
-   assert schema.validate(doc), _format_errors(schema)
-
-
-def _format_errors(schema: ET.XMLSchema) -> str:
-   return '\n'.join(f'{e.line}: {e.message}' for e in schema.error_log)
+   _assert_valid(schema, str(xml_path))
