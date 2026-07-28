@@ -77,16 +77,17 @@ async def process_chapter(request: Request, predmet: StringForm, kapitola_id: St
       raise HTTPException(status_code=400, detail=str(e))
 
 @router.post('/admin/process_category', response_class=JSONResponse)
-async def process_category(request: Request, predmet: StringForm, operacia: StringForm, kategoria_id: StringFormOptional = None, kapitola_id: StringFormOptional = None, za_kategoria_id: StringFormOptional = None, pocet: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, nazov: StringFormOptional = None):
+async def process_category(request: Request, predmet: StringForm, operacia: StringForm, kategoria_id: StringFormOptional = None, kapitola_id: StringFormOptional = None, za_kategoria_id: StringFormOptional = None, pocet: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None):
    try:
       body = body or None
       static = static or None
       bonus = bonus or None
       nazov = nazov or None
+      deprecated = deprecated or None
       if operacia == 'create':
          if not kapitola_id:
             raise HTTPException(status_code=400, detail='kapitola_id je povinné pre vytvor')
-         data = {k: v for k, v in {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov}.items() if v is not None}
+         data = {k: v for k, v in {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated}.items() if v is not None}
          nova_id, ok = add_category(kapitola_id, data, za_kategoria_id=za_kategoria_id, predmet=predmet)
          if not ok:
             raise HTTPException(status_code=400, detail='Kategória sa nedala vytvoriť')
@@ -94,7 +95,7 @@ async def process_category(request: Request, predmet: StringForm, operacia: Stri
       if not kategoria_id:
          raise HTTPException(status_code=400, detail='kategoria_id je povinné pre túto operáciu')
       if operacia == 'update':
-         update_data: dict[str, str | None] = {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov}
+         update_data: dict[str, str | None] = {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated}
          ok = update_category(kategoria_id, update_data)
          if not ok:
             raise HTTPException(status_code=400, detail='Kategória sa nedala upraviť')
@@ -128,22 +129,24 @@ async def get_category(id: StringQuery):
       'static': kategoria.get('static'),
       'bonus': kategoria.get('bonus'),
       'nazov': kategoria.get('nazov'),
+      'deprecated': kategoria.get('deprecated'),
    }, status_code=200)
 
 @router.post('/admin/process_question', response_class=JSONResponse)
-async def process_question(request: Request, operacia: StringForm, otazka_id: StringFormOptional = None, kategoria_id: StringFormOptional = None, za_otazka_id: StringFormOptional = None, znenie: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, nazov: StringFormOptional = None, odpovede: StringFormOptional = None, napovede: StringFormOptional = None, vzor: StringFormOptional = None, klucove_slova: StringFormOptional = None):
+async def process_question(request: Request, operacia: StringForm, otazka_id: StringFormOptional = None, kategoria_id: StringFormOptional = None, za_otazka_id: StringFormOptional = None, znenie: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None, odpovede: StringFormOptional = None, napovede: StringFormOptional = None, vzor: StringFormOptional = None, klucove_slova: StringFormOptional = None):
    try:
       body = body or None
       static = static or None
       bonus = bonus or None
       nazov = nazov or None
+      deprecated = deprecated or None
       odpovede_list = json.loads(odpovede) if odpovede else []
       napovede_list = json.loads(napovede) if napovede else []
       klucove_slova_list = json.loads(klucove_slova) if klucove_slova else []
       if operacia == 'create':
          if not kategoria_id:
             raise HTTPException(status_code=400, detail='kategoria_id je povinné pre vytvor')
-         data = {k: v for k, v in {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'vzor': vzor, 'klucove_slova': klucove_slova_list}.items() if v is not None}
+         data = {k: v for k, v in {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated, 'vzor': vzor, 'klucove_slova': klucove_slova_list}.items() if v is not None}
          data['odpovede'] = odpovede_list
          data['napovede'] = napovede_list
          nova_id, ok = add_question(kategoria_id, data, za_otazka_id=za_otazka_id)
@@ -153,7 +156,7 @@ async def process_question(request: Request, operacia: StringForm, otazka_id: St
       if not otazka_id:
          raise HTTPException(status_code=400, detail='otazka_id je povinné pre túto operáciu')
       if operacia == 'update':
-         data = {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'odpovede': odpovede_list, 'napovede': napovede_list, 'vzor': vzor, 'klucove_slova': klucove_slova_list}
+         data = {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated, 'odpovede': odpovede_list, 'napovede': napovede_list, 'vzor': vzor, 'klucove_slova': klucove_slova_list}
          otazka_el, _ = find_question(otazka_id)
          if otazka_el is None:
             raise HTTPException(status_code=400, detail='Otázka sa nedala upraviť')
@@ -217,6 +220,7 @@ async def get_question(id: StringQuery):
       'static': otazka.get('static'),
       'bonus': otazka.get('bonus'),
       'nazov': otazka.get('nazov'),
+      'deprecated': otazka.get('deprecated'),
    }, status_code=200)
 
 @router.get('/admin/is_used', response_class=JSONResponse)

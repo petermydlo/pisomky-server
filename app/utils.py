@@ -350,6 +350,7 @@ def update_category(kategoria_id: str, nove_data: Mapping[str, str | None], cach
      'static' - '1', alebo None (odstranit atribut)
      'bonus'  - '1', alebo None (odstranit atribut)
      'nazov'  - string s nazvom kategorie, alebo None (odstranit atribut)
+     'deprecated' - '1' (rucne archivovat), alebo None (odstranit atribut)
    Vracia True ak uspech, False ak kategoria nenajdena.
    """
    kategoria, cesta = find_category(kategoria_id, cache)
@@ -362,7 +363,7 @@ def update_category(kategoria_id: str, nove_data: Mapping[str, str | None], cach
       kategoria = _xfind(tree, ".//kategoria[@id=$id]", id=kategoria_id)
       if kategoria is None:
          return False
-      for attr in ('pocet', 'body', 'static', 'bonus', 'nazov', 'paused'):
+      for attr in ('pocet', 'body', 'static', 'bonus', 'nazov', 'paused', 'deprecated'):
          if attr in nove_data:
             if nove_data[attr] is None:
                if attr in kategoria.attrib:
@@ -444,7 +445,7 @@ def add_category(kapitola_id: str, nova_kategoria: dict, za_kategoria_id: str | 
       tree = ET.parse(cesta, xmlParser)
       root = tree.getroot()
       el = ET.Element('kategoria')
-      for attr in ('pocet', 'body', 'static', 'bonus', 'nazov'):
+      for attr in ('pocet', 'body', 'static', 'bonus', 'nazov', 'deprecated'):
          if nova_kategoria.get(attr):
             el.set(attr, nova_kategoria[attr])
       if za_kategoria_id:
@@ -591,7 +592,7 @@ def _zostav_otazka_element(data: dict) -> ET._Element:
    aj fork_question.
    """
    el = ET.Element('otazka')
-   for attr in ('body', 'static', 'bonus', 'nazov'):
+   for attr in ('body', 'static', 'bonus', 'nazov', 'deprecated'):
       if data.get(attr):
          el.set(attr, data[attr])
    if 'znenie' in data:
@@ -651,6 +652,7 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
      'static'    - '1', alebo None (odstranit atribut)
      'bonus'     - '1', alebo None (odstranit atribut)
      'nazov'     - string s nazvom otazky, alebo None (odstranit atribut)
+     'deprecated' - '1' (rucne archivovat), alebo None (odstranit atribut)
      'odpovede'  - list dictov [{'text': ..., 'spravna': '1'/'0', 'napovedy': [text, ...]}, ...]
      'napovede'  - list textov celoplosnych napovedi (bez @pre)
    Vracia True ak uspech, False ak otazka nenajdena.
@@ -666,7 +668,7 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
       if otazka is None:
          return False
       # atributy
-      for attr in ('body', 'static', 'bonus', 'nazov', 'paused'):
+      for attr in ('body', 'static', 'bonus', 'nazov', 'paused', 'deprecated'):
          if attr in nove_data:
             if nove_data[attr] is None:
                if attr in otazka.attrib:

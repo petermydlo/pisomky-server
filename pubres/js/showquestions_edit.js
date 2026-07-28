@@ -66,6 +66,7 @@ function vytvorFormularKategorie(data) {
          <label>Body <input type="number" class="kat-body" min="0"/></label>
          <label><input type="checkbox" class="kat-static"/> statická</label>
          <label><input type="checkbox" class="kat-bonus"/> bonusová</label>
+         <label class="deprecated-checkbox"><input type="checkbox" class="kat-deprecated"/> deprecated</label>
       </div>
       <button type="button" class="kat-uloz">Uložiť</button>
       <button type="button" class="kat-zrus">Zrušiť</button>
@@ -75,6 +76,7 @@ function vytvorFormularKategorie(data) {
    form.querySelector('.kat-body').value = data.body || '';
    form.querySelector('.kat-static').checked = data.static === '1';
    form.querySelector('.kat-bonus').checked = data.bonus === '1';
+   form.querySelector('.kat-deprecated').checked = data.deprecated === '1';
    return form;
 }
 
@@ -103,6 +105,7 @@ function pridajKategoriu(predmet) {
          static: form.querySelector('.kat-static').checked ? '1' : '',
          bonus: form.querySelector('.kat-bonus').checked ? '1' : '',
          nazov: form.querySelector('.kat-nazov').value,
+         deprecated: form.querySelector('.kat-deprecated').checked ? '1' : '',
       };
       postForm('/admin/process_category', params)
          .then(() => location.reload())
@@ -127,6 +130,7 @@ function upravKategoriu(predmet, kategoriaId) {
             static: form.querySelector('.kat-static').checked ? '1' : '',
             bonus: form.querySelector('.kat-bonus').checked ? '1' : '',
             nazov: form.querySelector('.kat-nazov').value,
+            deprecated: form.querySelector('.kat-deprecated').checked ? '1' : '',
          };
          postForm('/admin/process_category', params)
             .then(() => location.reload())
@@ -219,6 +223,7 @@ function vytvorFormularOtazky(data, jeMcq) {
          <label>Body <input type="number" class="otazka-body" min="0"/></label>
          <label><input type="checkbox" class="otazka-static"/> statická</label>
          <label><input type="checkbox" class="otazka-bonus"/> bonusová</label>
+         <label class="deprecated-checkbox"><input type="checkbox" class="otazka-deprecated"/> deprecated</label>
       </div>
       <div class="otazka-napovedy">
          <div class="otazka-napovedy-zoznam"></div>
@@ -250,6 +255,7 @@ function vytvorFormularOtazky(data, jeMcq) {
    form.querySelector('.otazka-body').value = data.body || '';
    form.querySelector('.otazka-static').checked = data.static === '1';
    form.querySelector('.otazka-bonus').checked = data.bonus === '1';
+   form.querySelector('.otazka-deprecated').checked = data.deprecated === '1';
 
    const odpovedeWrap = form.querySelector('.otazka-odpovede');
    (data.odpovede || []).forEach(odp => odpovedeWrap.appendChild(riadokOdpoved(odp)));
@@ -289,6 +295,7 @@ function otvorFormularOtazky(otazkaId) {
             static: form.querySelector('.otazka-static').checked ? '1' : '',
             bonus: form.querySelector('.otazka-bonus').checked ? '1' : '',
             nazov: form.querySelector('.otazka-nazov').value,
+            deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
             odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),
             napovede: JSON.stringify(zostavCeloplosneNapovede(form)),
             vzor: mcq ? '' : form.querySelector('.otazka-vzor').value,
@@ -320,6 +327,7 @@ function pridajOtazku(kategoriaId) {
          static: form.querySelector('.otazka-static').checked ? '1' : '',
          bonus: form.querySelector('.otazka-bonus').checked ? '1' : '',
          nazov: form.querySelector('.otazka-nazov').value,
+         deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
          odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),
          napovede: JSON.stringify(zostavCeloplosneNapovede(form)),
          vzor: mcq ? '' : form.querySelector('.otazka-vzor').value,

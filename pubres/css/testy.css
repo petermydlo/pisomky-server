@@ -597,6 +597,12 @@ div:hover > span.penIcon.editActions {
    width: 5rem;
 }
 
+.deprecated-checkbox {
+   margin-left: auto;
+   color: firebrick;
+   font-weight: bold;
+}
+
 .otazka-odpovede-fieldset {
    border: 1px solid silver;
    border-radius: 0.25rem;
