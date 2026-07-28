@@ -16,6 +16,14 @@ function getJson(url) {
    });
 }
 
+function reloadZachovajKapitolu() {
+   const aktivna = document.querySelector('.tab-pane.active');
+   if (aktivna) {
+      location.hash = aktivna.id;
+   }
+   location.reload();
+}
+
 function confirmZmazanie(typ, id, nazov) {
    return getJson(`/admin/is_used?id=${encodeURIComponent(id)}&typ=${typ}`).then(data => {
       const text = data.used
@@ -32,7 +40,7 @@ function pridajKapitolu(predmet) {
    if (!kapitolaId) return;
    const nazov = prompt('Názov kapitoly (voliteľné):') || '';
    postForm('/admin/process_chapter', {predmet, kapitola_id: kapitolaId, operacia: 'create', nazov})
-      .then(() => location.reload())
+      .then(() => reloadZachovajKapitolu())
       .catch(err => alert(err.message));
 }
 
@@ -40,14 +48,14 @@ function upravKapitolu(predmet, kapitolaId) {
    const nazov = prompt('Nový názov kapitoly:');
    if (nazov === null) return;
    postForm('/admin/process_chapter', {predmet, kapitola_id: kapitolaId, operacia: 'update', nazov})
-      .then(() => location.reload())
+      .then(() => reloadZachovajKapitolu())
       .catch(err => alert(err.message));
 }
 
 function zmazKapitolu(predmet, kapitolaId) {
    if (!confirm(`Naozaj zmazať kapitolu ${kapitolaId}?`)) return;
    postForm('/admin/process_chapter', {predmet, kapitola_id: kapitolaId, operacia: 'delete'})
-      .then(() => location.reload())
+      .then(() => reloadZachovajKapitolu())
       .catch(err => alert(err.message));
 }
 
@@ -108,7 +116,7 @@ function pridajKategoriu(predmet) {
          deprecated: form.querySelector('.kat-deprecated').checked ? '1' : '',
       };
       postForm('/admin/process_category', params)
-         .then(() => location.reload())
+         .then(() => reloadZachovajKapitolu())
          .catch(err => alert(err.message));
    });
 }
@@ -133,7 +141,7 @@ function upravKategoriu(predmet, kategoriaId) {
             deprecated: form.querySelector('.kat-deprecated').checked ? '1' : '',
          };
          postForm('/admin/process_category', params)
-            .then(() => location.reload())
+            .then(() => reloadZachovajKapitolu())
             .catch(err => alert(err.message));
       });
    }).catch(err => alert(err.message));
@@ -143,14 +151,14 @@ function zmazKategoriu(predmet, kategoriaId, nazov) {
    confirmZmazanie('kategoria', kategoriaId, nazov).then(potvrdene => {
       if (!potvrdene) return;
       postForm('/admin/process_category', {predmet, kategoria_id: kategoriaId, operacia: 'delete'})
-         .then(() => location.reload())
+         .then(() => reloadZachovajKapitolu())
          .catch(err => alert(err.message));
    });
 }
 
 function obnovKategoriu(predmet, kategoriaId) {
    postForm('/admin/process_category', {predmet, kategoria_id: kategoriaId, operacia: 'restore'})
-      .then(() => location.reload())
+      .then(() => reloadZachovajKapitolu())
       .catch(err => alert(err.message));
 }
 
@@ -302,7 +310,7 @@ function otvorFormularOtazky(otazkaId) {
             klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),
          };
          postForm('/admin/process_question', params)
-            .then(() => location.reload())
+            .then(() => reloadZachovajKapitolu())
             .catch(err => alert(err.message));
       });
    }).catch(err => alert(err.message));
@@ -334,7 +342,7 @@ function pridajOtazku(kategoriaId) {
          klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),
       };
       postForm('/admin/process_question', params)
-         .then(() => location.reload())
+         .then(() => reloadZachovajKapitolu())
          .catch(err => alert(err.message));
    });
 }
@@ -343,18 +351,28 @@ function zmazOtazku(otazkaId, znenie) {
    confirmZmazanie('otazka', otazkaId, znenie).then(potvrdene => {
       if (!potvrdene) return;
       postForm('/admin/process_question', {otazka_id: otazkaId, operacia: 'delete'})
-         .then(() => location.reload())
+         .then(() => reloadZachovajKapitolu())
          .catch(err => alert(err.message));
    });
 }
 
 function obnovOtazku(otazkaId) {
    postForm('/admin/process_question', {otazka_id: otazkaId, operacia: 'restore'})
-      .then(() => location.reload())
+      .then(() => reloadZachovajKapitolu())
       .catch(err => alert(err.message));
 }
 
+function aktivujKapitoluPodlaHash() {
+   if (!location.hash) return;
+   const kapitolaId = location.hash.slice(1);
+   const odkaz = document.querySelector(`a.nav-link[href="#${CSS.escape(kapitolaId)}"]`);
+   if (odkaz && window.bootstrap) {
+      new bootstrap.Tab(odkaz).show();
+   }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+   aktivujKapitoluPodlaHash();
    document.addEventListener('click', (e) => {
       const kap = e.target.closest('.addKapitolaIcon, .editKapitolaIcon, .delKapitolaIcon');
       if (kap) {
