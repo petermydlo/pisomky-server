@@ -4,7 +4,7 @@ import os
 import secrets
 import lxml.etree as ET
 from pathlib import Path
-from app.utils import xslt_to_string, ensure_ids, test_xml_path
+from app.utils import xslt_to_string, ensure_ids, test_xml_path, get_testy_autor
 from app.mytypes import StringForm, StringListForm, StringHeader, BoolForm
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse
@@ -66,6 +66,7 @@ async def regeneratetests(request: Request, predmet: StringForm, trieda: StringF
       xsltproc.set_parameter('fileid', proc.make_string_value(fileid))
       xsltproc.set_parameter('predmet', proc.make_string_value(predmet))
       xsltproc.set_parameter('kapitola', proc.make_string_value(kapitola))
+      xsltproc.set_parameter('autor', proc.make_string_value(get_testy_autor(predmet, trieda, skupina, kapitola, fileid)))
       try:
          ensure_ids(f'./res/xml/questions/{predmet}/{predmet}_{kapitola}.xml')
          executable = xsltproc.compile_stylesheet(stylesheet_file='./res/xslt/createtests.xsl')

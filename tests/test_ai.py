@@ -40,7 +40,7 @@ QUESTIONS_XML = f"""\
       <otazka id="{OTAZKA_ID}">
          <znenie>Koľko je 1/2 + 1/4?</znenie>
          <odpoved spravna="0">1/6</odpoved>
-         <odpoved spravna="1" napoveda="zlomky">3/4</odpoved>
+         <odpoved spravna="1" napoveda_key="zlomky">3/4</odpoved>
          <napoveda>Všeobecná nápoveda k otázke</napoveda>
          <napoveda pre="zlomky">Nápoveda k spoločnému menovateľu</napoveda>
          <napoveda pre="iny_kluc">Nápoveda, ktorá sa nemá zobraziť</napoveda>

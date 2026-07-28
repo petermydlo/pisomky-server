@@ -282,6 +282,24 @@ def create_chapter(predmet: str, kapitola_id: str, nazov: str | None = None) -> 
    tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return kapitola_id, True
 
+def update_chapter(kapitola_id: str, predmet: str, nazov: str | None, cache: dict | None = None) -> bool:
+   """Upravi nazov kapitoly v questions XML.
+   Vracia True ak uspech, False ak kapitola nenajdena.
+   """
+   kapitola, cesta = find_chapter(kapitola_id, predmet, cache)
+   if kapitola is None or cesta is None:
+      return False
+   xmlParser = ET.XMLParser(remove_blank_text=True)
+   tree = ET.parse(cesta, xmlParser)
+   root = tree.getroot()
+   if nazov:
+      root.set('nazov', nazov)
+   elif 'nazov' in root.attrib:
+      del root.attrib['nazov']
+   ET.indent(tree, space='   ')
+   tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
+   return True
+
 def find_category(kategoria_id: str, cache: dict | None = None) -> tuple[ET._Element, str] | tuple[None, None]:
    """Najde kategoriu v questions XML podla @id.
    Prehladava vsetky subory v res/xml/questions/, vyuziva cache
@@ -324,12 +342,14 @@ def find_category(kategoria_id: str, cache: dict | None = None) -> tuple[ET._Ele
    return None, None
 
 def update_category(kategoria_id: str, nove_data: Mapping[str, str | None], cache: dict | None = None) -> bool:
-   """Upravi atributy kategorie v questions XML.
+   """Upravi atributy kategorie v questions XML. Vsetky polia su volitelne;
+   ktorekolvek z nich sa da poslat aj ako None, cim sa existujuci atribut odstrani.
    nove_data je dict, moze obsahovat:
-     'pocet'  - string s poctom otazok na vyber
-     'body'   - string s poctom bodov
-     'static' - '1' alebo None (odstranit atribut)
-     'bonus'  - '1' alebo None (odstranit atribut)
+     'pocet'  - string s poctom otazok na vyber, alebo None (odstranit atribut)
+     'body'   - string s poctom bodov, alebo None (odstranit atribut)
+     'static' - '1', alebo None (odstranit atribut)
+     'bonus'  - '1', alebo None (odstranit atribut)
+     'nazov'  - string s nazvom kategorie, alebo None (odstranit atribut)
    Vracia True ak uspech, False ak kategoria nenajdena.
    """
    kategoria, cesta = find_category(kategoria_id, cache)
@@ -342,7 +362,7 @@ def update_category(kategoria_id: str, nove_data: Mapping[str, str | None], cach
       kategoria = _xfind(tree, ".//kategoria[@id=$id]", id=kategoria_id)
       if kategoria is None:
          return False
-      for attr in ('pocet', 'body', 'static', 'bonus', 'paused'):
+      for attr in ('pocet', 'body', 'static', 'bonus', 'nazov', 'paused'):
          if attr in nove_data:
             if nove_data[attr] is None:
                if attr in kategoria.attrib:
@@ -355,8 +375,8 @@ def update_category(kategoria_id: str, nove_data: Mapping[str, str | None], cach
 
 def delete_category(kategoria_id: str, cache: dict | None = None) -> bool:
    """Vymaze kategoriu z questions XML podla @id.
-   Ak je ktora otazka pouzita v tests, nastavi @deprecated='1' na kategorii
-   aj vsetkych jej otazkach namiesto vymazania.
+   Ak je ktora otazka pouzita v tests, nastavi @deprecated='1' len na kategorii
+   (nie na jej otazkach) namiesto vymazania.
    Vracia True ak uspech, False ak kategoria nenajdena.
    """
    kategoria, cesta = find_category(kategoria_id, cache)
@@ -383,13 +403,35 @@ def delete_category(kategoria_id: str, cache: dict | None = None) -> bool:
       tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return True
 
+def restore_category(kategoria_id: str, cache: dict | None = None) -> bool:
+   """Obnovi (odstrani @deprecated) kategoriu v questions XML podla @id.
+   Nerobi nic s jej otazkami.
+   Vracia True ak uspech, False ak kategoria nenajdena.
+   """
+   kategoria, cesta = find_category(kategoria_id, cache)
+   if kategoria is None or cesta is None:
+      return False
+   lock = FileLock(cesta + '.lock')
+   with lock:
+      xmlParser = ET.XMLParser(remove_blank_text=True)
+      tree = ET.parse(cesta, xmlParser)
+      kategoria = _xfind(tree, ".//kategoria[@id=$id]", id=kategoria_id)
+      if kategoria is None:
+         return False
+      if 'deprecated' in kategoria.attrib:
+         del kategoria.attrib['deprecated']
+      ET.indent(tree, space='   ')
+      tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
+   return True
+
 def add_category(kapitola_id: str, nova_kategoria: dict, za_kategoria_id: str | None = None, predmet: str | None = None, cache: dict | None = None) -> tuple[str | None, bool]:
    """Prida novu kategoriu do kapitoly v questions XML.
    nova_kategoria je dict, moze obsahovat:
      'pocet'    - string s poctom otazok na vyber (povinny)
-     'body'     - string s poctom bodov
-     'static'   - '1' alebo None
-     'bonus'    - '1' alebo None
+     'body'     - string s poctom bodov, volitelne
+     'static'   - '1', volitelne
+     'bonus'    - '1', volitelne
+     'nazov'    - string s nazvom kategorie, volitelne
    za_kategoria_id - volitelne, vlozi kategoriu za kategoriu s danym id, inak na koniec.
    Vracia (kategoria_id, True) ak uspech, (None, False) pri chybe.
    """
@@ -402,7 +444,7 @@ def add_category(kapitola_id: str, nova_kategoria: dict, za_kategoria_id: str | 
       tree = ET.parse(cesta, xmlParser)
       root = tree.getroot()
       el = ET.Element('kategoria')
-      for attr in ('pocet', 'body', 'static', 'bonus'):
+      for attr in ('pocet', 'body', 'static', 'bonus', 'nazov'):
          if nova_kategoria.get(attr):
             el.set(attr, nova_kategoria[attr])
       if za_kategoria_id:
@@ -506,14 +548,111 @@ def find_question(otazka_id: str, cache: dict | None = None) -> tuple[ET._Elemen
 
    return None, None
 
+def _priprav_odpoved_element(text: str, spravna: str | None) -> ET._Element:
+   """Vytvori <odpoved> element z textu, ktory moze obsahovat markup tagy
+   (bold/italic/underline), rovnaka konvencia ako znenie.
+   """
+   try:
+      el = ET.fromstring(f'<odpoved>{text}</odpoved>')
+   except ET.XMLSyntaxError:
+      el = ET.Element('odpoved')
+      el.text = text
+   el.set('spravna', '1' if spravna == '1' else '0')
+   return el
+
+def _pridaj_odpovede(otazka: ET._Element, odpovede: list[dict]) -> None:
+   """Prida <odpoved> elementy (s markupom) a k nim viazane <napoveda pre="..."> do otazka.
+   Kazda odpoved je dict {'text': ..., 'spravna': '1'/'0', 'napovedy': [text, ...]}.
+   Odpoved s neprazdnym 'napovedy' dostane vygenerovany napoveda_key ('o1', 'o2', ...
+   podla poradia) a kazdy text z 'napovedy' vlastny <napoveda pre="tento kluc"> element
+   (viac elementov s rovnakym @pre, ak ma odpoved viac nápovedi).
+   """
+   for i, odp in enumerate(odpovede, start=1):
+      el = _priprav_odpoved_element(odp.get('text', ''), odp.get('spravna'))
+      napovedy = odp.get('napovedy') or []
+      kluc = f'o{i}'
+      if napovedy:
+         el.set('napoveda_key', kluc)
+      otazka.append(el)
+      for text_np in napovedy:
+         np_el = ET.SubElement(otazka, 'napoveda')
+         np_el.set('pre', kluc)
+         np_el.text = text_np
+
+def _pridaj_napovede(otazka: ET._Element, napovede: list[str]) -> None:
+   """Prida celoplosne <napoveda> elementy (bez @pre) do otazka."""
+   for text in napovede:
+      el = ET.SubElement(otazka, 'napoveda')
+      el.text = text
+
+def _zostav_otazka_element(data: dict) -> ET._Element:
+   """Zostavi novy <otazka> element z data dictu (rovnaky tvar ako add_question's
+   nova_otazka), bez @id (ten prideli az ensure_ids). Pouziva sa v add_question
+   aj fork_question.
+   """
+   el = ET.Element('otazka')
+   for attr in ('body', 'static', 'bonus', 'nazov'):
+      if data.get(attr):
+         el.set(attr, data[attr])
+   if 'znenie' in data:
+      znenie_el = ET.fromstring(data['znenie'])
+      el.append(znenie_el)
+   _pridaj_odpovede(el, data.get('odpovede', []))
+   if data.get('napovede'):
+      _pridaj_napovede(el, data['napovede'])
+   if data.get('vzor'):
+      vzor_el = ET.SubElement(el, 'vzor')
+      vzor_el.text = data['vzor']
+   if data.get('klucove_slova'):
+      ks_el = ET.SubElement(el, 'klucove_slova')
+      for slovo in data['klucove_slova']:
+         s_el = ET.SubElement(ks_el, 'slovo')
+         s_el.text = slovo
+   return el
+
+def _serializuj_obsah(el: ET._Element | None) -> str:
+   """Serializuje vnutorny obsah elementu (text + child elementy vratane markupu),
+   bez vlastneho tagu/atributov elementu."""
+   if el is None:
+      return ''
+   casti = [el.text or '']
+   for dieta in el:
+      casti.append(ET.tostring(dieta, encoding='unicode'))
+   return ''.join(casti)
+
+def zmenene_zamrznute_polia(otazka_el: ET._Element, data: dict) -> bool:
+   """Vrati True, ak by zapis data (z process_question operacia='update') zmenil
+   niektore z poli, ktore createtests.xsl kopiruje/zamrazi do vygenerovaneho testu
+   (znenie, text/spravna odpovedi, body, static, bonus) oproti aktualnemu stavu
+   otazka_el. Zmena len vzor/klucove_slova/napoveda (citaju sa zivo pri AI
+   napovede, nekopiruju sa do testu) sa nepocita.
+   """
+   if 'znenie' in data:
+      nove_znenie = ET.fromstring(data['znenie']) if data.get('znenie') else None
+      if _serializuj_obsah(otazka_el.find('znenie')) != _serializuj_obsah(nove_znenie):
+         return True
+   for attr in ('body', 'static', 'bonus'):
+      if attr in data and (otazka_el.get(attr) or None) != (data[attr] or None):
+         return True
+   if 'odpovede' in data:
+      stare = tuple((_serializuj_obsah(o), o.get('spravna') or '0') for o in otazka_el.findall('odpoved'))
+      nove = tuple((odp.get('text') or '', odp.get('spravna') or '0') for odp in data['odpovede'])
+      if stare != nove:
+         return True
+   return False
+
 def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) -> bool:
-   """Upravi atributy a obsah otazky v questions XML.
+   """Upravi atributy a obsah otazky v questions XML. Atributy body/static/bonus/nazov
+   su volitelne; ktorykolvek z nich sa da poslat aj ako None, cim sa existujuci atribut
+   odstrani.
    nove_data je dict, moze obsahovat:
      'znenie'    - novy XML string obsahu znenia (napr. '<znenie>text</znenie>')
-     'body'      - string s poctom bodov
-     'static'    - '1' alebo None (odstranit atribut)
-     'bonus'     - '1' alebo None (odstranit atribut)
-     'odpovede'  - list dictov [{'text': ..., 'spravna': '1'/'0'}, ...]
+     'body'      - string s poctom bodov, alebo None (odstranit atribut)
+     'static'    - '1', alebo None (odstranit atribut)
+     'bonus'     - '1', alebo None (odstranit atribut)
+     'nazov'     - string s nazvom otazky, alebo None (odstranit atribut)
+     'odpovede'  - list dictov [{'text': ..., 'spravna': '1'/'0', 'napovedy': [text, ...]}, ...]
+     'napovede'  - list textov celoplosnych napovedi (bez @pre)
    Vracia True ak uspech, False ak otazka nenajdena.
    """
    otazka, cesta = find_question(otazka_id, cache)
@@ -527,7 +666,7 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
       if otazka is None:
          return False
       # atributy
-      for attr in ('body', 'static', 'bonus', 'paused'):
+      for attr in ('body', 'static', 'bonus', 'nazov', 'paused'):
          if attr in nove_data:
             if nove_data[attr] is None:
                if attr in otazka.attrib:
@@ -543,13 +682,18 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
          otazka.insert(0, nove_znenie)
       # odpovede
       if 'odpovede' in nove_data:
+         for old in otazka.findall('napoveda'):
+            if 'pre' in old.attrib:
+               otazka.remove(old)
          for old in otazka.findall('odpoved'):
             otazka.remove(old)
-         for odp in nove_data['odpovede']:
-            el = ET.SubElement(otazka, 'odpoved')
-            el.text = odp.get('text', '')
-            if odp.get('spravna') == '1':
-               el.set('spravna', '1')
+         _pridaj_odpovede(otazka, nove_data['odpovede'])
+      # napovede (celoplosne, bez @pre)
+      if 'napovede' in nove_data:
+         for old in otazka.findall('napoveda'):
+            if 'pre' not in old.attrib:
+               otazka.remove(old)
+         _pridaj_napovede(otazka, nove_data['napovede'])
       # vzor
       if 'vzor' in nove_data:
          stary = otazka.find('vzor')
@@ -601,14 +745,37 @@ def delete_question(otazka_id: str, cache: dict | None = None) -> bool:
       tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return True
 
+def restore_question(otazka_id: str, cache: dict | None = None) -> bool:
+   """Obnovi (odstrani @deprecated) otazku v questions XML podla @id.
+   Nerobi nic s jej rodicovskou kategoriou.
+   Vracia True ak uspech, False ak otazka nenajdena.
+   """
+   otazka, cesta = find_question(otazka_id, cache)
+   if otazka is None or cesta is None:
+      return False
+   lock = FileLock(cesta + '.lock')
+   with lock:
+      xmlParser = ET.XMLParser(remove_blank_text=True)
+      tree = ET.parse(cesta, xmlParser)
+      otazka = _xfind(tree, ".//otazka[@id=$id]", id=otazka_id)
+      if otazka is None:
+         return False
+      if 'deprecated' in otazka.attrib:
+         del otazka.attrib['deprecated']
+      ET.indent(tree, space='   ')
+      tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
+   return True
+
 def add_question(kategoria_id: str, nova_otazka: dict, za_otazka_id: str | None = None, cache: dict | None = None) -> tuple[str | None, bool]:
    """Prida novu otazku do kategorie v questions XML.
    nova_otazka je dict, moze obsahovat:
      'znenie'   - XML string obsahu znenia (povinny)
-     'body'     - string s poctom bodov
-     'static'   - '1' alebo None
-     'bonus'    - '1' alebo None
-     'odpovede' - list dictov [{'text': ..., 'spravna': '1'/'0'}, ...]
+     'body'     - string s poctom bodov, volitelne
+     'static'   - '1', volitelne
+     'bonus'    - '1', volitelne
+     'nazov'    - string s nazvom otazky, volitelne
+     'odpovede' - list dictov [{'text': ..., 'spravna': '1'/'0', 'napovedy': [text, ...]}, ...]
+     'napovede' - list textov celoplosnych napovedi (bez @pre)
    za_otazka_id - volitelne, vlozi otazku za otazku s danym id, inak na koniec.
    Vracia (otazka_id, True) ak uspech, (None, False) ak kategoria nenajdena.
    """
@@ -622,26 +789,7 @@ def add_question(kategoria_id: str, nova_otazka: dict, za_otazka_id: str | None 
       kategoria = _xfind(tree, ".//kategoria[@id=$id]", id=kategoria_id)
       if kategoria is None:
          return None, False
-      el = ET.Element('otazka')
-      for attr in ('body', 'static', 'bonus'):
-         if nova_otazka.get(attr):
-            el.set(attr, nova_otazka[attr])
-      if 'znenie' in nova_otazka:
-         znenie_el = ET.fromstring(nova_otazka['znenie'])
-         el.append(znenie_el)
-      for odp in nova_otazka.get('odpovede', []):
-         odp_el = ET.SubElement(el, 'odpoved')
-         odp_el.text = odp.get('text', '')
-         if odp.get('spravna') == '1':
-            odp_el.set('spravna', '1')
-      if nova_otazka.get('vzor'):
-         vzor_el = ET.SubElement(el, 'vzor')
-         vzor_el.text = nova_otazka['vzor']
-      if nova_otazka.get('klucove_slova'):
-         ks_el = ET.SubElement(el, 'klucove_slova')
-         for slovo in nova_otazka['klucove_slova']:
-            s_el = ET.SubElement(ks_el, 'slovo')
-            s_el.text = slovo
+      el = _zostav_otazka_element(nova_otazka)
       if za_otazka_id:
          ref = _xfind(kategoria, "otazka[@id=$id]", id=za_otazka_id)
          if ref is not None:
@@ -660,6 +808,42 @@ def add_question(kategoria_id: str, nova_otazka: dict, za_otazka_id: str | None 
       nova_id = otazky[-1].get('id') if otazky else None
       return nova_id, True
    return None, True
+
+def fork_question(otazka_id: str, nova_data: dict, cache: dict | None = None) -> str | None:
+   """Vytvori novu otazku s upravenym obsahom namiesto zapisu na mieste (fork).
+   Pouziva sa pri uprave otazky, ktora je pouzita v testoch (is_used()), aby sa
+   nemiesali statistiky pod jednym @id medzi starou a novou verziou. Stara otazka
+   dostane @deprecated='1', nova nema ziadnu vazbu na staru (ziadny nahrada_za
+   ani autor) - je to bezna nova otazka pridana na koniec tej istej kategorie.
+   nova_data ma rovnaky tvar ako add_question's nova_otazka.
+   Vracia id novej otazky, alebo None ak sa stara otazka nenajde.
+   """
+   otazka, cesta = find_question(otazka_id, cache)
+   if otazka is None or cesta is None:
+      return None
+   lock = FileLock(cesta + '.lock')
+   with lock:
+      xmlParser = ET.XMLParser(remove_blank_text=True)
+      tree = ET.parse(cesta, xmlParser)
+      stara = _xfind(tree, ".//otazka[@id=$id]", id=otazka_id)
+      if stara is None:
+         return None
+      kategoria = stara.getparent()
+      if kategoria is None:
+         return None
+      kategoria_id = kategoria.get('id')
+      nova = _zostav_otazka_element(nova_data)
+      kategoria.append(nova)
+      stara.set('deprecated', '1')
+      ET.indent(tree, space='   ')
+      tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
+   ensure_ids(cesta)
+   tree2 = ET.parse(cesta)
+   kat2 = _xfind(tree2, ".//kategoria[@id=$id]", id=kategoria_id)
+   if kat2 is not None:
+      otazky = kat2.findall('otazka')
+      return otazky[-1].get('id') if otazky else None
+   return None
 
 # --- Testy a cas ---
 _SAFE_PARAM = re.compile(r'^[A-Za-z0-9_-]*$')

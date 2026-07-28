@@ -75,11 +75,11 @@ return <statistika predmet="{$predmet}">
       let $body_hodnota := sum($zaznamy[@spravne='true']/@body)
       let $maxbody_hodnota := sum($zaznamy/@body)
       let $kategoria_id := ($questions//otazka[@id = $id]/../@id)[1]
-      let $pocet_v_kat := count($questions//kategoria[@id = $kategoria_id]/otazka)
+      let $pocet_v_kat := count($questions//kategoria[@id = $kategoria_id]/otazka[not(@deprecated)])
       let $kat_el := ($questions//kategoria[@id = $kategoria_id])[1]
       let $pocet_vyber_kat := if ($kat_el/@pocet) then xs:integer($kat_el/@pocet) else 1
       let $pocet_statickych_v_kat := count($kat_el/otazka[@static])
-      let $pocet_nestatickych_v_kat := count($kat_el/otazka[not(@static)])
+      let $pocet_nestatickych_v_kat := count($kat_el/otazka[not(@static)][not(@deprecated)])
       let $kat_vybery := count($vybery[@id = $questions//kategoria[@id = $kategoria_id]/otazka/@id])
       let $vyber_kat_percento := if ($kat_vybery > 0) then count($vybery[@id = $id]) div $kat_vybery * 100 else 0
       return <otazka id="{$id}"
@@ -103,11 +103,11 @@ return <statistika predmet="{$predmet}">
       let $suma_body := sum($zaznamy/@body)
       let $suma_max := sum($zaznamy/@maxbody)
       let $kategoria_id := ($questions//otazka[@id = $id]/../@id)[1]
-      let $pocet_v_kat := count($questions//kategoria[@id = $kategoria_id]/otazka)
+      let $pocet_v_kat := count($questions//kategoria[@id = $kategoria_id]/otazka[not(@deprecated)])
       let $kat_el := ($questions//kategoria[@id = $kategoria_id])[1]
       let $pocet_vyber_kat := if ($kat_el/@pocet) then xs:integer($kat_el/@pocet) else 1
       let $pocet_statickych_v_kat := count($kat_el/otazka[@static])
-      let $pocet_nestatickych_v_kat := count($kat_el/otazka[not(@static)])
+      let $pocet_nestatickych_v_kat := count($kat_el/otazka[not(@static)][not(@deprecated)])
       let $kat_vybery := count($vybery[@id = $questions//kategoria[@id = $kategoria_id]/otazka/@id])
       let $vyber_kat_percento := if ($kat_vybery > 0) then count($vybery[@id = $id]) div $kat_vybery * 100 else 0
       return <otazka id="{$id}"
@@ -128,11 +128,11 @@ return <statistika predmet="{$predmet}">
       where not($id = distinct-values($odpovede_pismena/@id))
          and not($id = distinct-values($odpovede_body/@id))
       let $kategoria_id := ($questions//otazka[@id = $id]/../@id)[1]
-      let $pocet_v_kat := count($questions//kategoria[@id = $kategoria_id]/otazka)
+      let $pocet_v_kat := count($questions//kategoria[@id = $kategoria_id]/otazka[not(@deprecated)])
       let $kat_el := ($questions//kategoria[@id = $kategoria_id])[1]
       let $pocet_vyber_kat := if ($kat_el/@pocet) then xs:integer($kat_el/@pocet) else 1
       let $pocet_statickych_v_kat := count($kat_el/otazka[@static])
-      let $pocet_nestatickych_v_kat := count($kat_el/otazka[not(@static)])
+      let $pocet_nestatickych_v_kat := count($kat_el/otazka[not(@static)][not(@deprecated)])
       let $kat_vybery := count($vybery[@id = $questions//kategoria[@id = $kategoria_id]/otazka/@id])
       let $vyber_kat_percento := if ($kat_vybery > 0) then count($vybery[@id = $id]) div $kat_vybery * 100 else 0
       return <otazka id="{$id}"

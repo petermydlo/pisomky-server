@@ -81,14 +81,15 @@
          <xs:element name="bold" type="InlineMixed"/>
       </xs:choice>
       <xs:attribute name="spravna" type="BoolVal" use="required"/>
-      <!-- napoveda ako atribút odpovede (zobrazuje sa pri tejto konkrétnej odpovedi) -->
-      <xs:attribute name="napoveda" type="xs:string"/>
+      <!-- napoveda_key: id tejto odpovede, na ktoré odkazujú napoveda/@pre elementy otázky -->
+      <xs:attribute name="napoveda_key" type="xs:string"/>
    </xs:complexType>
 
    <xs:complexType name="Napoveda">
       <xs:simpleContent>
          <xs:extension base="xs:string">
-            <!-- pre: zobrazí sa len keď žiak odpovie hodnotou tohto atribútu -->
+            <!-- pre: napoveda_key odpovede (Odpoved/@napoveda_key), ku ktorej sa táto nápoveda viaže;
+                 bez pre platí pre celú otázku vždy; viacero napoveda smie mať rovnaké pre -->
             <xs:attribute name="pre" type="xs:string"/>
          </xs:extension>
       </xs:simpleContent>
@@ -112,6 +113,7 @@
          </xs:element>
       </xs:choice>
       <xs:attribute name="id" type="xs:string" use="required"/>
+      <xs:attribute name="nazov" type="xs:string"/>
       <xs:attribute name="deprecated" type="Flag"/>
       <xs:attribute name="paused" type="Flag"/>
       <xs:attribute name="static" type="Flag"/>
@@ -121,6 +123,9 @@
       <xs:attribute name="rating" type="xs:string"/>
       <!-- cesta: čiarkou oddelené identifikátory vetiev -->
       <xs:attribute name="cesta" type="xs:string"/>
+      <!-- bonus: bonusová otázka (body navyše, nezapočítavajú sa do maxima) -->
+      <xs:attribute name="bonus" type="Flag"/>
+      <!-- autor/nahrada_za: smú byť prítomné len spolu (nevynucované, XSD 1.0) -->
       <xs:attribute name="autor" type="xs:string"/>
       <!-- nahrada_za: id otázky, ktorú táto nahrádza pre daného autora -->
       <xs:attribute name="nahrada_za" type="xs:string"/>
@@ -139,6 +144,7 @@
       <xs:attribute name="static" type="Flag"/>
       <!-- bonus: bonusová kategória (body navyše, nezapočítavajú sa do maxima) -->
       <xs:attribute name="bonus" type="Flag"/>
+      <!-- autor/nahrada_za: smú byť prítomné len spolu (nevynucované, XSD 1.0) -->
       <xs:attribute name="autor" type="xs:string"/>
       <xs:attribute name="nahrada_za" type="xs:string"/>
    </xs:complexType>

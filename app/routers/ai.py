@@ -29,7 +29,7 @@ def _najdi_napovedu(otazka_id: str, spravna_odpoved: str | None = None, logger=N
       if spravna_odpoved:
          for odp in otazka_el.findall('odpoved[@spravna="1"]'):
             if odp.text and odp.text.strip() == spravna_odpoved:
-               spravna_key = odp.get('napoveda')
+               spravna_key = odp.get('napoveda_key')
                break
       napovedy_els = otazka_el.findall('napoveda')
       if spravna_key:

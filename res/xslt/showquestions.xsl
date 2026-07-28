@@ -10,6 +10,12 @@
 <xsl:param name="predmet"/>
 <xsl:param name="statistika"/>
 
+<!-- pouzite_otazka_id: id vsetkych otazok, ktore su niekde v tests/ predmetu -
+     pouziva sa na disabled stav mazacej ikony kapitoly (kapitola nema soft-delete).
+     Kolekcia sa cita nad celym tests/ (vzdy existuje), nie nad tests/{predmet}
+     podadresarom (ten nemusi existovat, ak predmet este nema vygenerovane testy). -->
+<xsl:variable name="pouzite_otazka_id" select="collection('../xml/tests?select=*.xml;recurse=yes;on-error=ignore')/testy[@predmet = $predmet]//otazka/@id"/>
+
 <xsl:template name="xsl:initial-template">
    <xsl:variable name="stat" select="if ($statistika != '') then doc($statistika) else ()"/>
    <html lang="sk">
@@ -28,28 +34,50 @@
                <a href="/admin#{$predmet}"><i class="bi bi-house" title="Home"/></a>
             </div>
          </div>
-         <div class="nav nav-tabs flex-container-tab bg-info-subtle bold">
-            <xsl:for-each-group select="collection(concat('../xml/questions/', $predmet, '?select=*.xml;on-error=ignore'))" group-by="/kapitola/@id">
-               <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
-               <xsl:variable name="id_kap" select="/kapitola/@id"/>
-               <xsl:variable name="body_kap" select="sum($stat/statistika/otazka[@id = /kapitola//otazka/@id]/@body)"/>
-               <xsl:variable name="maxbody_kap" select="sum($stat/statistika/otazka[@id = /kapitola//otazka/@id]/@maxbody)"/>
-               <div>
-                  <a class="nav-link navbar-brand" data-bs-toggle="tab" href="#{$id_kap}">
-                  <xsl:if test="position() = 1">
-                     <xsl:attribute name="class">nav-link navbar-brand active</xsl:attribute>
-                  </xsl:if>
-                  Kapitola: <xsl:value-of select="$id_kap"/>
-                  <xsl:if test="$maxbody_kap > 0">
-                     <xsl:text> (</xsl:text>
-                     <xsl:value-of select="round($body_kap div $maxbody_kap * 100)"/>
-                     <xsl:text>%)</xsl:text>
-                  </xsl:if>
-                  </a>
-               </div>
-            </xsl:for-each-group>
+         <div class="flex-container-tab">
+            <div class="nav nav-tabs bg-info-subtle bold nav-tabs-list">
+               <xsl:for-each-group select="collection(concat('../xml/questions/', $predmet, '?select=*.xml;on-error=ignore'))" group-by="/kapitola/@id">
+                  <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
+                  <xsl:variable name="id_kap" select="/kapitola/@id"/>
+                  <xsl:variable name="body_kap" select="sum($stat/statistika/otazka[@id = /kapitola//otazka/@id]/@body)"/>
+                  <xsl:variable name="maxbody_kap" select="sum($stat/statistika/otazka[@id = /kapitola//otazka/@id]/@maxbody)"/>
+                  <xsl:variable name="kapitola_pouzita" select="exists(current-group()/kapitola//otazka/@id[. = $pouzite_otazka_id])"/>
+                  <div>
+                     <a class="nav-link navbar-brand" data-bs-toggle="tab" href="#{$id_kap}">
+                     <xsl:if test="position() = 1">
+                        <xsl:attribute name="class">nav-link navbar-brand active</xsl:attribute>
+                     </xsl:if>
+                     Kapitola: <xsl:value-of select="$id_kap"/>
+                     <xsl:if test="$maxbody_kap > 0">
+                        <xsl:text> (</xsl:text>
+                        <xsl:value-of select="round($body_kap div $maxbody_kap * 100)"/>
+                        <xsl:text>%)</xsl:text>
+                     </xsl:if>
+                     </a>
+                     <span class="penIcon editActions editActions-kapitola">
+                        <i class="bi bi-pencil editKapitolaIcon" data-predmet="{$predmet}" data-id="{$id_kap}" title="Upraviť kapitolu"/>
+                        <xsl:choose>
+                           <xsl:when test="$kapitola_pouzita">
+                              <i class="bi bi-trash delKapitolaIcon disabled" title="Kapitola obsahuje použité otázky, nedá sa zmazať"/>
+                           </xsl:when>
+                           <xsl:otherwise>
+                              <i class="bi bi-trash delKapitolaIcon" data-predmet="{$predmet}" data-id="{$id_kap}" title="Zmazať kapitolu"/>
+                           </xsl:otherwise>
+                        </xsl:choose>
+                     </span>
+                  </div>
+               </xsl:for-each-group>
+            </div>
+            <div class="addKapitolaWrap">
+               <i class="bi bi-plus-circle addKapitolaIcon" data-predmet="{$predmet}" title="Pridať kapitolu"/>
+            </div>
          </div>
-         <div class="okraj bold bg-info">Predmet: <xsl:call-template name="predmet-icon"><xsl:with-param name="predmet" select="$predmet"/></xsl:call-template><xsl:value-of select="$predmet"/></div>
+         <div class="okraj bold bg-info predmet-row">
+            <span>Predmet: <xsl:call-template name="predmet-icon"><xsl:with-param name="predmet" select="$predmet"/></xsl:call-template><xsl:value-of select="$predmet"/></span>
+            <div class="addKategoriaWrap">
+               <i class="bi bi-plus-circle addKategoriaIcon" data-predmet="{$predmet}" title="Pridať kategóriu do aktívnej kapitoly"/>
+            </div>
+         </div>
          <div class="tab-content">
             <xsl:for-each-group select="collection(concat('../xml/questions/', $predmet, '?select=*.xml;on-error=ignore'))" group-by="/kapitola/@id">
                <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
@@ -84,9 +112,10 @@
                                  </input>
                               </xsl:otherwise>
                            </xsl:choose>
-                           <div class="okraj bold bg-info bg-opacity-50 flex-grow-1 d-flex align-items-center" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
+                           <div class="okraj bold bg-info bg-opacity-50 flex-grow-1 d-flex align-items-center">
+                           <span class="kategoria-toggle" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
                            <xsl:if test="@deprecated='1'">
-                                 <i class="bi bi-x" title="archivovaná"/>
+                                 <i class="bi bi-x deprecated-kategoria" title="archivovaná"/>
                            </xsl:if>
                            <xsl:if test="@bonus">
                               <i class="bi bi-star-fill" title="bonusová"/>
@@ -97,19 +126,32 @@
                            <xsl:if test="@bonus or @static">
                               <xsl:text>&#160;</xsl:text>
                            </xsl:if>
-                           Kategória: <span>
+                           Kategória: <span class="nazov-alebo-id">
                               <xsl:if test="@nazov"><xsl:attribute name="title"><xsl:value-of select="@id"/></xsl:attribute></xsl:if>
                               <xsl:value-of select="if (@nazov != '') then @nazov else @id"/>
                            </span>
                            <xsl:if test="@pocet">
                               (<xsl:value-of select="@pocet"/>)
                            </xsl:if>
+                           </span>
                            <xsl:if test="@autor">
                               <span class="ms-auto autor-badge">
                                  <xsl:if test="@nahrada_za"><i class="bi bi-arrow-down-up" title="{@nahrada_za}"/>&#160;</xsl:if>
                                  <xsl:value-of select="@autor"/>
                               </span>
                            </xsl:if>
+                           <span class="penIcon editActions">
+                              <i class="bi bi-plus-circle addOtazkaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Pridať otázku"/>
+                              <i class="bi bi-pencil editKategoriaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Upraviť kategóriu"/>
+                              <xsl:choose>
+                                 <xsl:when test="@deprecated='1'">
+                                    <i class="bi bi-arrow-counterclockwise restoreKategoriaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Obnoviť kategóriu"/>
+                                 </xsl:when>
+                                 <xsl:otherwise>
+                                    <i class="bi bi-trash delKategoriaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Zmazať kategóriu"/>
+                                 </xsl:otherwise>
+                              </xsl:choose>
+                           </span>
                         </div>
                         </div>
                         <xsl:apply-templates select="otazka">
@@ -123,6 +165,7 @@
          </div>
          <xsl:call-template name="cdn-js"/>
          <script src="/pubres/js/showquestions.js"><xsl:comment>MyJS</xsl:comment></script>
+         <script src="/pubres/js/showquestions_edit.js"><xsl:comment>MyJS</xsl:comment></script>
       </body>
    </html>
 </xsl:template>
@@ -199,6 +242,17 @@
                </span>
             </xsl:if>
          </div>
+         <span class="penIcon editActions">
+            <i class="bi bi-pencil editOtazkaIcon" data-id="{@id}" title="Upraviť otázku"/>
+            <xsl:choose>
+               <xsl:when test="@deprecated='1'">
+                  <i class="bi bi-arrow-counterclockwise restoreOtazkaIcon" data-id="{@id}" title="Obnoviť otázku"/>
+               </xsl:when>
+               <xsl:otherwise>
+                  <i class="bi bi-trash delOtazkaIcon" data-id="{@id}" title="Zmazať otázku"/>
+               </xsl:otherwise>
+            </xsl:choose>
+         </span>
          <xsl:if test="@deprecated='1' or ../@deprecated='1'">
             <i class="bi bi-x" title="archivovaná"/>
          </xsl:if>
@@ -216,7 +270,7 @@
          </xsl:if>
          <div class="bold znenie">
             <xsl:text>[</xsl:text>
-            <span>
+            <span class="nazov-alebo-id">
                <xsl:if test="@nazov"><xsl:attribute name="title"><xsl:value-of select="@id"/></xsl:attribute></xsl:if>
                <xsl:value-of select="if (@nazov != '') then @nazov else @id"/>
             </span>
@@ -317,16 +371,16 @@
          <xsl:apply-templates/>
       </span>
       <xsl:if test="@spravna = 1">
-         <xsl:variable name="klic" select="@napoveda"/>
-         <xsl:if test="(@napoveda and ../napoveda[@pre = $klic]) or ../napoveda[not(@pre)]">
+         <xsl:variable name="klic" select="@napoveda_key"/>
+         <xsl:if test="(@napoveda_key and ../napoveda[@pre = $klic]) or ../napoveda[not(@pre)]">
             <span class="tooltip-wrap">
                <span><i class="bi bi-lightbulb"/></span>
                <span class="tooltip-text">
-                  <xsl:if test="@napoveda and ../napoveda[@pre = $klic]">
+                  <xsl:if test="@napoveda_key and ../napoveda[@pre = $klic]">
                      <xsl:value-of select="../napoveda[@pre = $klic]"/>
                   </xsl:if>
                   <xsl:if test="../napoveda[not(@pre)]">
-                     <xsl:if test="@napoveda and ../napoveda[@pre = $klic]"><br/></xsl:if>
+                     <xsl:if test="@napoveda_key and ../napoveda[@pre = $klic]"><br/></xsl:if>
                      <xsl:value-of select="../napoveda[not(@pre)]"/>
                   </xsl:if>
                </span>

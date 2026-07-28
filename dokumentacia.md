@@ -108,23 +108,32 @@ hornej lište `/admin`). Po výbere predmetu (`POST /admin/showquestions`) sa zo
 zoznam kapitol → kategórií → otázok daného predmetu, spolu so štatistikou úspešnosti
 (percento správnych odpovedí za otázku/kategóriu/kapitolu, ak už existujú odpovede).
 
+Kapitoly, kategórie aj otázky sa dajú priamo v tomto prehľade aj pridávať, upravovať,
+mazať a obnovovať — ikony (➕ pridať, ✎ upraviť, 🗑 zmazať, ↺ obnoviť) sa zobrazia po
+prejdení myšou nad príslušným riadkom. Netreba teda meniť XML súbory ručne.
+
 Otázky, kategórie aj kapitoly majú stabilné `id` — 8-znakový hexadecimálny hash
 (SHA-256), ktorý sa dopĺňa automaticky pri prvom použití súboru (funkcia
 `ensure_ids`), učiteľ ho nezadáva ručne.
 
 ### 4.2 Kapitoly
 
-Vytvorenie/vymazanie cez `POST /admin/process_chapter` (`operacia=create|delete`).
-Nová kapitola vytvorí nový XML súbor `res/xml/questions/{predmet}/{predmet}_{kapitola_id}.xml`.
-Vymazanie kapitoly je možné len ak jej otázky ešte neboli použité v žiadnom teste.
+Vytvorenie/premenovanie/vymazanie cez `POST /admin/process_chapter`
+(`operacia=create|update|delete`). Nová kapitola vytvorí nový XML súbor
+`res/xml/questions/{predmet}/{predmet}_{kapitola_id}.xml`. `operacia=update` mení
+len `nazov`. Vymazanie kapitoly je možné len ak jej otázky ešte neboli použité v
+žiadnom teste — kapitola nemá "archivovaný" stav ako kategória/otázka (mazacia
+ikona je v editore v takom prípade zobrazená ako neaktívna).
 
 ### 4.3 Kategórie
 
-Vytváranie/úprava/mazanie cez `POST /admin/process_category`:
+Vytváranie/úprava/mazanie/obnova cez `POST /admin/process_category`:
 - `operacia=create` — vyžaduje `kapitola_id`; voliteľne `za_kategoria_id` (za ktorú
-  kategóriu vložiť), `pocet`, `body`, `static`, `bonus`
-- `operacia=update` — mení `pocet`, `body`, `static`, `bonus`
-- `operacia=delete`
+  kategóriu vložiť), `pocet`, `body`, `static`, `bonus`, `nazov`
+- `operacia=update` — mení `pocet`, `body`, `static`, `bonus`, `nazov`
+- `operacia=delete` — ak je niektorá otázka kategórie použitá v teste, **nemaže sa
+  fyzicky**, len sa nastaví `deprecated="1"` na kategórii (nie na jej otázkach)
+- `operacia=restore` — odstráni `deprecated` z kategórie (nerobí nič s jej otázkami)
 
 Atribúty kategórie (XSD `questions.xsd`, typ `Kategoria`):
 
@@ -147,13 +156,26 @@ Atribúty kategórie (XSD `questions.xsd`, typ `Kategoria`):
 
 ### 4.4 Otázky
 
-Vytváranie/úprava/mazanie cez `POST /admin/process_question`:
+Vytváranie/úprava/mazanie/obnova cez `POST /admin/process_question`:
 - `operacia=create` — vyžaduje `kategoria_id`; voliteľne `za_otazka_id`, `znenie`,
-  `body`, `static`, `bonus`, `vzor`, `klucove_slova` (JSON pole), `odpovede` (JSON
-  pole objektov)
-- `operacia=update` — mení tie isté polia
+  `body`, `static`, `bonus`, `nazov`, `vzor`, `klucove_slova` (JSON pole), `odpovede` (JSON
+  pole objektov `{text, spravna, napovedy}`), `napovede` (JSON pole textov
+  celoplošných nápovedí)
+- `operacia=update` — mení tie isté polia. Ak je otázka **použitá** v existujúcom
+  teste a mení sa čokoľvek okrem `vzor`/`klucove_slova`/nápovedí/`nazov` (teda `znenie`,
+  `odpovede`, `body`, `static`, `bonus`), appka **automaticky namiesto zápisu na
+  mieste vytvorí novú otázku** (aby sa neskombinovali štatistiky starej a novej
+  verzie pod jedným `id`) — pôvodná otázka dostane `deprecated="1"`, nová je úplne
+  samostatná (žiadna väzba medzi nimi v XML). Toto rozhodnutie robí server sám,
+  učiteľ v editore len uloží zmeny bežným spôsobom.
 - `operacia=delete` — ak je otázka použitá v existujúcom teste, **nemaže sa fyzicky**,
   len sa nastaví `deprecated="1"` (viď `AGENTS.md` sekcia "Forbidden")
+- `operacia=restore` — odstráni `deprecated` z otázky (nerobí nič s jej kategóriou)
+
+Surové dáta otázky pre editačný formulár (znenie, odpovede aj s nápoveďami, vzor,
+kľúčové slová) vracia `GET /admin/question?id=...`; pre kategóriu `GET
+/admin/category?id=...`. Či je kategória/otázka použitá v teste (pre text
+potvrdzovacieho dialógu pri mazaní) zisťuje `GET /admin/is_used?id=...&typ=kategoria|otazka`.
 
 Otázka podporuje dva základné typy:
 1. **Výberová (MCQ)** — obsahuje viacero `<odpoved>`, každá s atribútom `spravna="0"`
@@ -174,22 +196,29 @@ Atribúty a elementy otázky (`questions.xsd`, typ `Otazka`):
 - `static="1"` — otázka sa do testu zaraďuje vždy (nie je súčasťou náhodného výberu
   v rámci kategórie)
 - `body` — počet bodov
+- `nazov` — čitateľný názov otázky (inak sa v editore zobrazuje `id`)
 - `pomer` — napr. `"1:4"`, pomer pre čiastočné bodovanie (partial scoring)
 - `rating` — voliteľné hodnotenie/váha
 - `cesta` — čiarkou oddelené identifikátory "vetiev" (používa sa pri delení otázok
   do variantov A/B a pod. — pozri príklad SXT4 nižšie)
-- `autor` — meno učiteľa
+- `bonus="1"` — bonusová otázka, body sa nezapočítavajú do maxima, len sa pridávajú navyše
+- `autor` — meno učiteľa (smie byť prítomné len spolu s `nahrada_za`)
 - `nahrada_za` — id otázky, ktorú táto nahrádza (pre daného autora)
 
 **Voliteľné vnorené elementy:**
-- `<odpoved spravna="0|1" napoveda="...">text</odpoved>` — jedna z možností pri MCQ;
-  atribút `napoveda` viaže konkrétnu nápovedu na túto možnosť
+- `<odpoved spravna="0|1" napoveda_key="...">text</odpoved>` — jedna z možností pri
+  MCQ; atribút `napoveda_key` je id tejto odpovede, na ktoré odkazujú `<napoveda pre="...">`
+  elementy otázky (viď nižšie) — nie je to samotný text nápovedy
 - `<vzor>text</vzor>` — vzorová odpoveď pre otvorenú otázku (používa sa aj pri AI
   hodnotení a AI nápovede); podporuje zástupné symboly `{meno}`, `{priezvisko:low
   rep}` a pod. (nahradia sa údajmi žiaka pri AI hodnotení)
-- `<napoveda pre="...">text</napoveda>` — nápoveda k otázke; ak má atribút `pre`,
-  zobrazí sa len keď žiak zvolí danú odpoveď (hodnota `pre` sa páruje s atribútom
-  `napoveda` na `<odpoved>`)
+- `<napoveda pre="...">text</napoveda>` — nápoveda k otázke, môže sa opakovať
+  (jedna otázka môže mať ľubovoľne veľa `<napoveda>` elementov):
+  - bez `pre` — celoplošná, platí vždy, nezávisle od zvolenej odpovede
+  - s `pre="id"` — zobrazí sa len keď žiak zvolí odpoveď, ktorej `napoveda_key`
+    sa rovná tomuto `id`. **Jedna odpoveď môže mať aj viac nápovedí naraz** —
+    stačí pridať viac `<napoveda pre="rovnaké id">` elementov, všetky sa
+    priradia k tej istej odpovedi (netreba nič spájať do jedného atribútu)
 - `<klucove_slova><slovo>text</slovo>...</klucove_slova>` — kľúčové slová pre
   otvorenú otázku, používajú sa pri AI hodnotení a AI nápovede (pozri kapitolu 10).
   Napríklad:
@@ -474,9 +503,10 @@ class="ai-napoveda-btn">`). To zavolá `GET /ai/napoveda?otazka_id=...&test_id=.
 appka:
 
 1. Nájde otázku v aktuálnom teste žiaka a zostaví kontext: text otázky, možnosti (pri
-   MCQ), existujúce ručne napísané `<napoveda>` v databáze otázok (vybrané podľa
-   toho, ktorú možnosť žiak práve zvolil, ak je väzba cez `pre`/`napoveda`), vzorovú
-   odpoveď (`<vzor>`) a kľúčové slová.
+   MCQ), existujúce ručne napísané `<napoveda>` v databáze otázok (celoplošné vždy,
+   plus všetky kľúčované podľa toho, ktorú možnosť žiak práve zvolil, ak je väzba
+   cez `pre`/`napoveda_key` — jedna odpoveď môže mať aj viac priradených nápovedí),
+   vzorovú odpoveď (`<vzor>`) a kľúčové slová.
 2. Skontroluje limit: appka počíta **celkový počet už použitých nápovied v rámci
    celého testu** (naprieč všetkými otázkami) a porovná ho s počtom otázok v teste —
    ide teda o spoločný rozpočet ("počet otázok" nápovied na celý test), nie o strop
@@ -676,9 +706,12 @@ Tieto skripty spúšťa učiteľ/admin ručne z príkazového riadka na serveri,
 | `/admin/downloadcodes` | POST | PDF len s QR kódmi/kľúčmi testov |
 | `/admin/selectquestions` | GET | Formulár na výber predmetu pre editor otázok |
 | `/admin/showquestions` | POST | Zobrazí databázu otázok predmetu (editor + štatistika) |
-| `/admin/process_chapter` | POST | Vytvorí/vymaže kapitolu |
-| `/admin/process_category` | POST | Vytvorí/upraví/vymaže kategóriu |
-| `/admin/process_question` | POST | Vytvorí/upraví/vymaže otázku |
+| `/admin/process_chapter` | POST | Vytvorí/premenuje/vymaže kapitolu |
+| `/admin/process_category` | POST | Vytvorí/upraví/vymaže/obnoví kategóriu |
+| `/admin/process_question` | POST | Vytvorí/upraví/vymaže/obnoví otázku |
+| `/admin/question` | GET | Surové dáta otázky pre editačný formulár |
+| `/admin/category` | GET | Surové dáta kategórie pre editačný formulár |
+| `/admin/is_used` | GET | Zistí, či je kategória/otázka použitá v teste |
 | `/ai/napoveda` | GET | AI nápoveda pre žiaka (SSE stream, Ollama) |
 | `/ai/feedback` | POST | Žiak ohodnotí, či mu AI nápoveda pomohla |
 | `/admin/feedbackreport` | POST | Prehľad úspešnosti AI nápovedí danej sady |

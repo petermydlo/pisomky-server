@@ -12,13 +12,18 @@ from app.utils import (
    find_category,
    find_question,
    create_chapter,
+   update_chapter,
    delete_chapter,
    add_category,
    update_category,
    delete_category,
+   restore_category,
    add_question,
    update_question,
    delete_question,
+   restore_question,
+   fork_question,
+   zmenene_zamrznute_polia,
    is_used,
    find_test_file,
    test_xml_path as xml_path,
@@ -221,6 +226,17 @@ def test_create_chapter_duplicit(tmp_path):
    assert kid is None
 
 
+# --- update_chapter ---
+
+def test_update_chapter_nazov(questions_file):
+   assert update_chapter('kap1', PREDMET, 'Nový názov') is True
+   root = ET.parse(str(questions_file)).getroot()
+   assert root.get('nazov') == 'Nový názov'
+
+def test_update_chapter_nenajde(questions_file):
+   assert update_chapter('neexistuje', PREDMET, 'X') is False
+
+
 # --- delete_chapter ---
 
 def test_delete_chapter_uspech(questions_file):
@@ -330,7 +346,7 @@ def test_update_question_odpovede(questions_file):
    assert len(odpovede) == 2
    assert odpovede[0].text == 'X'
    assert odpovede[0].get('spravna') == '1'
-   assert odpovede[1].get('spravna') is None
+   assert odpovede[1].get('spravna') == '0'
 
 def test_update_question_nenajde(questions_file):
    assert update_question('neexistuje', {'body': '5'}) is False
@@ -401,3 +417,123 @@ def test_add_question_nenajde_kategoriu(questions_file):
    qid, ok = add_question('neexistuje', {'znenie': '<znenie>?</znenie>'})
    assert ok is False
    assert qid is None
+
+
+# --- restore_category ---
+
+def test_restore_category_odstrani_deprecated(questions_file, tests_file):
+   delete_category('kat1')
+   kat = ET.parse(str(questions_file)).find('.//kategoria[@id="kat1"]')
+   assert kat.get('deprecated') == '1'
+   assert restore_category('kat1') is True
+   kat = ET.parse(str(questions_file)).find('.//kategoria[@id="kat1"]')
+   assert kat.get('deprecated') is None
+
+def test_restore_category_nenajde(questions_file):
+   assert restore_category('neexistuje') is False
+
+
+# --- restore_question ---
+
+def test_restore_question_odstrani_deprecated(questions_file, tests_file):
+   delete_question('otq1')
+   otazka = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]')
+   assert otazka.get('deprecated') == '1'
+   assert restore_question('otq1') is True
+   otazka = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]')
+   assert otazka.get('deprecated') is None
+
+def test_restore_question_nenajde(questions_file):
+   assert restore_question('neexistuje') is False
+
+
+# --- napoveda_key a markup v odpovediach ---
+
+def test_update_question_odpovede_zachova_markup(questions_file):
+   nove = [{'text': 'X <bold>tučné</bold>', 'spravna': '1'}]
+   update_question('otq1', {'odpovede': nove})
+   odpoved = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]/odpoved')
+   assert odpoved.text == 'X '
+   assert odpoved.find('bold').text == 'tučné'
+
+def test_update_question_odpovede_napoveda_key_a_napoveda_elementy(questions_file):
+   nove = [{'text': 'X', 'spravna': '1', 'napovedy': ['Prvá', 'Druhá']}, {'text': 'Y', 'spravna': '0'}]
+   update_question('otq1', {'odpovede': nove})
+   otazka = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]')
+   odpovede = otazka.findall('odpoved')
+   kluc = odpovede[0].get('napoveda_key')
+   assert kluc is not None
+   assert odpovede[1].get('napoveda_key') is None
+   napovedy = [n.text for n in otazka.findall('napoveda') if n.get('pre') == kluc]
+   assert napovedy == ['Prvá', 'Druhá']
+
+def test_update_question_napovede_celoplosne(questions_file):
+   update_question('otq1', {'napovede': ['Vždy platná']})
+   otazka = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]')
+   napovedy = [n.text for n in otazka.findall('napoveda') if 'pre' not in n.attrib]
+   assert napovedy == ['Vždy platná']
+
+def test_add_question_napovede_a_odpoved_napoveda(questions_file):
+   nova = {
+      'znenie': '<znenie>Q?</znenie>',
+      'odpovede': [{'text': 'A', 'spravna': '1', 'napovedy': ['nápoveda k A']}],
+      'napovede': ['celoplošná'],
+   }
+   qid, ok = add_question('kat1', nova)
+   assert ok is True
+   otazka = ET.parse(str(questions_file)).find(f'.//otazka[@id="{qid}"]')
+   odpoved = otazka.find('odpoved')
+   kluc = odpoved.get('napoveda_key')
+   assert kluc is not None
+   napovedy = {n.get('pre'): n.text for n in otazka.findall('napoveda')}
+   assert napovedy[kluc] == 'nápoveda k A'
+   assert napovedy[None] == 'celoplošná'
+
+
+# --- fork_question ---
+
+def test_fork_question_stara_deprecated_nova_nezavisla(questions_file, tests_file):
+   nova_data = {
+      'znenie': '<znenie>Opravené znenie</znenie>',
+      'body': '3',
+      'odpovede': [{'text': 'nová', 'spravna': '1'}],
+   }
+   nova_id = fork_question('otq1', nova_data)
+   assert nova_id is not None
+   assert nova_id != 'otq1'
+   tree = ET.parse(str(questions_file))
+   stara = tree.find('.//otazka[@id="otq1"]')
+   assert stara.get('deprecated') == '1'
+   assert stara.get('nahrada_za') is None
+   assert stara.get('autor') is None
+   nova = tree.find(f'.//otazka[@id="{nova_id}"]')
+   assert nova is not None
+   assert nova.get('nahrada_za') is None
+   assert nova.get('autor') is None
+   assert nova.get('body') == '3'
+   assert nova.find('znenie').text == 'Opravené znenie'
+
+def test_fork_question_nenajde(questions_file):
+   assert fork_question('neexistuje', {'znenie': '<znenie>x</znenie>'}) is None
+
+
+# --- zmenene_zamrznute_polia ---
+
+def test_zmenene_zamrznute_polia_bez_zmeny(questions_file):
+   otazka = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]')
+   data = {
+      'znenie': '<znenie>Koľko je 2+2?</znenie>',
+      'body': '1',
+      'odpovede': [{'text': '4', 'spravna': '1'}, {'text': '3', 'spravna': '0'}],
+   }
+   assert zmenene_zamrznute_polia(otazka, data) is False
+
+def test_zmenene_zamrznute_polia_zmena_znenia(questions_file):
+   otazka = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]')
+   data = {'znenie': '<znenie>Iné znenie</znenie>'}
+   assert zmenene_zamrznute_polia(otazka, data) is True
+
+def test_zmenene_zamrznute_polia_len_vzor_bez_zmeny_frozen(questions_file):
+   otazka = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]')
+   data = {'vzor': 'nový vzor'}
+   assert zmenene_zamrznute_polia(otazka, data) is False

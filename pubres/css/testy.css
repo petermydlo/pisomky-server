@@ -326,6 +326,16 @@ button {
    padding: 0.25rem;
 }
 
+/* nav-tabs-list: kopia layoutu .flex-container-tab, ale pre vnorenu skupinu
+   samotnych kapitol - .addKapitolaWrap je mimo nej, teda mimo modreho pozadia */
+.nav-tabs-list {
+   display: flex;
+   flex-direction: column;
+   flex-wrap: wrap;
+   justify-content: space-between;
+   row-gap: 1rem;
+}
+
 .flex-container-head {
    display: flex;
    flex-direction: column;
@@ -470,12 +480,170 @@ button {
    height: 20px;
 }
 
-div:has(span.penIcon) {
+div:has(> span.penIcon) {
    position:relative;
 }
 
 div:hover > span.penIcon {
    display: block;
+}
+
+/* editActions: zdieľaný obal pre viac ikon (pridať/upraviť/zmazať/obnoviť) v jednom
+   penIcon kontajneri - riadok ikon namiesto viacerých prekrývajúcich sa position:absolute prvkov */
+.penIcon.editActions {
+   display: none;
+   gap: 0.5rem;
+}
+
+div:hover > span.penIcon.editActions {
+   display: flex;
+}
+
+.editActions .bi {
+   position: static;
+}
+
+/* farebné rozlíšenie akcií v editore otázok: mazanie červená, editovanie žltá/oranžová
+   (default z .penIcon), vytvorenie nové zelená */
+.delKapitolaIcon, .delKategoriaIcon, .delOtazkaIcon {
+   color: firebrick;
+}
+
+.addOtazkaIcon {
+   color: green;
+}
+
+/* editActions-kapitola: kapitolove taby su uzky stlpec s textom po celej sirke,
+   ikony preto namiesto prekryvania textu (right:0) vysunute mimo modreho pozadia napravo */
+.editActions-kapitola {
+   right: auto;
+   left: 100%;
+   top: 50%;
+   transform: translateY(-50%);
+   padding-left: 0.5rem;
+   white-space: nowrap;
+}
+
+.editActions .bi.disabled {
+   color: silver;
+   cursor: not-allowed;
+   pointer-events: none;
+}
+
+.bi-x.deprecated-kategoria {
+   color: red;
+}
+
+.addKapitolaWrap, .addKategoriaWrap {
+   display: none;
+   align-items: center;
+   padding-inline: 0.5rem;
+   cursor: pointer;
+}
+
+.addKapitolaWrap {
+   width: 100%;
+}
+
+.addKapitolaWrap .bi, .addKategoriaWrap .bi {
+   color: green;
+   font-size: 16px;
+}
+
+.flex-container-tab:hover .addKapitolaWrap {
+   display: flex;
+}
+
+.predmet-row {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+}
+
+.predmet-row:hover .addKategoriaWrap {
+   display: flex;
+}
+
+.otazka-formular {
+   display: flex;
+   flex-direction: column;
+   gap: 0.5rem;
+   border: 1px solid silver;
+   border-radius: 0.25rem;
+   padding: 0.75rem;
+   margin-block: 0.5rem;
+   background: white;
+}
+
+.otazka-formular textarea, .otazka-formular input[type="text"], .otazka-formular input[type="number"] {
+   width: 100%;
+}
+
+.otazka-atributy-riadok {
+   display: flex;
+   flex-wrap: wrap;
+   align-items: center;
+   gap: 1rem;
+}
+
+.otazka-atributy-riadok label {
+   display: flex;
+   align-items: center;
+   gap: 0.25rem;
+   width: auto;
+}
+
+.otazka-atributy-riadok input[type="number"] {
+   width: 5rem;
+}
+
+.otazka-odpovede-fieldset {
+   border: 1px solid silver;
+   border-radius: 0.25rem;
+   padding: 0.5rem;
+}
+
+.otazka-odpovede-fieldset legend {
+   font-weight: bold;
+   padding-inline: 0.25rem;
+}
+
+.odpoved-riadok {
+   position: relative;
+   border: 1px solid silver;
+   border-radius: 0.25rem;
+   padding: 0.5rem;
+   margin-block: 0.5rem;
+}
+
+.odpoved-riadok legend {
+   font-weight: bold;
+   padding-inline: 0.25rem;
+}
+
+.odpoved-riadok .odp-odstran {
+   position: absolute;
+   top: 0.4rem;
+   right: 0.5rem;
+   font-size: 16px;
+   color: firebrick;
+   cursor: pointer;
+}
+
+.napoveda-riadok {
+   border-left: 3px solid silver;
+   padding-left: 0.5rem;
+   margin-block: 0.25rem;
+}
+
+.napoveda-riadok {
+   display: flex;
+   gap: 0.25rem;
+   align-items: flex-start;
+}
+
+.napoveda-riadok textarea {
+   flex: 1 1 auto;
 }
 
 #file-upload > input { display: none; }
@@ -527,6 +695,7 @@ div:hover > span.penIcon {
 .odsadenieHM { margin-top: 1rem; }
 .znenie     { padding-left: 1.8rem; text-indent: -1.75rem; flex: 1; min-width: 0; }
 .okraj      { border: 1px solid black; padding: 0.25rem; }
+.kategoria-toggle { cursor: pointer; flex: 1 1 auto; }
 
 /* Logika viditeľnosti */
 .skryte      { display: none !important; }
