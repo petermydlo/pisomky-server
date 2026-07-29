@@ -146,19 +146,28 @@ def test_aktualizuj_zapis_prida_hint(feedback_file):
    _aktualizuj_zapis(str(feedback_file), 'zap2', hint='Nová nápoveda')
    tree = ET.parse(str(feedback_file))
    zapis = tree.find('.//zapis[@id="zap2"]')
-   assert zapis.find('hint').text == 'Nová nápoveda'
+   assert zapis is not None
+   hint = zapis.find('hint')
+   assert hint is not None
+   assert hint.text == 'Nová nápoveda'
 
 def test_aktualizuj_zapis_aktualizuje_existujuci_hint(feedback_file):
    _aktualizuj_zapis(str(feedback_file), 'zap1', hint='Prepísaná nápoveda')
    tree = ET.parse(str(feedback_file))
    zapis = tree.find('.//zapis[@id="zap1"]')
-   assert zapis.find('hint').text == 'Prepísaná nápoveda'
+   assert zapis is not None
+   hint = zapis.find('hint')
+   assert hint is not None
+   assert hint.text == 'Prepísaná nápoveda'
 
 def test_aktualizuj_zapis_prida_keys(feedback_file):
    _aktualizuj_zapis(str(feedback_file), 'zap2', keys='nove, kluce')
    tree = ET.parse(str(feedback_file))
    zapis = tree.find('.//zapis[@id="zap2"]')
-   assert zapis.find('keys').text == 'nove, kluce'
+   assert zapis is not None
+   keys = zapis.find('keys')
+   assert keys is not None
+   assert keys.text == 'nove, kluce'
 
 def test_aktualizuj_zapis_neexistujuci_zapis_id_nespadne(feedback_file):
    _aktualizuj_zapis(str(feedback_file), 'neexistuje', hint='x')
@@ -195,12 +204,14 @@ def test_najdi_napovedu_otazka_neexistuje(questions_file):
 
 def test_najdi_napovedu_bez_spravnej_odpovede_len_vseobecna(questions_file):
    vysledok = _najdi_napovedu(OTAZKA_ID)
+   assert vysledok is not None
    assert vysledok['napovedy'] == ['Všeobecná nápoveda k otázke']
    assert vysledok['vzor'] == '3/4'
    assert vysledok['klucove'] == ['zlomky', 'menovateľ']
 
 def test_najdi_napovedu_so_spravnou_odpovedou_zahrnie_naviazanu(questions_file):
    vysledok = _najdi_napovedu(OTAZKA_ID, spravna_odpoved='3/4')
+   assert vysledok is not None
    assert set(vysledok['napovedy']) == {'Všeobecná nápoveda k otázke', 'Nápoveda k spoločnému menovateľu'}
 
 def test_najdi_napovedu_bez_extra_udajov(questions_file):

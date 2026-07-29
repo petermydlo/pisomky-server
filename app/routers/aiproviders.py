@@ -3,7 +3,11 @@
 import os
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 from dotenv import load_dotenv
+
+if TYPE_CHECKING:
+   from anthropic.types import ImageBlockParam, DocumentBlockParam, MessageParam
 
 load_dotenv()
 
@@ -28,42 +32,45 @@ class ClaudeProvider(AIImportProvider):
       self.client = anthropic.Anthropic()
       self.model = os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-5')
 
-   def _content_block(self, obsah: bytes, mime_type: str) -> dict:
+   @staticmethod
+   def _content_block(obsah: bytes, mime_type: str) -> 'ImageBlockParam | DocumentBlockParam':
       import base64
       b64 = base64.b64encode(obsah).decode('utf-8')
       if mime_type == 'application/pdf':
-         return {'type': 'document', 'source': {'type': 'base64', 'media_type': 'application/pdf', 'data': b64}}
-      return {'type': 'image', 'source': {'type': 'base64', 'media_type': mime_type, 'data': b64}}
+         return cast('DocumentBlockParam', {'type': 'document', 'source': {'type': 'base64', 'media_type': 'application/pdf', 'data': b64}})
+      return cast('ImageBlockParam', {'type': 'image', 'source': {'type': 'base64', 'media_type': mime_type, 'data': b64}})
 
    def get_test_ids(self, obsah: bytes, mime_type: str) -> list[str]:
+      messages: 'list[MessageParam]' = [{
+         'role': 'user',
+         'content': [
+            self._content_block(obsah, mime_type),
+            {'type': 'text', 'text': 'List all unique test IDs found in this document. The test ID appears as a text code in the top-right corner (e.g. aut303d3676e37) and as a QR code in the top-left corner. Return as a plain comma-separated string.'}
+         ]
+      }]
       resp = self.client.messages.create(
          model=self.model,
          max_tokens=300,
          output_config={'effort': 'low'},
-         messages=[{
-            'role': 'user',
-            'content': [
-               self._content_block(obsah, mime_type),
-               {'type': 'text', 'text': 'List all unique test IDs found in this document. The test ID appears as a text code in the top-right corner (e.g. aut303d3676e37) and as a QR code in the top-left corner. Return as a plain comma-separated string.'}
-            ]
-         }]
+         messages=messages
       )
       text = next((b.text for b in resp.content if b.type == 'text'), '')
       return [s.strip() for s in text.split(',') if s.strip()]
 
    def get_answers(self, obsah: bytes, mime_type: str, xml_context: str) -> dict:
+      messages: 'list[MessageParam]' = [{
+         'role': 'user',
+         'content': [
+            self._content_block(obsah, mime_type),
+            {'type': 'text', 'text': f'Here is the XML with the questions:\n{xml_context}'}
+         ]
+      }]
       resp = self.client.messages.create(
          model=self.model,
          max_tokens=3000,
          output_config={'effort': 'low'},
          system=SYSTEM_PROMPT,
-         messages=[{
-            'role': 'user',
-            'content': [
-               self._content_block(obsah, mime_type),
-               {'type': 'text', 'text': f'Here is the XML with the questions:\n{xml_context}'}
-            ]
-         }]
+         messages=messages
       )
       raw = next((b.text for b in resp.content if b.type == 'text'), '').strip()
       if '```' in raw:

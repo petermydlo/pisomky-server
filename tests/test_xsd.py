@@ -75,7 +75,9 @@ def test_tests_schema(src):
       source = str(path)
    else:
       with tarfile.open(path, 'r:xz') as tar:
-         source = tar.extractfile(member_name).read()
+         subor = tar.extractfile(member_name)
+         assert subor is not None
+         source = subor.read()
    _assert_valid(schema, source)
 
 

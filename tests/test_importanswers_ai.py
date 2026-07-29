@@ -5,6 +5,7 @@ import io
 
 import pytest
 import qrcode
+from qrcode.image.pil import PilImage
 from PIL import Image
 import lxml.etree as ET
 
@@ -31,7 +32,7 @@ def _run(coro):
 
 
 def _qr_png(text: str) -> bytes:
-   img = qrcode.make(text)
+   img = qrcode.make(text, image_factory=PilImage)
    buf = io.BytesIO()
    img.save(buf, format='PNG')
    return buf.getvalue()

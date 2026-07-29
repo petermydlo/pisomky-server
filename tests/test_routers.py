@@ -73,8 +73,12 @@ def test_write_answers_vytvori_subor(tmp_path):
    tree = ET.parse(str(cesta))
    test = tree.find(f'.//test[@id="{KLUC}"]')
    assert test is not None
-   assert test.find('otazka[@id="q1"]').text == 'a'
-   assert test.find('otazka[@id="q2"]').text == 'b'
+   q1 = test.find('otazka[@id="q1"]')
+   q2 = test.find('otazka[@id="q2"]')
+   assert q1 is not None
+   assert q2 is not None
+   assert q1.text == 'a'
+   assert q2.text == 'b'
 
 def test_write_answers_aktualizuje_existujuci(answers_file):
    adresar = f'./res/xml/answers/{PREDMET}'
@@ -83,7 +87,9 @@ def test_write_answers_aktualizuje_existujuci(answers_file):
    tree = ET.parse(str(answers_file))
    testy = tree.findall(f'.//test[@id="{KLUC}"]')
    assert len(testy) == 1
-   assert testy[0].find('otazka[@id="q1"]').text == 'c'
+   q1 = testy[0].find('otazka[@id="q1"]')
+   assert q1 is not None
+   assert q1.text == 'c'
 
 def test_write_answers_bez_odpovedi_aktualizuje_dat(answers_file):
    adresar = f'./res/xml/answers/{PREDMET}'
@@ -111,8 +117,10 @@ def test_write_marks_body(answers_file):
    write_marks(lock, answers_file, {'h_q1': '1', 'h_q2': '0'}, KLUC, DAT)
    tree = ET.parse(str(answers_file))
    q1 = tree.find(f'.//test[@id="{KLUC}"]/otazka[@id="q1"]')
-   assert q1.get('body') == '1'
    q2 = tree.find(f'.//test[@id="{KLUC}"]/otazka[@id="q2"]')
+   assert q1 is not None
+   assert q2 is not None
+   assert q1.get('body') == '1'
    assert q2.get('body') == '0'
 
 def test_write_marks_koment(answers_file):
@@ -120,6 +128,7 @@ def test_write_marks_koment(answers_file):
    write_marks(lock, answers_file, {'k_q1': 'Správne'}, KLUC, DAT)
    tree = ET.parse(str(answers_file))
    q1 = tree.find(f'.//test[@id="{KLUC}"]/otazka[@id="q1"]')
+   assert q1 is not None
    assert q1.get('koment') == 'Správne'
 
 def test_write_marks_bh_typ(answers_file):
@@ -127,6 +136,7 @@ def test_write_marks_bh_typ(answers_file):
    write_marks(lock, answers_file, {'bh_q1': '2'}, KLUC, DAT)
    tree = ET.parse(str(answers_file))
    q1 = tree.find(f'.//test[@id="{KLUC}"]/otazka[@id="q1"]')
+   assert q1 is not None
    assert q1.get('body') == '2'
 
 def test_write_marks_neexistujuca_otazka_vytvori_element(answers_file):
@@ -181,6 +191,7 @@ def test_changetime_skupina_vymaze_atribut(tests_file):
 def test_changetime_test_nastavi_start(tests_file):
    modify_test_xml(str(tests_file), lambda t: _changetime_modify(t, KLUC, '2026-01-01T09:00', None))
    test = ET.parse(str(tests_file)).find(f'.//test[@id="{KLUC}"]')
+   assert test is not None
    assert test.get('start') == '2026-01-01T09:00'
 
 def test_changetime_test_nenajdeny(tests_file):
@@ -202,6 +213,7 @@ def _stoptime_modify(tree, kluc, stop):
 def test_stoptime_nastavi_stop(tests_file):
    modify_test_xml(str(tests_file), lambda t: _stoptime_modify(t, KLUC, '2026-01-01T10:00'))
    test = ET.parse(str(tests_file)).find(f'.//test[@id="{KLUC}"]')
+   assert test is not None
    assert test.get('stop') == '2026-01-01T10:00'
 
 def test_stoptime_nenajdeny(tests_file):
@@ -240,7 +252,9 @@ def test_write_answers_import_vytvori_subor(tmp_path):
    tree = ET.parse(str(cesta))
    test = tree.find(f'.//test[@id="{KLUC}"]')
    assert test is not None
-   assert test.find('otazka[@id="q1"]').text == 'a'
+   q1 = test.find('otazka[@id="q1"]')
+   assert q1 is not None
+   assert q1.text == 'a'
 
 def test_write_answers_import_aktualizuje_existujuci(answers_file):
    lock = FileLock(f'{answers_file}.lock')
@@ -248,13 +262,17 @@ def test_write_answers_import_aktualizuje_existujuci(answers_file):
    tree = ET.parse(str(answers_file))
    testy = tree.findall(f'.//test[@id="{KLUC}"]')
    assert len(testy) == 1
-   assert testy[0].find('otazka[@id="q1"]').text == 'x'
+   q1 = testy[0].find('otazka[@id="q1"]')
+   assert q1 is not None
+   assert q1.text == 'x'
 
 def test_write_answers_import_prida_novu_otazku(answers_file):
    lock = FileLock(f'{answers_file}.lock')
    write_answers_import(lock, answers_file, {'q9': 'c'}, KLUC)
    tree = ET.parse(str(answers_file))
-   assert tree.find(f'.//test[@id="{KLUC}"]/otazka[@id="q9"]').text == 'c'
+   q9 = tree.find(f'.//test[@id="{KLUC}"]/otazka[@id="q9"]')
+   assert q9 is not None
+   assert q9.text == 'c'
 
 def test_write_answers_import_novy_kluc(answers_file):
    lock = FileLock(f'{answers_file}.lock')

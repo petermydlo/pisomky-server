@@ -34,7 +34,7 @@ def _generuj_qr_kody(cesta: str) -> str:
    qrdir = tempfile.mkdtemp()
    for test_id in tree.xpath('//test/@id'):  # type: ignore[union-attr]
       qr = qrcode.QRCode(
-         error_correction=qrcode.constants.ERROR_CORRECT_L,
+         error_correction=qrcode.ERROR_CORRECT_L,
          box_size=3,
          border=1,
          image_factory=qrcode.image.svg.SvgPathImage,

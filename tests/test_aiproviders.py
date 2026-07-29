@@ -2,6 +2,7 @@
 
 import base64
 from types import SimpleNamespace
+from typing import Any, TypeVar, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,8 +14,9 @@ from app.routers.aiproviders import (
    get_provider,
 )
 
+T = TypeVar('T')
 
-def _bez_initu(cls):
+def _bez_initu(cls: type[T]) -> T:
    """Vytvorí inštanciu bez volania __init__ (ten by vytváral reálneho SDK klienta)."""
    return cls.__new__(cls)
 
@@ -22,16 +24,24 @@ def _bez_initu(cls):
 # --- ClaudeProvider._content_block ---
 
 def test_content_block_obrazok():
-   blok = ClaudeProvider._content_block(None, b'obrazok-data', 'image/png')
+   blok = ClaudeProvider._content_block(b'obrazok-data', 'image/png')
+   zdroj = blok['source']
    assert blok['type'] == 'image'
-   assert blok['source']['media_type'] == 'image/png'
-   assert base64.b64decode(blok['source']['data']) == b'obrazok-data'
+   assert zdroj['type'] == 'base64'
+   assert zdroj['media_type'] == 'image/png'
+   udaje = zdroj['data']
+   assert isinstance(udaje, str)
+   assert base64.b64decode(udaje) == b'obrazok-data'
 
 def test_content_block_pdf():
-   blok = ClaudeProvider._content_block(None, b'pdf-data', 'application/pdf')
+   blok = ClaudeProvider._content_block(b'pdf-data', 'application/pdf')
+   zdroj = blok['source']
    assert blok['type'] == 'document'
-   assert blok['source']['media_type'] == 'application/pdf'
-   assert base64.b64decode(blok['source']['data']) == b'pdf-data'
+   assert zdroj['type'] == 'base64'
+   assert zdroj['media_type'] == 'application/pdf'
+   udaje = zdroj['data']
+   assert isinstance(udaje, str)
+   assert base64.b64decode(udaje) == b'pdf-data'
 
 
 # --- get_provider ---
@@ -124,7 +134,7 @@ def test_ollama_get_answers_json_v_code_fence():
 def test_gemini_get_test_ids():
    provider = _bez_initu(GeminiProvider)
    provider.client = MagicMock()
-   provider.types = MagicMock()
+   provider.types = cast(Any, MagicMock())
    provider.model = 'test-model'
    provider.client.models.generate_content.return_value = SimpleNamespace(text='id1, id2')
    assert provider.get_test_ids(b'data', 'image/png') == ['id1', 'id2']
@@ -132,7 +142,7 @@ def test_gemini_get_test_ids():
 def test_gemini_get_answers():
    provider = _bez_initu(GeminiProvider)
    provider.client = MagicMock()
-   provider.types = MagicMock()
+   provider.types = cast(Any, MagicMock())
    provider.model = 'test-model'
    provider.client.models.generate_content.return_value = SimpleNamespace(text='{"tests": []}')
    assert provider.get_answers(b'data', 'image/png', '<xml/>') == {'tests': []}
