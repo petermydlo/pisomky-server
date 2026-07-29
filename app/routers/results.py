@@ -51,9 +51,9 @@ def write_marks(lock: FileLock, cesta: Path, form_data: dict, kluc: str, dat: st
             raise Exception(f'test {kluc} nenájdený v súbore')
          for key, value in form_data.items():
             typ, idotazky = key.split('_', 1)
-            otazkaxml = next(iter(testxml.xpath('.//otazka[@id=$id]', id=idotazky)), None)  # type: ignore[union-attr]
+            otazkaxml = next(iter(testxml.xpath('.//otazka[@id=$id]', id=idotazky)), None)
             if otazkaxml is None:
-               otazkaxml = ET.SubElement(testxml, 'otazka', attrib={'id': idotazky})  # type: ignore[arg-type]
+               otazkaxml = ET.SubElement(testxml, 'otazka', attrib={'id': idotazky})
             param = 'body' if typ in ('h', 'bh') else 'koment'
             otazkaxml.set(param, value)
          ET.indent(tree, space='   ')

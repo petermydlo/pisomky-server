@@ -7,7 +7,7 @@ from pathlib import Path
 from filelock import FileLock
 from fastapi.exceptions import HTTPException
 
-from app.utils import modify_test_xml, test_xml_path as xml_path
+from app.utils import modify_test_xml
 from app.routers.testrun import write_answers
 from app.routers.results import write_marks
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
