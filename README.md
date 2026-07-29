@@ -51,6 +51,16 @@ hypercorn --worker-class trio -w 4 --bind unix:/tmp/pisomkyserver.sock app.main:
 
 Server vyžaduje hlavičku `Host` zodpovedajúcu hodnote `ALLOWED_HOST`. Admin rozhranie vyžaduje hlavičku `X-Remote-User` (nastavuje reverse proxy).
 
+### Oprávnenia učiteľov (`.perm`)
+
+Úprava kapitol/kategórií/otázok (create/edit/delete) vyžaduje oprávnenie zapísané v súbore `.perm` v koreňovom adresári projektu (pozri `.perm.example`):
+
+```
+mydlo: edit:SXT4 delete:ALL create:AUT3,PIT4
+```
+
+Riadok `meno: akcia:PREDMET[,PREDMET...] ...` — akcia je `create`, `edit` alebo `delete`; `ALL` platí pre všetky predmety. Chýbajúci záznam alebo akcia = zakázané. Súbor sa znovu načíta automaticky pri zmene (bez reštartu servera).
+
 ## Štruktúra projektu
 
 ```

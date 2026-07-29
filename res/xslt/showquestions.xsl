@@ -9,6 +9,9 @@
 
 <xsl:param name="predmet"/>
 <xsl:param name="statistika"/>
+<xsl:param name="can_create" as="xs:boolean" select="false()"/>
+<xsl:param name="can_edit" as="xs:boolean" select="false()"/>
+<xsl:param name="can_delete" as="xs:boolean" select="false()"/>
 
 <!-- pouzite_otazka_id: id vsetkych otazok, ktore su niekde v tests/ predmetu -
      pouziva sa na disabled stav mazacej ikony kapitoly (kapitola nema soft-delete).
@@ -54,28 +57,38 @@
                         <xsl:text>%)</xsl:text>
                      </xsl:if>
                      </a>
-                     <span class="penIcon editActions editActions-kapitola">
-                        <i class="bi bi-pencil editKapitolaIcon" data-predmet="{$predmet}" data-id="{$id_kap}" title="Upraviť kapitolu"/>
-                        <xsl:choose>
-                           <xsl:when test="$kapitola_pouzita">
-                              <i class="bi bi-trash delKapitolaIcon disabled" title="Kapitola obsahuje použité otázky, nedá sa zmazať"/>
-                           </xsl:when>
-                           <xsl:otherwise>
-                              <i class="bi bi-trash delKapitolaIcon" data-predmet="{$predmet}" data-id="{$id_kap}" title="Zmazať kapitolu"/>
-                           </xsl:otherwise>
-                        </xsl:choose>
-                     </span>
+                     <xsl:if test="$can_edit or $can_delete">
+                        <span class="penIcon editActions editActions-kapitola">
+                           <xsl:if test="$can_edit">
+                              <i class="bi bi-pencil editKapitolaIcon" data-predmet="{$predmet}" data-id="{$id_kap}" title="Upraviť kapitolu"/>
+                           </xsl:if>
+                           <xsl:if test="$can_delete">
+                              <xsl:choose>
+                                 <xsl:when test="$kapitola_pouzita">
+                                    <i class="bi bi-trash delKapitolaIcon disabled" title="Kapitola obsahuje použité otázky, nedá sa zmazať"/>
+                                 </xsl:when>
+                                 <xsl:otherwise>
+                                    <i class="bi bi-trash delKapitolaIcon" data-predmet="{$predmet}" data-id="{$id_kap}" title="Zmazať kapitolu"/>
+                                 </xsl:otherwise>
+                              </xsl:choose>
+                           </xsl:if>
+                        </span>
+                     </xsl:if>
                   </div>
                </xsl:for-each-group>
             </div>
             <div class="addKapitolaWrap">
-               <i class="bi bi-plus-circle addKapitolaIcon" data-predmet="{$predmet}" title="Pridať kapitolu"/>
+               <xsl:if test="$can_create">
+                  <i class="bi bi-plus-circle addKapitolaIcon" data-predmet="{$predmet}" title="Pridať kapitolu"/>
+               </xsl:if>
             </div>
          </div>
          <div class="okraj bold bg-info predmet-row">
             <span>Predmet: <xsl:call-template name="predmet-icon"><xsl:with-param name="predmet" select="$predmet"/></xsl:call-template><xsl:value-of select="$predmet"/></span>
             <div class="addKategoriaWrap">
-               <i class="bi bi-plus-circle addKategoriaIcon" data-predmet="{$predmet}" title="Pridať kategóriu do aktívnej kapitoly"/>
+               <xsl:if test="$can_create">
+                  <i class="bi bi-plus-circle addKategoriaIcon" data-predmet="{$predmet}" title="Pridať kategóriu do aktívnej kapitoly"/>
+               </xsl:if>
             </div>
          </div>
          <div class="tab-content">
@@ -146,18 +159,28 @@
                                  <xsl:value-of select="@autor"/>
                               </span>
                            </xsl:if>
-                           <span class="penIcon editActions">
-                              <i class="bi bi-plus-circle addOtazkaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Pridať otázku"/>
-                              <i class="bi bi-pencil editKategoriaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Upraviť kategóriu"/>
-                              <xsl:choose>
-                                 <xsl:when test="@deprecated='1'">
-                                    <i class="bi bi-arrow-counterclockwise restoreKategoriaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Obnoviť kategóriu"/>
-                                 </xsl:when>
-                                 <xsl:otherwise>
-                                    <i class="bi bi-trash delKategoriaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Zmazať kategóriu"/>
-                                 </xsl:otherwise>
-                              </xsl:choose>
-                           </span>
+                           <xsl:if test="$can_create or $can_edit or $can_delete">
+                              <span class="penIcon editActions">
+                                 <xsl:if test="$can_create">
+                                    <i class="bi bi-plus-circle addOtazkaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Pridať otázku"/>
+                                 </xsl:if>
+                                 <xsl:if test="$can_edit">
+                                    <i class="bi bi-pencil editKategoriaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Upraviť kategóriu"/>
+                                 </xsl:if>
+                                 <xsl:choose>
+                                    <xsl:when test="@deprecated='1'">
+                                       <xsl:if test="$can_edit">
+                                          <i class="bi bi-arrow-counterclockwise restoreKategoriaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Obnoviť kategóriu"/>
+                                       </xsl:if>
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                       <xsl:if test="$can_delete">
+                                          <i class="bi bi-trash delKategoriaIcon" data-id="{@id}" data-predmet="{$predmet}" title="Zmazať kategóriu"/>
+                                       </xsl:if>
+                                    </xsl:otherwise>
+                                 </xsl:choose>
+                              </span>
+                           </xsl:if>
                         </div>
                         </div>
                         <xsl:apply-templates select="otazka">
@@ -248,17 +271,25 @@
                </span>
             </xsl:if>
          </div>
-         <span class="penIcon editActions">
-            <i class="bi bi-pencil editOtazkaIcon" data-id="{@id}" title="Upraviť otázku"/>
-            <xsl:choose>
-               <xsl:when test="@deprecated='1'">
-                  <i class="bi bi-arrow-counterclockwise restoreOtazkaIcon" data-id="{@id}" title="Obnoviť otázku"/>
-               </xsl:when>
-               <xsl:otherwise>
-                  <i class="bi bi-trash delOtazkaIcon" data-id="{@id}" title="Zmazať otázku"/>
-               </xsl:otherwise>
-            </xsl:choose>
-         </span>
+         <xsl:if test="$can_edit or $can_delete">
+            <span class="penIcon editActions">
+               <xsl:if test="$can_edit">
+                  <i class="bi bi-pencil editOtazkaIcon" data-id="{@id}" title="Upraviť otázku"/>
+               </xsl:if>
+               <xsl:choose>
+                  <xsl:when test="@deprecated='1'">
+                     <xsl:if test="$can_edit">
+                        <i class="bi bi-arrow-counterclockwise restoreOtazkaIcon" data-id="{@id}" title="Obnoviť otázku"/>
+                     </xsl:if>
+                  </xsl:when>
+                  <xsl:otherwise>
+                     <xsl:if test="$can_delete">
+                        <i class="bi bi-trash delOtazkaIcon" data-id="{@id}" title="Zmazať otázku"/>
+                     </xsl:if>
+                  </xsl:otherwise>
+               </xsl:choose>
+            </span>
+         </xsl:if>
          <xsl:if test="@deprecated='1' or ../@deprecated='1'">
             <i class="bi bi-x" title="archivovaná"/>
          </xsl:if>

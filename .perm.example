@@ -1,0 +1,4 @@
+# Opravnenia ucitelov na upravu obsahu (kapitoly/kategorie/otazky).
+# Format: meno: akcia:PREDMET[,PREDMET...] akcia:ALL ...
+# Akcie: create, edit, delete. Chybajuci zaznam/akcia = zakazane.
+mydlo: edit:SXT4 delete:ALL create:AUT3,PIT4

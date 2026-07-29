@@ -68,6 +68,9 @@ app.state.kapitola_cache = {}
 #pool skompilovaných XSLT šablón (stylesheet_file -> Queue[XsltExecutable])
 app.state.xslt_pools = {}
 
+#cache pre .perm subor (opravnenia ucitelov), hot-reload podla mtime
+app.state.perm_cache = {}
+
 #AI provider pre import skenovanych odpovedi
 app.state.ai_provider = get_provider()
 

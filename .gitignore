@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+.perm
 *.lock
 *.pdf
 *.fo
