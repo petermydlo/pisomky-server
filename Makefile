@@ -9,6 +9,7 @@ test:
 lint:
 	$(VENV)/bin/ruff check app/
 	$(VENV)/bin/mypy app/
+	$(VENV)/bin/pyright app/ tests/
 
 run:
 	$(VENV)/bin/hypercorn --worker-class trio -w 4 --bind unix:/tmp/pisomkyserver.sock app.main:app
