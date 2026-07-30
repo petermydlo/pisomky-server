@@ -513,6 +513,36 @@ div:hover > span.penIcon.editActions {
    color: green;
 }
 
+.predmetRow {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   gap: 0.5rem;
+}
+
+.predmetRow .inputW {
+   margin: 0;
+}
+
+.predmetActions {
+   display: inline-flex;
+   align-items: center;
+   gap: 0.5rem;
+}
+
+.predmetActions .bi {
+   font-size: 16px;
+   cursor: pointer;
+}
+
+.addPredmetIcon {
+   color: green;
+}
+
+.delPredmetIcon {
+   color: firebrick;
+}
+
 /* editActions-kapitola: kapitolove taby su uzky stlpec s textom po celej sirke,
    ikony preto namiesto prekryvania textu (right:0) vysunute mimo modreho pozadia napravo */
 .editActions-kapitola {

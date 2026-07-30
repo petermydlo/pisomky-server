@@ -29,19 +29,21 @@
             <form id="showForm" action="/admin/showquestions" method="post" class="odsadenieH">
                <div class="form-group">
                   <label for="predmet" class="form-label">Predmet</label>
-                  <div class="flex-container-table-otazka">
+                  <div class="predmetRow">
                      <select id="predmet" name="predmet" class="form-select inputW" data-deletep="{$deletep_predmety}" autofocus="on" required="required">
                         <xsl:for-each select="tokenize($predmety)">
                            <xsl:sort select="." data-type="text" order="ascending"/>
                            <option value="{.}"><xsl:value-of select="."/></option>
                         </xsl:for-each>
                      </select>
-                     <xsl:if test="$can_createp">
-                        <i class="bi bi-plus-circle addPredmetIcon" title="Vytvoriť nový predmet"/>
-                     </xsl:if>
-                     <xsl:if test="tokenize($deletep_predmety) != ''">
-                        <i class="bi bi-trash delPredmetIcon" title="Vymazať vybraný predmet"/>
-                     </xsl:if>
+                     <span class="predmetActions">
+                        <xsl:if test="$can_createp">
+                           <i class="bi bi-plus-circle addPredmetIcon" title="Vytvoriť nový predmet"/>
+                        </xsl:if>
+                        <xsl:if test="tokenize($deletep_predmety) != ''">
+                           <i class="bi bi-trash delPredmetIcon" title="Vymazať vybraný predmet"/>
+                        </xsl:if>
+                     </span>
                   </div>
                </div>
                <button type="submit" class="btn btn-outline-info odsadenieHM">Zobraziť</button>
