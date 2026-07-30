@@ -13,6 +13,9 @@ from app.utils import (
    create_chapter,
    update_chapter,
    delete_chapter,
+   create_predmet,
+   delete_predmet,
+   _skolsky_rok,
    add_category,
    update_category,
    delete_category,
@@ -251,6 +254,46 @@ def test_delete_chapter_pouzita(questions_file, tests_file):
 def test_delete_chapter_nenajde(questions_file):
    result = delete_chapter('neexistuje', PREDMET)
    assert result is False
+
+
+# --- create_predmet ---
+
+def test_create_predmet_uspech(tmp_path):
+   assert create_predmet('NOV4') is True
+   assert (tmp_path / 'res/xml/questions' / 'NOV4').is_dir()
+
+def test_create_predmet_duplicit(tmp_path):
+   assert create_predmet(PREDMET) is False  # existuje uz z fixtury workdir
+
+def test_create_predmet_zly_format():
+   assert create_predmet('nov4') is False  # male pismena
+   assert create_predmet('../etc') is False
+   assert create_predmet('X') is False  # prilis kratke
+
+
+# --- delete_predmet ---
+
+def test_delete_predmet_uspech(questions_file, tmp_path):
+   ok, dovod = delete_predmet(PREDMET)
+   assert ok is True
+   assert dovod is None
+   assert not (tmp_path / 'res/xml/questions' / PREDMET).exists()
+   rok = _skolsky_rok()
+   assert (tmp_path / 'res/xml/archiv' / rok / f'{PREDMET}_{rok}_otazky.tar.xz').exists()
+
+def test_delete_predmet_pouzita(questions_file, tests_file, tmp_path):
+   ok, dovod = delete_predmet(PREDMET)
+   assert ok is False
+   assert dovod is not None
+   assert (tmp_path / 'res/xml/questions' / PREDMET).exists()
+
+def test_delete_predmet_neexistuje():
+   ok, dovod = delete_predmet('NEEXIST')
+   assert ok is False
+
+def test_delete_predmet_zly_format():
+   ok, dovod = delete_predmet('../etc')
+   assert ok is False
 
 
 # --- is_used ---

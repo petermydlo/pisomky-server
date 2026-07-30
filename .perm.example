@@ -1,4 +1,6 @@
-# Opravnenia ucitelov na upravu obsahu (kapitoly/kategorie/otazky).
+# Opravnenia ucitelov na upravu obsahu (kapitoly/kategorie/otazky/predmety).
 # Format: meno: akcia:PREDMET[,PREDMET...] akcia:ALL ...
 # Akcie: create, edit, delete. Chybajuci zaznam/akcia = zakazane.
-mydlo: edit:SXT4 delete:ALL create:AUT3,PIT4
+# createp/deletep: vytvorenie/vymazanie celeho predmetu. createp davaj len ako ALL
+# (novy predmet este neexistuje, takze createp:PREDMET by sa nikdy nedalo splnit).
+ucitel1: edit:SXT4 delete:ALL create:AUT3,PIT4 createp:ALL deletep:SXT4

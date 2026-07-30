@@ -6,6 +6,8 @@
 <xsl:import href="head.xsl"/>
 
 <xsl:param name="predmety"/>
+<xsl:param name="can_createp" select="false()"/>
+<xsl:param name="deletep_predmety" select="''"/>
 
 <xsl:template name="xsl:initial-template">
    <html lang="sk">
@@ -27,16 +29,25 @@
             <form id="showForm" action="/admin/showquestions" method="post" class="odsadenieH">
                <div class="form-group">
                   <label for="predmet" class="form-label">Predmet</label>
-                  <select id="predmet" name="predmet" class="form-select inputW" autofocus="on" required="required">
-                     <xsl:for-each select="tokenize($predmety)">
-                        <xsl:sort select="." data-type="text" order="ascending"/>
-                        <option value="{.}"><xsl:value-of select="."/></option>
-                     </xsl:for-each>
-                  </select>
+                  <div class="flex-container-table-otazka">
+                     <select id="predmet" name="predmet" class="form-select inputW" data-deletep="{$deletep_predmety}" autofocus="on" required="required">
+                        <xsl:for-each select="tokenize($predmety)">
+                           <xsl:sort select="." data-type="text" order="ascending"/>
+                           <option value="{.}"><xsl:value-of select="."/></option>
+                        </xsl:for-each>
+                     </select>
+                     <xsl:if test="$can_createp">
+                        <i class="bi bi-plus-circle addPredmetIcon" title="Vytvoriť nový predmet"/>
+                     </xsl:if>
+                     <xsl:if test="tokenize($deletep_predmety) != ''">
+                        <i class="bi bi-trash delPredmetIcon" title="Vymazať vybraný predmet"/>
+                     </xsl:if>
+                  </div>
                </div>
                <button type="submit" class="btn btn-outline-info odsadenieHM">Zobraziť</button>
             </form>
          </div>
+         <script src="/pubres/js/selectquestions.js"><xsl:comment>MyJS</xsl:comment></script>
       </body>
    </html>
 </xsl:template>

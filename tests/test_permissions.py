@@ -70,3 +70,16 @@ def test_check_permission_prejde_bez_chyby(perm_file):
 
 def test_predmet_from_cesta():
    assert permissions.predmet_from_cesta('./res/xml/questions/SXT4/SXT4_01.xml') == 'SXT4'
+
+
+def test_createp_iba_all(perm_file):
+   perm_file.write_text('mydlo: createp:ALL\n', encoding='utf-8')
+   cache = {}
+   assert permissions.has_permission(cache, 'mydlo', 'createp', 'NOV4') is True
+
+
+def test_deletep_konkretny_predmet(perm_file):
+   perm_file.write_text('mydlo: deletep:SXT4\n', encoding='utf-8')
+   cache = {}
+   assert permissions.has_permission(cache, 'mydlo', 'deletep', 'SXT4') is True
+   assert permissions.has_permission(cache, 'mydlo', 'deletep', 'AUT3') is False

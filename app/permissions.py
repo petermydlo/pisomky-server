@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-"""Opravnenia ucitelov na upravu obsahu (kapitoly/kategorie/otazky), nacitane z .perm suboru.
+"""Opravnenia ucitelov na upravu obsahu (kapitoly/kategorie/otazky/predmety), nacitane z .perm suboru.
 
 Format riadku: 'meno: akcia:PREDMET[,PREDMET...] akcia:ALL ...'
-Akcie: create, edit, delete. Chybajuci zaznam alebo akcia = zakazane.
+Akcie: create, edit, delete, createp (vytvorenie predmetu, davaj len ako ALL),
+deletep (vymazanie celeho predmetu). Chybajuci zaznam alebo akcia = zakazane.
 """
 
 from pathlib import Path

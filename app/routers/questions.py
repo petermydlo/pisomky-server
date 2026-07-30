@@ -12,6 +12,7 @@ from app.utils import (
    add_question, update_question, delete_question, restore_question, fork_question, find_question,
    zmenene_zamrznute_polia,
    delete_chapter, create_chapter, update_chapter,
+   create_predmet, delete_predmet,
 )
 from app.permissions import check_permission, has_permission, predmet_from_cesta
 from fastapi import APIRouter, Request
@@ -23,14 +24,43 @@ router = APIRouter()
 _AKCIA_PODLA_OPERACIE = {'create': 'create', 'update': 'edit', 'delete': 'delete', 'restore': 'edit'}
 
 @router.get('/admin/selectquestions', response_class=HTMLResponse)
-async def selectquestions(request: Request):
+async def selectquestions(request: Request, X_Remote_User: StringHeader):
    proc = request.app.state.proc
-   predmety = ' '.join([name for name in os.listdir('./res/xml/questions')])
+   nazvy = sorted(os.listdir('./res/xml/questions'))
+   predmety = ' '.join(nazvy)
+   perm_cache = request.app.state.perm_cache
+   can_createp = has_permission(perm_cache, X_Remote_User, 'createp', 'ALL')
+   deletep_predmety = ' '.join(p for p in nazvy if has_permission(perm_cache, X_Remote_User, 'deletep', p))
    try:
-      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/selectquestions.xsl', params={'predmety': predmety})
+      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/selectquestions.xsl', params={
+         'predmety': predmety, 'can_createp': can_createp, 'deletep_predmety': deletep_predmety,
+      })
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
       request.app.state.logger.error(f'chyba selectquestions: {e}')
+      raise HTTPException(status_code=400, detail=str(e))
+
+@router.post('/admin/process_predmet', response_class=JSONResponse)
+async def process_predmet(request: Request, predmet: StringForm, operacia: StringForm, X_Remote_User: StringHeader):
+   try:
+      if operacia == 'create':
+         check_permission(request.app.state.perm_cache, X_Remote_User, 'createp', predmet)
+         ok = create_predmet(predmet)
+         if not ok:
+            raise HTTPException(status_code=400, detail='Predmet sa nedal vytvoriť (neplatná skratka alebo už existuje)')
+         return JSONResponse(content={'ok': True}, status_code=200)
+      elif operacia == 'delete':
+         check_permission(request.app.state.perm_cache, X_Remote_User, 'deletep', predmet)
+         ok, dovod = delete_predmet(predmet)
+         if not ok:
+            raise HTTPException(status_code=400, detail=dovod or 'Predmet sa nedal vymazať')
+         return JSONResponse(content={'ok': True}, status_code=200)
+      else:
+         raise HTTPException(status_code=400, detail=f'Neznáma operácia: {operacia}')
+   except HTTPException:
+      raise
+   except Exception as e:
+      request.app.state.logger.error(f'chyba predmet: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 @router.post('/admin/showquestions', response_class=HTMLResponse)

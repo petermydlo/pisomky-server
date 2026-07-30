@@ -3,7 +3,9 @@
 import os
 import re
 import glob
+import shutil
 import hashlib
+import tarfile
 import tempfile
 import subprocess
 import datetime as dat
@@ -299,6 +301,55 @@ def update_chapter(kapitola_id: str, predmet: str, nazov: str | None, cache: dic
    ET.indent(tree, space='   ')
    tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return True
+
+_SAFE_PREDMET = re.compile(r'^[A-Z0-9]{2,10}$')
+
+def create_predmet(predmet: str) -> bool:
+   """Vytvori novy adresar pre predmet v res/xml/questions/.
+   Vracia True ak uspech, False ak zly format skratky alebo uz existuje.
+   """
+   if not _SAFE_PREDMET.match(predmet):
+      return False
+   cesta = Path(f'./res/xml/questions/{predmet}')
+   if cesta.exists():
+      return False
+   cesta.mkdir(parents=True)
+   return True
+
+def _skolsky_rok() -> str:
+   """Vrati skolsky rok v tvare 'YYYY-YYYY' (september = zaciatok noveho roka)."""
+   dnes = dat.date.today()
+   if dnes.month >= 9:
+      return f'{dnes.year}-{dnes.year + 1}'
+   return f'{dnes.year - 1}-{dnes.year}'
+
+def delete_predmet(predmet: str) -> tuple[bool, str | None]:
+   """Zalohuje cely adresar predmetu do res/xml/archiv/ a nasledne ho vymaze.
+   Odmietne, ak je akakolvek otazka predmetu pouzita v niektorom tests subore.
+   Vracia (True, None) ak uspech, (False, dovod) ak zlyhalo.
+   """
+   if not _SAFE_PREDMET.match(predmet):
+      return False, 'Neplatný formát skratky predmetu'
+   cesta = Path(f'./res/xml/questions/{predmet}')
+   if not cesta.is_dir():
+      return False, 'Predmet neexistuje'
+   pouzita = any(
+      is_used(o.get('id') or '')
+      for subor in cesta.glob('*.xml')
+      for o in ET.parse(str(subor)).findall('.//otazka[@id]')
+   )
+   if pouzita:
+      return False, 'Predmet obsahuje otázky použité v testoch, nedá sa vymazať'
+   rok = _skolsky_rok()
+   archiv_dir = Path(f'./res/xml/archiv/{rok}')
+   archiv_dir.mkdir(parents=True, exist_ok=True)
+   archiv_subor = archiv_dir / f'{predmet}_{rok}_otazky.tar.xz'
+   if archiv_subor.exists():
+      return False, 'Záloha otázok pre tento predmet už existuje'
+   with tarfile.open(archiv_subor, 'w:xz') as tar:
+      tar.add(cesta, arcname=cesta.name)
+   shutil.rmtree(cesta)
+   return True, None
 
 def find_category(kategoria_id: str, cache: dict | None = None) -> tuple[ET._Element, str] | tuple[None, None]:
    """Najde kategoriu v questions XML podla @id.
