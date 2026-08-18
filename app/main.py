@@ -36,8 +36,9 @@ async def lifespan(app: FastAPI):
    try:
       import ollama
       await ollama.AsyncClient().chat(
-         model=os.getenv('OLLAMA_MODEL', 'llama3.1'),
+         model=os.getenv('OLLAMA_MODEL', 'qwen3:8b'),
          messages=[{'role': 'user', 'content': ''}],
+         think=False,
          options={'num_predict': 1, 'keep_alive': '45m'}
       )
    except Exception:

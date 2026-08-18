@@ -208,9 +208,10 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
          done_sent = False
          client = ollama.AsyncClient()
          async for chunk in await client.chat(
-            model=os.getenv('OLLAMA_MODEL', 'llama3.1'),
+            model=os.getenv('OLLAMA_MODEL', 'qwen3:8b'),
             messages=messages,
             stream=True,
+            think=False,
             options={'temperature': 0.3, 'num_ctx': 4096, 'keep_alive': '45m'}
          ):
             text = chunk['message']['content']
