@@ -27,7 +27,7 @@
    <xsl:variable name="icon">
       <xsl:choose>
          <xsl:when test="starts-with($predmet, 'AUT')">bi-gear</xsl:when>
-         <xsl:when test="starts-with($predmet, 'CLO')">bi-cloud</xsl:when>
+         <xsl:when test="starts-with($predmet, 'CUA')">bi-cloud</xsl:when>
          <xsl:when test="starts-with($predmet, 'PIT')">bi-cpu</xsl:when>
          <xsl:when test="starts-with($predmet, 'PRO')">bi-code-slash</xsl:when>
          <xsl:when test="starts-with($predmet, 'SXT')">bi-database</xsl:when>
