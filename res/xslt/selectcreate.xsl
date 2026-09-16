@@ -52,7 +52,9 @@
                               <xsl:if test="position() != last()"><xsl:text> </xsl:text></xsl:if>
                            </xsl:for-each-group>
                         </xsl:variable>
-                        <option value="{current-grouping-key()}" class="{$classes}" disabled="disabled"><xsl:value-of select="current-grouping-key()"/></option>
+                        <!-- skupiny s podciarkovnikom v nazve (napr. "pit1_pit4") su viazane na predmet za nim -->
+                        <xsl:variable name="predmetSkupiny" select="if (contains(current-grouping-key(), '_')) then lower-case(tokenize(current-grouping-key(), '_')[last()]) else ''"/>
+                        <option value="{current-grouping-key()}" class="{$classes}" data-predmet="{$predmetSkupiny}" disabled="disabled"><xsl:value-of select="current-grouping-key()"/></option>
                      </xsl:for-each-group>
                   </select>
                   <label for="kapitola" class="form-label odsadenieHM">Kapitola</label>

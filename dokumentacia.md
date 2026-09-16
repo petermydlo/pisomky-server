@@ -81,6 +81,25 @@ Voliteľné atribúty `<student>`:
   zaručí, že žiak nedostane rovnakú otázku/vetvu/alternatívu ako jeho priamy sused v
   rade alebo predo/za ním. Žiaci bez `sedenie` sa generujú nezávisle ako doteraz.
 
+`skupina` a `sedenie` sú **poradovo zviazané** — ak má žiak zapísaných viac skupín
+oddelených čiarkou, `sedenie` na rovnakej pozícii patrí danej skupine (napr.
+`skupina="pit1,s1" sedenie="1A,"` — sedenie `1A` platí len pre skupinu `pit1`,
+pre `s1` sedenie nie je zadané).
+
+**Konvencia pre názvy skupín pri viacerých miestnostiach:** ak žiak sedí v tej istej
+skupine (rovnaké delenie triedy), ale pre rôzne predmety v rôznych miestnostiach na
+rôznom mieste, obyčajný názov skupiny (napr. `s1`) by kolidoval — `sedenie` sa viaže
+len na názov skupiny, nie na predmet. V takom prípade sa do názvu skupiny pridá za
+podčiarkovník skratka predmetu, napr. `s1_pro4`, `pit1_pit4` — každá kombinácia
+skupina+miestnosť tak dostane vlastný, jednoznačný token. Ak skupina kolízii
+nepodlieha (má rovnaké sedenie/miestnosť naprieč predmetmi, alebo sa pre sedenie
+vôbec nepoužíva), názov ostáva bez podčiarkovníka (`pit1`, `s1`...).
+
+Táto konvencia sa premieta aj do formulára "Vytvorenie nového testu"
+(`/admin/selectcreate`): dropdown "Skupina" po výbere predmetu ukáže len skupiny bez
+podčiarkovníka (univerzálne) a skupiny, kde skratka za podčiarkovníkom sedí s
+vybraným predmetom — ostatné zostanú skryté/nevybrateľné.
+
 Príklad (skrátený):
 
 ```xml
