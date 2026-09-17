@@ -66,6 +66,49 @@
    </xsl:choose>
 </xsl:function>
 
+<!-- Presné hodnotenie vrátane otvorených otázok s ručne prideleným @body (zrkadlí res/xquery/score.xq) -->
+
+<xsl:function name="my:otvorenaotazka" as="xs:boolean">
+   <xsl:param name="otazka" as="element()"/>
+   <xsl:sequence select="empty($otazka/odpoved)"/>
+</xsl:function>
+
+<xsl:function name="my:otazkaziskanebodypresne" as="xs:integer">
+   <xsl:param name="otazka" as="element()"/>
+   <xsl:param name="riestest" as="element()?"/>
+   <xsl:variable name="odpovedotazka" select="$riestest/otazka[@id = $otazka/@id]"/>
+   <xsl:choose>
+      <xsl:when test="my:otvorenaotazka($otazka)">
+         <xsl:sequence select="xs:integer(($odpovedotazka/@body, 0)[1])"/>
+      </xsl:when>
+      <xsl:otherwise>
+         <xsl:variable name="spravnaodpoved">
+            <xsl:apply-templates select="$otazka/odpoved" mode="spravnebody"/>
+         </xsl:variable>
+         <xsl:sequence select="if ($odpovedotazka/text() = $spravnaodpoved) then xs:integer($otazka/@body) else 0"/>
+      </xsl:otherwise>
+   </xsl:choose>
+</xsl:function>
+
+<xsl:function name="my:sucetziskanychbodovpresne" as="xs:integer">
+   <xsl:param name="testnode" as="element()"/>
+   <xsl:param name="riestest" as="element()?"/>
+   <xsl:sequence select="sum(for $o in $testnode/otazka[not(@rating)] return my:otazkaziskanebodypresne($o, $riestest))"/>
+</xsl:function>
+
+<xsl:function name="my:testneuplny" as="xs:boolean">
+   <xsl:param name="testnode" as="element()"/>
+   <xsl:param name="riestest" as="element()?"/>
+   <xsl:sequence select="some $o in $testnode/otazka[not(@rating)] satisfies (my:otvorenaotazka($o) and empty($riestest/otazka[@id = $o/@id]/@body))"/>
+</xsl:function>
+
+<xsl:function name="my:ziskanepercentapresne" as="xs:double">
+   <xsl:param name="testnode" as="element()"/>
+   <xsl:variable name="riestest" select="my:riestest($testnode)"/>
+   <xsl:variable name="maximum" select="my:sucetmaxbodov($testnode)"/>
+   <xsl:sequence select="if ($maximum > 0) then min((my:sucetziskanychbodovpresne($testnode, $riestest), $maximum)) div $maximum * 100 else 0"/>
+</xsl:function>
+
 <xsl:template match="otazka" mode="ziskanebody">
    <xsl:param name="rtest" tunnel="yes"/>
    <xsl:variable name="idotazky" select="@id"/>

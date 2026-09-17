@@ -26,7 +26,7 @@
          <xsl:call-template name="cdn-css"/>
          <link rel="stylesheet" type="text/css" href="/pubres/css/testy.css"/>
       </head>
-      <body>
+      <body class="admin-overview">
          <div class="flex-container-icon bg-info-subtle">
             <div>
                <a href="/admin/selectquestions"><i class="bi bi-pencil" title="Edit questions"/></a>
@@ -59,7 +59,7 @@
                      <xsl:attribute name="class">tab-pane active</xsl:attribute>
                   </xsl:if>
                   <div class="grid bold bg-info">
-                     <div class="grid-span span7"><xsl:call-template name="predmet-icon"><xsl:with-param name="predmet" select="@predmet"/></xsl:call-template><xsl:value-of select="@predmet"/> (<span class="autor"><xsl:value-of select="$autor"/></span>)</div>
+                     <div class="grid-span span8"><xsl:call-template name="predmet-icon"><xsl:with-param name="predmet" select="@predmet"/></xsl:call-template><xsl:value-of select="@predmet"/> (<span class="autor"><xsl:value-of select="$autor"/></span>)</div>
                   </div>
                   <div class="grid bold bg-info bg-opacity-50 grid-header">
                      <div><i class="bi bi-people header-icon"/>&#160;Trieda</div>
@@ -68,6 +68,7 @@
                      <div><i class="bi bi-play-fill header-icon"/>&#160;Start</div>
                      <div><i class="bi bi-stop-fill header-icon"/>&#160;Stop</div>
                      <div><i class="bi bi-check2 header-icon"/>&#160;Odovzdané</div>
+                     <div><i class="bi bi-graph-up header-icon"/>&#160;Priemer</div>
                      <div><i class="bi bi-lightning header-icon"/>&#160;Akcie</div>
                   </div>
                   <xsl:for-each-group select="current-group()" group-by="@trieda">
@@ -77,7 +78,7 @@
                         <xsl:variable name="skupina_id" select="generate-id()"/>
                         <div class="grid skupinaToggle bg-info bg-opacity-25" role="button"
                              data-bs-toggle="collapse" data-bs-target="#{$skupina_id}">
-                           <div class="zalomenie grid-span span7">
+                           <div class="zalomenie grid-span span8">
                               <span id="trieda"><xsl:value-of select="@trieda"/></span><span id="skupina"><xsl:value-of select="@skupina"/></span>
                            </div>
                         </div>
@@ -92,6 +93,8 @@
                            <xsl:variable name="ma-answers"  select="exists(current-group()[local-name() = 'odpovede'])"/>
                            <xsl:variable name="ma-feedback" select="exists(current-group()[local-name() = 'feedback'])"/>
                            <xsl:variable name="vybtesty"    select="my:vybtesty(current-group()[1])"/>
+                           <xsl:variable name="ohodnotene"  select="$testy-el/test[exists(my:riestest(.))]"/>
+                           <xsl:variable name="priemer"     select="if (exists($ohodnotene)) then avg(for $t in $ohodnotene return my:ziskanepercentapresne($t)) else ()"/>
                            <div class="skupina" data-fileid="{@fileid}">
                               <div class="grid" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
                                  <div class="subory-ikony">
@@ -116,6 +119,11 @@
                                  </div>
                                  <div><xsl:value-of select="sort($vybtesty/odpovede/test, (), function($t) { xs:dateTime($t/@dat) })[last()]/@dat"/></div>
                                  <div>
+                                    <xsl:if test="exists($priemer)">
+                                       <xsl:value-of select="concat(round($priemer), '%')"/>
+                                    </xsl:if>
+                                 </div>
+                                 <div>
                                     <xsl:if test="$ma-test">
                                        <span class="codes" title="Download codes" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-file-earmark"/></span>
                                        <span class="tests" title="Download tests" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-printer"/></span>
@@ -137,6 +145,7 @@
                                        <div class="bold bg-info bg-opacity-25">Start</div>
                                        <div class="bold bg-info bg-opacity-25">Stop</div>
                                        <div class="bold bg-info bg-opacity-25">Odovzdané</div>
+                                       <div class="bold bg-info bg-opacity-25">Body</div>
                                        <div class="neviditelny"/>
                                     <xsl:apply-templates select="$testy-el/test">
                                        <xsl:with-param name="vybtesty" select="$vybtesty"/>
@@ -156,7 +165,7 @@
             </xsl:for-each-group>
             <xsl:if test="empty($vsetky)">
                <div class="grid bold bg-info">
-                  <div class="grid-span span7">Žiadne testy (<span class="autor"><xsl:value-of select="$autor"/></span>)</div>
+                  <div class="grid-span span8">Žiadne testy (<span class="autor"><xsl:value-of select="$autor"/></span>)</div>
                </div>
             </xsl:if>
          </div>
@@ -205,6 +214,19 @@
    <div><span><xsl:value-of select="@start"/></span><span id="{@id}" class="startT penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
    <div><span><xsl:value-of select="@stop"/></span><span id="{@id}" class="stopT penIcon" title="Stop time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
    <div><xsl:value-of select="$vybtesty/odpovede/test[@id = $rid]/@dat"/></div>
+   <xsl:variable name="riestest" select="my:riestest(.)"/>
+   <div>
+      <xsl:if test="exists($riestest)">
+         <xsl:variable name="maximum" select="my:sucetmaxbodov(.)"/>
+         <xsl:variable name="ziskane" select="min((my:sucetziskanychbodovpresne(., $riestest), $maximum))"/>
+         <xsl:variable name="percento" select="if ($maximum > 0) then round($ziskane div $maximum * 100) else 0"/>
+         <xsl:if test="my:testneuplny(., $riestest)">
+            <xsl:attribute name="class">sive</xsl:attribute>
+            <xsl:attribute name="title">Obsahuje neohodnotené otvorené otázky</xsl:attribute>
+         </xsl:if>
+         <xsl:value-of select="concat($ziskane, '/', $maximum, ' (', $percento, '%)')"/>
+      </xsl:if>
+   </div>
    <div class="neviditelny"></div>
 </xsl:template>
 </xsl:stylesheet>
