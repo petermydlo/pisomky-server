@@ -98,8 +98,8 @@
                </div>
             </div>
             <div id="vyhodnotenie" class="flex-container-head-part znamka-{$znamka}" data-min1="{$min1}" data-min2="{$min2}" data-min3="{$min3}" data-min4="{$min4}">
-               <div class="bold">Percentá: <span id="pocetpercent"><xsl:value-of select="floor($ziskanepercenta)"/></span>%
-                  <xsl:text> (</xsl:text><span id="pocetbodov"><xsl:value-of select="$sucetspravnychbodov"/></span>/<xsl:value-of select="$sucetmaxbodov"/>)
+               <div class="bold">Hodnotenie: <span id="pocetbodov"><xsl:value-of select="$sucetspravnychbodov"/></span>/<xsl:value-of select="$sucetmaxbodov"/>
+                  <xsl:text> (</xsl:text><span id="pocetpercent"><xsl:value-of select="floor($ziskanepercenta)"/></span>%)
                </div>
                <div class="bold" >Známka: <span id="znamka"><xsl:value-of select="$znamka"/></span></div>
             </div>
