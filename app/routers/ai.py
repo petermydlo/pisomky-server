@@ -7,10 +7,12 @@ from typing import cast
 from datetime import datetime
 from filelock import FileLock
 from lxml import etree as ET
+import anyio
 import ollama
 from dotenv import load_dotenv
 from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, xquery_to_string, xslt_to_string
 from app.mytypes import StringQuery, IntForm, StringForm
+from anyio.streams.memory import MemoryObjectSendStream
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
 from fastapi.exceptions import HTTPException
@@ -132,6 +134,54 @@ def _parsuj_hint_keys(raw: str) -> tuple[str, str]:
    return hint, keys
 
 
+async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, send: MemoryObjectSendStream, logger) -> None:
+   """Runs the model call independently of the client connection, so that hint and keys
+   are always saved even if the client disconnects after the first line. Events for the
+   client are passed through the stream; closing it marks the end."""
+
+   def posli(udalost: tuple[str, dict]) -> None:
+      try:
+         send.send_nowait(udalost)
+      except (anyio.BrokenResourceError, anyio.ClosedResourceError):
+         pass
+
+   full_text = ''
+   hint_ulozeny = False
+   try:
+      client = ollama.AsyncClient()
+      async for chunk in await client.chat(
+         model=os.getenv('OLLAMA_MODEL', 'qwen3.5:9b'),
+         messages=messages,
+         stream=True,
+         think=False,
+         options={'temperature': 0.3, 'num_ctx': 4096, 'keep_alive': '45m'}
+      ):
+         text = chunk['message']['content']
+         if not text:
+            continue
+         full_text += text
+         if not hint_ulozeny:
+            posli(('chunk', {'text': text}))
+            if '\n' in full_text:
+               hint_ulozeny = True
+               hint, _ = _parsuj_hint_keys(full_text)
+               _aktualizuj_zapis(subor, zapis_id, hint=hint)
+               posli(('done', {'hint': hint}))
+
+      hint, keys = _parsuj_hint_keys(full_text)
+      if hint_ulozeny:
+         if keys:
+            _aktualizuj_zapis(subor, zapis_id, keys=keys)
+      else:
+         _aktualizuj_zapis(subor, zapis_id, hint=hint, keys=keys or None)
+         posli(('done', {'hint': hint}))
+   except Exception as e:
+      logger.error(f'chyba napoveda stream: {e}')
+      posli(('napoveda_error', {'error': 'Služba nápovedy je momentálne zaneprázdnená.'}))
+   finally:
+      send.close()
+
+
 @router.get('/ai/napoveda')
 async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuery):
    proc = request.app.state.proc
@@ -200,43 +250,14 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
    remaining = pocet_otazok - pouzite - 1
    _uloz_zapis(subor, zapis_id, otazka_id, test_id, predmet, trieda, skupina, kapitola, fileid)
 
+   send, receive = anyio.create_memory_object_stream[tuple[str, dict]](max_buffer_size=float('inf'))
+   request.app.state.task_group.start_soon(_generuj_napovedu, messages, subor, zapis_id, send, request.app.state.logger)
+
    async def generate():
-      try:
-         yield f'event: meta\ndata: {json.dumps({"zapis_id": zapis_id, "remaining": remaining})}\n\n'
-
-         full_text = ''
-         done_sent = False
-         client = ollama.AsyncClient()
-         async for chunk in await client.chat(
-            model=os.getenv('OLLAMA_MODEL', 'qwen3.5:9b'),
-            messages=messages,
-            stream=True,
-            think=False,
-            options={'temperature': 0.3, 'num_ctx': 4096, 'keep_alive': '45m'}
-         ):
-            text = chunk['message']['content']
-            if text:
-               full_text += text
-               if not done_sent:
-                  yield f'event: chunk\ndata: {json.dumps({"text": text})}\n\n'
-                  if '\n' in full_text:
-                     done_sent = True
-                     hint, _ = _parsuj_hint_keys(full_text)
-                     _aktualizuj_zapis(subor, zapis_id, hint=hint)
-                     yield f'event: done\ndata: {json.dumps({"hint": hint})}\n\n'
-
-         if not done_sent:
-            hint, keys = _parsuj_hint_keys(full_text)
-            _aktualizuj_zapis(subor, zapis_id, hint=hint, keys=keys or None)
-            yield f'event: done\ndata: {json.dumps({"hint": hint})}\n\n'
-         else:
-            _, keys = _parsuj_hint_keys(full_text)
-            if keys:
-               _aktualizuj_zapis(subor, zapis_id, keys=keys)
-
-      except Exception as e:
-         request.app.state.logger.error(f'chyba napoveda stream: {e}')
-         yield f'event: napoveda_error\ndata: {json.dumps({"error": "Služba nápovedy je momentálne zaneprázdnená."})}\n\n'
+      yield f'event: meta\ndata: {json.dumps({"zapis_id": zapis_id, "remaining": remaining})}\n\n'
+      async with receive:
+         async for typ, data in receive:
+            yield f'event: {typ}\ndata: {json.dumps(data)}\n\n'
 
    return StreamingResponse(
       generate(),

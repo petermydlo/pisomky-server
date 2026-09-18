@@ -3,6 +3,7 @@
 import os
 import logging
 from contextlib import asynccontextmanager
+import anyio
 from typing import Annotated
 from fastapi import FastAPI, Header, Request
 from saxonche import PySaxonProcessor
@@ -43,7 +44,9 @@ async def lifespan(app: FastAPI):
       )
    except Exception:
       pass
-   yield
+   async with anyio.create_task_group() as tg:
+      app.state.task_group = tg
+      yield
    app.state.proc.close()
 
 app = FastAPI(lifespan=lifespan, exception_handlers=exceptions, docs_url=None, redoc_url=None)  # type: ignore[arg-type]
