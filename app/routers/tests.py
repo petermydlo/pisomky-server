@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import glob
 import secrets
 import lxml.etree as ET
 from pathlib import Path
@@ -81,20 +82,33 @@ async def regeneratetests(request: Request, predmet: StringForm, trieda: StringF
       request.app.state.logger.error(f'chyba regeneratetests2: {e}')
       raise HTTPException(status_code=400, detail='chyba regeneratetests2: ' + str(e))
 
+def _vymaz_s_lockom(cesta: Path) -> None:
+   """Vymaze subor aj jeho .lock (FileLock ho po sebe nemaze)."""
+   cesta.unlink(missing_ok=True)
+   Path(f'{cesta}.lock').unlink(missing_ok=True)
+
+def vymaz_testy(cesta_test: Path, del_test: bool, del_answers: bool, del_feedback: bool) -> None:
+   """Vymaze tests/answers/feedback XML testu (podla priznakov) spolu s ich .lock
+   subormi; s odpovedami aj subory odovzdane ziakmi (<answers stem>_<kluc>-<nazov>_subor).
+   """
+   cesta_answers  = Path(str(cesta_test).replace('/tests/', '/answers/', 1))
+   cesta_feedback = Path(str(cesta_test).replace('/tests/', '/feedback/', 1))
+   if del_test:
+      _vymaz_s_lockom(cesta_test)
+   if del_answers:
+      _vymaz_s_lockom(cesta_answers)
+      for subor in cesta_answers.parent.glob(glob.escape(cesta_answers.stem) + '_*_subor'):
+         subor.unlink()
+   if del_feedback:
+      _vymaz_s_lockom(cesta_feedback)
+
 @router.delete('/admin/deletetests', response_class=PlainTextResponse)
 async def delete(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', del_test: BoolForm = True, del_answers: BoolForm = False, del_feedback: BoolForm = False):
    cesta_test = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
-   cesta_answers  = Path(cesta_test.replace('/tests/', '/answers/', 1))
-   cesta_feedback = Path(cesta_test.replace('/tests/', '/feedback/', 1))
    if del_test and not os.path.exists(cesta_test):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
    try:
-      if del_test and os.path.exists(cesta_test):
-         os.remove(cesta_test)
-      if del_answers and cesta_answers.exists():
-         cesta_answers.unlink()
-      if del_feedback and cesta_feedback.exists():
-         cesta_feedback.unlink()
+      vymaz_testy(Path(cesta_test), del_test, del_answers, del_feedback)
       adresar = f'./res/xml/tests/{predmet}'
       if os.path.exists(adresar) and os.listdir(adresar):
          return PlainTextResponse(content='#' + predmet, status_code=200)

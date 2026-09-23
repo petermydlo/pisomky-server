@@ -11,6 +11,7 @@ from app.utils import modify_test_xml
 from app.routers.testrun import write_answers
 from app.routers.results import write_marks
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
+from app.routers.tests import vymaz_testy
 
 PREDMET = 'MAT'
 TRIEDA = '1A'
@@ -240,6 +241,32 @@ def test_deletetests_adresar_neprazdny_po_vymazani(tests_file, tmp_path):
    druhy.write_text(TESTS_XML, encoding='utf-8')
    os.remove(str(tests_file))
    assert os.listdir(str(tests_file.parent)) != []
+
+
+def _subory_testu(tmp_path, fileid=FILEID) -> list[Path]:
+   stem = f'{PREDMET}_{TRIEDA}{SKUPINA}_{KAPITOLA}_{fileid}'
+   subory = []
+   for typ in ('tests', 'answers', 'feedback'):
+      (tmp_path / 'res/xml' / typ / PREDMET).mkdir(parents=True, exist_ok=True)
+      subory += [tmp_path / 'res/xml' / typ / PREDMET / f'{stem}.xml', tmp_path / 'res/xml' / typ / PREDMET / f'{stem}.xml.lock']
+   subory += [tmp_path / 'res/xml/answers' / PREDMET / f'{stem}_{KLUC}-screenshot.png_subor',
+              tmp_path / 'res/xml/answers' / PREDMET / f'{stem}_TEST02-a_b.txt_subor']
+   for s in subory:
+      s.write_text('x', encoding='utf-8')
+   return subory
+
+def test_vymaz_testy_vsetko_aj_locky_a_odovzdane_subory(tmp_path):
+   subory = _subory_testu(tmp_path)
+   ine = _subory_testu(tmp_path, fileid='cd34')
+   vymaz_testy(Path(f'./res/xml/tests/{PREDMET}/{subory[0].name}'), True, True, True)
+   assert [s for s in subory if s.exists()] == []
+   assert all(s.exists() for s in ine)
+
+def test_vymaz_testy_len_test_necha_odpovede_aj_odovzdane_subory(tmp_path):
+   subory = _subory_testu(tmp_path)
+   vymaz_testy(Path(f'./res/xml/tests/{PREDMET}/{subory[0].name}'), True, False, False)
+   assert not subory[0].exists() and not subory[1].exists()
+   assert all(s.exists() for s in subory[2:])
 
 
 # --- importanswers: write_answers_import ---

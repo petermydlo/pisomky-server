@@ -184,7 +184,7 @@
                      </div>
                      <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="delAnswers" checked="true"/>
-                        <label class="form-check-label" for="delAnswers">Odpovede</label>
+                        <label class="form-check-label" for="delAnswers">Odpovede (aj odovzdané súbory)</label>
                      </div>
                      <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="delFeedback" checked="true"/>
