@@ -315,10 +315,19 @@ Text v `<znenie>` a `<odpoved>` podporuje formátovacie inline elementy: `<itali
       </alter>+<alter>
          <choice>1</choice>
          <choice>2</choice>
-      </alter>i; ...
+      </alter>i; ω=<alter rozne="omega">
+         <choice>1</choice>
+         <choice>2</choice>
+      </alter>rad/s
    </znenie>
 </otazka>
 ```
+
+Voliteľný atribút `rozne` na `<alter>`: všetky `<alter>` s rovnakou hodnotou `rozne`
+dostanú v jednom teste rôzne hodnoty (porovnáva sa text `<choice>`), aj naprieč
+otázkami a kategóriami. V PIT4 c01 tak obe dvojice sínusovka + kosínusovka dostanú
+rôzne ω. Rátajú sa len otázky, ktoré žiak naozaj dostal. Ak je v skupine viac `<alter>`
+než hodnôt, pri ďalších sa vylúčenie vzdá a hodnoty sa môžu opakovať.
 
 Kapitola môže mať aj `<pokyny>` s voliteľným `<head>` (úvodný text pred otázkami) a
 `<tail>` (záverečný text), napr. inštrukcie k odovzdaniu.

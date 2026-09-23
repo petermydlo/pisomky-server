@@ -102,13 +102,15 @@
    <test>
       <xsl:copy-of select="@*"/>
       <xsl:copy-of copy-namespaces="no" select="pokyny"/>
+      <xsl:variable name="vybrane" select="my:vyber-otazky-testu($seed, $cesta, (), ())"/>
       <xsl:variable name="otazky">
-         <xsl:apply-templates select="$vkapitola/kategoria[not(@deprecated) and not(@paused='1')][not(@autor) and not(key('nahrada-kat', @id || '|' || $autor, $vkapitola)) or @autor=$autor]">
+         <xsl:apply-templates select="$vybrane">
             <xsl:with-param name="seed" select="$seed"/>
             <xsl:with-param name="meno" select="@meno" tunnel="yes"/>
             <xsl:with-param name="priezvisko" select="@priezvisko" tunnel="yes"/>
             <xsl:with-param name="kod" select="@id" tunnel="yes"/>
             <xsl:with-param name="vc" select="$cesta" tunnel="yes"/>
+            <xsl:with-param name="vybrane-otazky" select="$vybrane" tunnel="yes"/>
          </xsl:apply-templates>
       </xsl:variable>
       <xsl:variable name="seed0" select="'0' || $seed || position() || generate-id()"/>
@@ -158,13 +160,15 @@
          <xsl:with-param name="priezvisko" select="@priezvisko" tunnel="yes"/>
          <xsl:with-param name="kod" select="$id" tunnel="yes"/>
       </xsl:apply-templates>
+      <xsl:variable name="vybrane" select="my:vyber-otazky-testu($seed, $cesta, (), ())"/>
       <xsl:variable name="otazky">
-         <xsl:apply-templates select="$vkapitola/kategoria[not(@deprecated) and not(@paused='1')][not(@autor) and not(key('nahrada-kat', @id || '|' || $autor, $vkapitola)) or @autor=$autor]">
+         <xsl:apply-templates select="$vybrane">
             <xsl:with-param name="seed" select="$seed"/>
             <xsl:with-param name="meno" select="@meno" tunnel="yes"/>
             <xsl:with-param name="priezvisko" select="@priezvisko" tunnel="yes"/>
             <xsl:with-param name="kod" select="$id" tunnel="yes"/>
             <xsl:with-param name="vc" select="$cesta" tunnel="yes"/>
+            <xsl:with-param name="vybrane-otazky" select="$vybrane" tunnel="yes"/>
          </xsl:apply-templates>
       </xsl:variable>
       <xsl:variable name="seed0" select="'0' || $seed || position() || generate-id()"/>
@@ -194,42 +198,42 @@
    </xsl:copy>
 </xsl:template>
 
-<xsl:template match="kategoria">
-   <xsl:param name="seed"/>
-   <xsl:param name="vc" tunnel="yes"/>
-   <xsl:param name="vylucene-otazky-lavy" tunnel="yes" select="()" as="xs:string*"/>
-   <xsl:param name="vylucene-otazky-horny" tunnel="yes" select="()" as="xs:string*"/>
-   <xsl:variable name="pocetotazok" select="if (@pocet) then xs:integer(@pocet) else 1"/>
-   <xsl:variable name="otazkystaticke">
-      <xsl:if test="$vc != ''">
-         <xsl:apply-templates select="otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][@static = '1'][tokenize(@cesta, ',') = $vc or not(@cesta)][position() = 1 to $pocetotazok]">
-            <xsl:with-param name="seed" select="$seed"/>
-         </xsl:apply-templates>
-      </xsl:if>
-      <xsl:if test="$vc = ''">
-         <xsl:apply-templates select="otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][@static = '1'][position() = 1 to $pocetotazok]">
-            <xsl:with-param name="seed" select="$seed"/>
-         </xsl:apply-templates>
-      </xsl:if>
-   </xsl:variable>
-   <xsl:variable name="zostatok" select="$pocetotazok - count($otazkystaticke/otazka)"/>
-   <xsl:variable name="seed4" select="'4' || $seed || position() || generate-id()"/>
-   <xsl:variable name="dynamicki-kandidati" select="otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][not(@static)][$vc = '' or tokenize(@cesta, ',') = $vc or not(@cesta)]"/>
+<!-- vsetky zdrojove otazky testu ziaka (v poradi kategorii) - vyber prebehne vopred, aby
+     sa pri vybere alter vedelo, ktore otazky ziak dostal (my:zvolena-pozicia-alter, @rozne) -->
+<xsl:function name="my:vyber-otazky-testu" as="element(otazka)*">
+   <xsl:param name="seed" as="xs:string"/>
+   <xsl:param name="vc" as="xs:string"/>
+   <xsl:param name="vylucene-otazky-lavy" as="xs:string*"/>
+   <xsl:param name="vylucene-otazky-horny" as="xs:string*"/>
+   <xsl:variable name="kategorie" select="$vkapitola/kategoria[not(@deprecated) and not(@paused='1')][not(@autor) and not(key('nahrada-kat', @id || '|' || $autor, $vkapitola)) or @autor=$autor]"/>
+   <xsl:sequence select="for $i in 1 to count($kategorie) return my:vyber-otazky($kategorie[$i], $i, $seed, $vc, $vylucene-otazky-lavy, $vylucene-otazky-horny)"/>
+</xsl:function>
+
+<!-- $poradie = poradie kategorie medzi vybranymi kategoriami (vo funkcii nie je position()) -->
+<xsl:function name="my:vyber-otazky" as="element(otazka)*">
+   <xsl:param name="kategoria" as="element(kategoria)"/>
+   <xsl:param name="poradie" as="xs:integer"/>
+   <xsl:param name="seed" as="xs:string"/>
+   <xsl:param name="vc" as="xs:string"/>
+   <xsl:param name="vylucene-otazky-lavy" as="xs:string*"/>
+   <xsl:param name="vylucene-otazky-horny" as="xs:string*"/>
+   <xsl:variable name="pocetotazok" select="if ($kategoria/@pocet) then xs:integer($kategoria/@pocet) else 1"/>
+   <xsl:variable name="platne" select="$kategoria/otazka[not(@deprecated)][not(@paused='1')][not(@autor) and not(key('nahrada-otazka', @id || '|' || $autor, $vkapitola)) or @autor=$autor][$vc = '' or tokenize(@cesta, ',') = $vc or not(@cesta)]"/>
+   <xsl:variable name="otazkystaticke" select="$platne[@static = '1'][position() = 1 to $pocetotazok]"/>
+   <xsl:variable name="zostatok" select="$pocetotazok - count($otazkystaticke)"/>
+   <xsl:variable name="seed4" select="'4' || $seed || $poradie || generate-id($kategoria)"/>
+   <xsl:variable name="dynamicki-kandidati" select="$platne[not(@static)]"/>
    <!-- vyber s prioritnym vylucenim susedov (lavy+horny, potom len lavy, potom bez vylucenia) -->
    <xsl:variable name="vybrane-id" select="my:vyber-s-vylucenim($dynamicki-kandidati/@id, $vylucene-otazky-lavy, $vylucene-otazky-horny, $zostatok, $seed4)"/>
-   <xsl:variable name="otazkydynamicke">
-      <xsl:apply-templates select="fn:random-number-generator($seed4)?permute($dynamicki-kandidati)[@id = $vybrane-id]">
-         <xsl:with-param name="seed" select="$seed"/>
-      </xsl:apply-templates>
-   </xsl:variable>
    <xsl:sequence select="$otazkystaticke"/>
-   <xsl:sequence select="$otazkydynamicke"/>
-</xsl:template>
+   <xsl:sequence select="fn:random-number-generator($seed4)?permute($dynamicki-kandidati)[@id = $vybrane-id]"/>
+</xsl:function>
 
 <xsl:template match="otazka">
    <xsl:param name="seed"/>
    <xsl:param name="vylucena-alter-lavy" tunnel="yes" select="()" as="xs:string*"/>
    <xsl:param name="vylucena-alter-horny" tunnel="yes" select="()" as="xs:string*"/>
+   <xsl:param name="vybrane-otazky" tunnel="yes" select="()" as="element(otazka)*"/>
    <otazka id="{@id}">
       <xsl:if test="../@static or @static">
          <xsl:attribute name="static">1</xsl:attribute>
@@ -254,7 +258,7 @@
          <xsl:attribute name="alter-vyber">
             <xsl:value-of select="string-join(
                for $a in znenie//alter
-               return generate-id($a) || ':' || my:zvolena-pozicia-alter($a, '8' || $seed || generate-id($a), $vylucena-alter-lavy, $vylucena-alter-horny),
+               return generate-id($a) || ':' || my:zvolena-pozicia-alter($a, $seed, $vylucena-alter-lavy, $vylucena-alter-horny, $vybrane-otazky),
                ';')"/>
          </xsl:attribute>
       </xsl:if>
@@ -355,7 +359,8 @@
    <xsl:param name="seed" tunnel="yes"/>
    <xsl:param name="vylucena-alter-lavy" tunnel="yes" select="()" as="xs:string*"/>
    <xsl:param name="vylucena-alter-horny" tunnel="yes" select="()" as="xs:string*"/>
-   <xsl:variable name="pozicia" select="my:zvolena-pozicia-alter(., '8' || $seed || generate-id(.), $vylucena-alter-lavy, $vylucena-alter-horny)"/>
+   <xsl:param name="vybrane-otazky" tunnel="yes" select="()" as="element(otazka)*"/>
+   <xsl:variable name="pozicia" select="my:zvolena-pozicia-alter(., $seed, $vylucena-alter-lavy, $vylucena-alter-horny, $vybrane-otazky)"/>
    <xsl:apply-templates select="choice[position() = $pozicia]"/> <!-- vyberie (prip. suseda vylucujuce) jedno vnutro choice a aplikuje transformacie -->
 </xsl:template>
 
@@ -428,17 +433,25 @@
    <xsl:sequence select="substring-after($zhoda[1], ':')"/>
 </xsl:function>
 
-<!-- zvoli poziciu choice pre dany alter, s prioritnym vylucenim suseskych volieb (rovnaky princip ako my:vyber-s-vylucenim) -->
+<!-- zvoli poziciu choice pre dany alter, s prioritnym vylucenim suseskych volieb (rovnaky princip ako my:vyber-s-vylucenim);
+     alter s @rozne navyse nesmie zopakovat hodnotu (text choice) predchadzajuceho alter z rovnakej skupiny
+     v otazkach, ktore ziak dostal - ich volby sa dopocitaju rekurzivne, vyber je deterministicky -->
 <xsl:function name="my:zvolena-pozicia-alter" as="xs:integer">
    <xsl:param name="alter" as="element(alter)"/>
    <xsl:param name="seed" as="xs:string"/>
    <xsl:param name="cudzie-lavy" as="xs:string*"/>
    <xsl:param name="cudzie-horny" as="xs:string*"/>
+   <xsl:param name="vybrane-otazky" as="element(otazka)*"/>
    <xsl:variable name="moj-kluc" select="generate-id($alter)"/>
    <xsl:variable name="vyl-lavy" select="my:vyber-alter-pozicia-pre($cudzie-lavy, $moj-kluc)"/>
    <xsl:variable name="vyl-horny" select="my:vyber-alter-pozicia-pre($cudzie-horny, $moj-kluc)"/>
+   <xsl:variable name="obsadene" select="
+      for $p in $alter/preceding::alter[$alter/@rozne and @rozne = $alter/@rozne][exists(ancestor::otazka intersect $vybrane-otazky)]
+      return let $i := my:zvolena-pozicia-alter($p, $seed, $cudzie-lavy, $cudzie-horny, $vybrane-otazky)
+         return normalize-space($p/choice[$i])"/>
    <xsl:variable name="kandidati" select="for $i in 1 to count($alter/choice) return string($i)"/>
-   <xsl:sequence select="xs:integer(my:vyber-s-vylucenim($kandidati, $vyl-lavy, $vyl-horny, 1, $seed)[1])"/>
+   <xsl:variable name="volne" select="for $i in 1 to count($alter/choice) return (if (normalize-space($alter/choice[$i]) = $obsadene) then () else string($i))"/>
+   <xsl:sequence select="xs:integer(my:vyber-s-vylucenim(if (exists($volne)) then $volne else $kandidati, $vyl-lavy, $vyl-horny, 1, '8' || $seed || $moj-kluc)[1])"/>
 </xsl:function>
 
 <!-- vygeneruje <test> pre sedeneho ziaka, s prioritnym vylucenim susedov (lavy sused ma prioritu pred hornym)
@@ -496,17 +509,17 @@
          <xsl:with-param name="priezvisko" select="$student/@priezvisko" tunnel="yes"/>
          <xsl:with-param name="kod" select="$id" tunnel="yes"/>
       </xsl:apply-templates>
+      <xsl:variable name="vybrane" select="my:vyber-otazky-testu($seed, $cesta, $vylucene-otazky-lavy, $vylucene-otazky-horny)"/>
       <xsl:variable name="otazky">
-         <xsl:apply-templates select="$vkapitola/kategoria[not(@deprecated) and not(@paused='1')][not(@autor) and not(key('nahrada-kat', @id || '|' || $autor, $vkapitola)) or @autor=$autor]">
+         <xsl:apply-templates select="$vybrane">
             <xsl:with-param name="seed" select="$seed"/>
             <xsl:with-param name="meno" select="$student/@meno" tunnel="yes"/>
             <xsl:with-param name="priezvisko" select="$student/@priezvisko" tunnel="yes"/>
             <xsl:with-param name="kod" select="$id" tunnel="yes"/>
             <xsl:with-param name="vc" select="$cesta" tunnel="yes"/>
-            <xsl:with-param name="vylucene-otazky-lavy" select="$vylucene-otazky-lavy" tunnel="yes"/>
-            <xsl:with-param name="vylucene-otazky-horny" select="$vylucene-otazky-horny" tunnel="yes"/>
             <xsl:with-param name="vylucena-alter-lavy" select="$vylucena-alter-lavy" tunnel="yes"/>
             <xsl:with-param name="vylucena-alter-horny" select="$vylucena-alter-horny" tunnel="yes"/>
+            <xsl:with-param name="vybrane-otazky" select="$vybrane" tunnel="yes"/>
          </xsl:apply-templates>
       </xsl:variable>
       <xsl:variable name="seed0" select="'0' || $seed || $poradie || generate-id($student)"/>
@@ -545,17 +558,17 @@
    <test cesta="{$cesta}">
       <xsl:copy-of select="$test/@*[not(name() = 'cesta')]"/>
       <xsl:copy-of copy-namespaces="no" select="$test/pokyny"/>
+      <xsl:variable name="vybrane" select="my:vyber-otazky-testu($seed, $cesta, $vylucene-otazky-lavy, $vylucene-otazky-horny)"/>
       <xsl:variable name="otazky">
-         <xsl:apply-templates select="$vkapitola/kategoria[not(@deprecated) and not(@paused='1')][not(@autor) and not(key('nahrada-kat', @id || '|' || $autor, $vkapitola)) or @autor=$autor]">
+         <xsl:apply-templates select="$vybrane">
             <xsl:with-param name="seed" select="$seed"/>
             <xsl:with-param name="meno" select="$test/@meno" tunnel="yes"/>
             <xsl:with-param name="priezvisko" select="$test/@priezvisko" tunnel="yes"/>
             <xsl:with-param name="kod" select="$test/@id" tunnel="yes"/>
             <xsl:with-param name="vc" select="$cesta" tunnel="yes"/>
-            <xsl:with-param name="vylucene-otazky-lavy" select="$vylucene-otazky-lavy" tunnel="yes"/>
-            <xsl:with-param name="vylucene-otazky-horny" select="$vylucene-otazky-horny" tunnel="yes"/>
             <xsl:with-param name="vylucena-alter-lavy" select="$vylucena-alter-lavy" tunnel="yes"/>
             <xsl:with-param name="vylucena-alter-horny" select="$vylucena-alter-horny" tunnel="yes"/>
+            <xsl:with-param name="vybrane-otazky" select="$vybrane" tunnel="yes"/>
          </xsl:apply-templates>
       </xsl:variable>
       <xsl:variable name="seed0" select="'0' || $seed || $poradie || generate-id($test)"/>

@@ -40,7 +40,7 @@
          <xs:element name="underline" type="InlineMixed"/>
          <xs:element name="bold" type="InlineMixed"/>
          <xs:element name="sub" type="xs:string"/>
-         <xs:element name="alter" type="InlineMixed"/>
+         <xs:element name="alter" type="Alter"/>
          <xs:element name="placeholder">
             <xs:complexType>
                <xs:attribute name="typ" type="xs:string" use="required"/>
@@ -73,6 +73,15 @@
          <!-- upp: veľké písmená -->
          <xs:element name="upp" type="xs:string"/>
       </xs:choice>
+   </xs:complexType>
+
+   <!-- rozne: alter s rovnakou hodnotou dostanu v jednom teste rôzne choice (napr. rôzne ω v dvoch otázkach) -->
+   <xs:complexType name="Alter" mixed="true">
+      <xs:complexContent>
+         <xs:extension base="InlineMixed">
+            <xs:attribute name="rozne" type="xs:string"/>
+         </xs:extension>
+      </xs:complexContent>
    </xs:complexType>
 
    <xs:complexType name="Odpoved" mixed="true">
