@@ -204,6 +204,19 @@ function riadokNapoveda(text) {
    return div;
 }
 
+function riadokVzor(text) {
+   const div = document.createElement('div');
+   div.className = 'napoveda-riadok';
+   div.innerHTML = `<textarea class="vzor-text" rows="2"></textarea><button type="button" class="napoveda-odstran">×</button>`;
+   div.querySelector('.vzor-text').value = text || '';
+   div.querySelector('.napoveda-odstran').addEventListener('click', () => div.remove());
+   return div;
+}
+
+function zostavVzory(form) {
+   return Array.from(form.querySelectorAll('.vzor-text')).map(t => t.value).filter(t => t.trim() !== '');
+}
+
 function zostavOdpovede(form) {
    return Array.from(form.querySelectorAll('.odp-text')).map((textEl, i) => {
       const riadok = textEl.closest('.odpoved-riadok');
@@ -244,9 +257,11 @@ function vytvorFormularOtazky(data, jeMcq) {
          <button type="button" class="otazka-pridaj-odpoved">+ odpoveď</button>
       </fieldset>
       <div class="otazka-otvorena">
-         <label>Vzor (vzorová odpoveď)
-            <textarea class="otazka-vzor" rows="2"></textarea>
-         </label>
+         <div class="otazka-vzory">
+            Vzory (každý je samostatná správna odpoveď, môže mať viac riadkov)
+            <div class="otazka-vzory-zoznam"></div>
+            <button type="button" class="otazka-pridaj-vzor">+ vzor</button>
+         </div>
          <label>Kľúčové slová (oddelené čiarkou)
             <input type="text" class="otazka-klucove-slova"/>
          </label>
@@ -258,7 +273,6 @@ function vytvorFormularOtazky(data, jeMcq) {
    form.querySelector('.otazka-znenie').value = znenieRaw;
    form.querySelector('.otazka-nazov').value = data.nazov || '';
    form.querySelector('.otazka-ma-odpovede').checked = !!jeMcq;
-   form.querySelector('.otazka-vzor').value = data.vzor || '';
    form.querySelector('.otazka-klucove-slova').value = (data.klucove_slova || []).join(', ');
    form.querySelector('.otazka-body').value = data.body || '';
    form.querySelector('.otazka-static').checked = data.static === '1';
@@ -272,6 +286,11 @@ function vytvorFormularOtazky(data, jeMcq) {
    const napovedyWrap = form.querySelector('.otazka-napovedy-zoznam');
    (data.napovede || []).forEach(text => napovedyWrap.appendChild(riadokNapoveda(text)));
    form.querySelector('.otazka-pridaj-napovedu').addEventListener('click', () => napovedyWrap.appendChild(riadokNapoveda('')));
+
+   const vzoryWrap = form.querySelector('.otazka-vzory-zoznam');
+   const vzory = data.vzory && data.vzory.length ? data.vzory : [''];
+   vzory.forEach(text => vzoryWrap.appendChild(riadokVzor(text)));
+   form.querySelector('.otazka-pridaj-vzor').addEventListener('click', () => vzoryWrap.appendChild(riadokVzor('')));
 
    function aktualizujVetvu() {
       const mcq = form.querySelector('.otazka-ma-odpovede').checked;
@@ -306,7 +325,7 @@ function otvorFormularOtazky(otazkaId) {
             deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
             odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),
             napovede: JSON.stringify(zostavCeloplosneNapovede(form)),
-            vzor: mcq ? '' : form.querySelector('.otazka-vzor').value,
+            vzory: JSON.stringify(mcq ? [] : zostavVzory(form)),
             klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),
          };
          postForm('/admin/process_question', params)
@@ -338,7 +357,7 @@ function pridajOtazku(kategoriaId) {
          deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
          odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),
          napovede: JSON.stringify(zostavCeloplosneNapovede(form)),
-         vzor: mcq ? '' : form.querySelector('.otazka-vzor').value,
+         vzory: JSON.stringify(mcq ? [] : zostavVzory(form)),
          klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),
       };
       postForm('/admin/process_question', params)

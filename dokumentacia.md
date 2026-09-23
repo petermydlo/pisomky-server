@@ -177,11 +177,11 @@ Atribúty kategórie (XSD `questions.xsd`, typ `Kategoria`):
 
 Vytváranie/úprava/mazanie/obnova cez `POST /admin/process_question`:
 - `operacia=create` — vyžaduje `kategoria_id`; voliteľne `za_otazka_id`, `znenie`,
-  `body`, `static`, `bonus`, `nazov`, `vzor`, `klucove_slova` (JSON pole), `odpovede` (JSON
+  `body`, `static`, `bonus`, `nazov`, `vzory` (JSON pole textov), `klucove_slova` (JSON pole), `odpovede` (JSON
   pole objektov `{text, spravna, napovedy}`), `napovede` (JSON pole textov
   celoplošných nápovedí)
 - `operacia=update` — mení tie isté polia. Ak je otázka **použitá** v existujúcom
-  teste a mení sa čokoľvek okrem `vzor`/`klucove_slova`/nápovedí/`nazov` (teda `znenie`,
+  teste a mení sa čokoľvek okrem `vzory`/`klucove_slova`/nápovedí/`nazov` (teda `znenie`,
   `odpovede`, `body`, `static`, `bonus`), appka **automaticky namiesto zápisu na
   mieste vytvorí novú otázku** (aby sa neskombinovali štatistiky starej a novej
   verzie pod jedným `id`) — pôvodná otázka dostane `deprecated="1"`, nová je úplne
@@ -191,7 +191,7 @@ Vytváranie/úprava/mazanie/obnova cez `POST /admin/process_question`:
   len sa nastaví `deprecated="1"` (viď `AGENTS.md` sekcia "Forbidden")
 - `operacia=restore` — odstráni `deprecated` z otázky (nerobí nič s jej kategóriou)
 
-Surové dáta otázky pre editačný formulár (znenie, odpovede aj s nápoveďami, vzor,
+Surové dáta otázky pre editačný formulár (znenie, odpovede aj s nápoveďami, vzory,
 kľúčové slová) vracia `GET /admin/question?id=...`; pre kategóriu `GET
 /admin/category?id=...`. Či je kategória/otázka použitá v teste (pre text
 potvrdzovacieho dialógu pri mazaní) zisťuje `GET /admin/is_used?id=...&typ=kategoria|otazka`.
@@ -230,7 +230,12 @@ Atribúty a elementy otázky (`questions.xsd`, typ `Otazka`):
   elementy otázky (viď nižšie) — nie je to samotný text nápovedy
 - `<vzor>text</vzor>` — vzorová odpoveď pre otvorenú otázku (používa sa aj pri AI
   hodnotení a AI nápovede); podporuje zástupné symboly `{meno}`, `{priezvisko:low
-  rep}` a pod. (nahradia sa údajmi žiaka pri AI hodnotení)
+  rep}` a pod. (nahradia sa údajmi žiaka pri AI hodnotení). Jeden `<vzor>` je jedna
+  úplná správna odpoveď a môže mať viac riadkov (odpoveď na viac riadkov sa píše do
+  jedného `<vzor>` so zalomením; odsadenie z formátovania XML sa pri čítaní odstráni,
+  relatívne odsadenie riadkov voči sebe zostane — `normalizuj_vzor()` v
+  `app/utils.py`, v XSLT `my:normalizuj-vzor`). Viac `<vzor>` v
+  jednej otázke sú **alternatívy** — každý je samostatne úplne správna odpoveď.
 - `<napoveda pre="...">text</napoveda>` — nápoveda k otázke, môže sa opakovať
   (jedna otázka môže mať ľubovoľne veľa `<napoveda>` elementov):
   - bez `pre` — celoplošná, platí vždy, nezávisle od zvolenej odpovede
@@ -637,7 +642,7 @@ evaluation* (ikona robota, `#ai-evaluate-btn`), ktoré volá `POST
 
 Priebeh:
 1. Appka načíta všetky **otvorené** otázky testu daného žiaka (cez XQuery
-   `openquestions.xq`) spolu s jeho odpoveďami, vzorovou odpoveďou (`<vzor>`) a
+   `openquestions.xq`) spolu s jeho odpoveďami, všetkými vzorovými odpoveďami (`<vzor>`, viac = alternatívy) a
    kľúčovými slovami (`klucove_slova`).
 2. Vo vzorovej odpovedi nahradí zástupné symboly (`{meno}`, `{priezvisko:low rep}`
    atď.) skutočnými údajmi žiaka (meno/priezvisko/trieda z tests XML), vrátane

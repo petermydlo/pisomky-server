@@ -7,6 +7,7 @@ import shutil
 import hashlib
 import tarfile
 import tempfile
+import textwrap
 import subprocess
 import datetime as dat
 import lxml.etree as ET
@@ -133,6 +134,19 @@ def xquery_to_string(proc: 'PySaxonProcessor', query_file: str, params: dict | N
    xqproc.set_query_file(query_file)
    result = xqproc.run_query_to_string()
    return result
+
+def normalizuj_vzor(text: str) -> str:
+   """Odstrani z vzoru odsadenie pochadzajuce z formatovania XML; relativne
+   odsadenie medzi riadkami zostane. Ak vzor zacina na novom riadku za <vzor>,
+   odsadenie sa pocita zo vsetkych riadkov, inak len z pokracovacich (prvy je
+   hned za tagom).
+   """
+   zacina_novym_riadkom = re.match(r'[ \t]*\n', text) is not None
+   text = re.sub(r'^\s*\n', '', text).rstrip()
+   if zacina_novym_riadkom:
+      return textwrap.dedent(text)
+   prvy, _, zvysok = text.lstrip().partition('\n')
+   return prvy + '\n' + textwrap.dedent(zvysok) if zvysok else prvy
 
 # --- Zabezpecenie ID ---
 def _hash_category(kategoria: ET._Element, subor_id: str = '') -> str:
@@ -652,9 +666,9 @@ def _zostav_otazka_element(data: dict) -> ET._Element:
    _pridaj_odpovede(el, data.get('odpovede', []))
    if data.get('napovede'):
       _pridaj_napovede(el, data['napovede'])
-   if data.get('vzor'):
+   for vzor in data.get('vzory', []):
       vzor_el = ET.SubElement(el, 'vzor')
-      vzor_el.text = data['vzor']
+      vzor_el.text = vzor
    if data.get('klucove_slova'):
       ks_el = ET.SubElement(el, 'klucove_slova')
       for slovo in data['klucove_slova']:
@@ -676,7 +690,7 @@ def zmenene_zamrznute_polia(otazka_el: ET._Element, data: dict) -> bool:
    """Vrati True, ak by zapis data (z process_question operacia='update') zmenil
    niektore z poli, ktore createtests.xsl kopiruje/zamrazi do vygenerovaneho testu
    (znenie, text/spravna odpovedi, body, static, bonus) oproti aktualnemu stavu
-   otazka_el. Zmena len vzor/klucove_slova/napoveda (citaju sa zivo pri AI
+   otazka_el. Zmena len vzory/klucove_slova/napoveda (citaju sa zivo pri AI
    napovede, nekopiruju sa do testu) sa nepocita.
    """
    if 'znenie' in data:
@@ -706,6 +720,7 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
      'deprecated' - '1' (rucne archivovat), alebo None (odstranit atribut)
      'odpovede'  - list dictov [{'text': ..., 'spravna': '1'/'0', 'napovedy': [text, ...]}, ...]
      'napovede'  - list textov celoplosnych napovedi (bez @pre)
+     'vzory'     - list vzorovych odpovedi (alternativy, kazda moze byt viacriadkova)
    Vracia True ak uspech, False ak otazka nenajdena.
    """
    otazka, cesta = find_question(otazka_id, cache)
@@ -747,14 +762,13 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
             if 'pre' not in old.attrib:
                otazka.remove(old)
          _pridaj_napovede(otazka, nove_data['napovede'])
-      # vzor
-      if 'vzor' in nove_data:
-         stary = otazka.find('vzor')
-         if stary is not None:
+      # vzory (viac vzorov = alternativy)
+      if 'vzory' in nove_data:
+         for stary in otazka.findall('vzor'):
             otazka.remove(stary)
-         if nove_data['vzor']:
+         for vzor in nove_data['vzory']:
             el = ET.SubElement(otazka, 'vzor')
-            el.text = nove_data['vzor']
+            el.text = vzor
       # klucove_slova
       if 'klucove_slova' in nove_data:
          stare = otazka.find('klucove_slova')

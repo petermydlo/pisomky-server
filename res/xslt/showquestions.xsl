@@ -1,7 +1,9 @@
 <?xml version="1.1" encoding="UTF-8"?>
 <xsl:stylesheet version="3.0" xml:lang="sk"
    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-   xmlns:xs="http://www.w3.org/2001/XMLSchema">
+   xmlns:xs="http://www.w3.org/2001/XMLSchema"
+   xmlns:my="http://www.spsjm.sk"
+   exclude-result-prefixes="my">
 <xsl:output method="html" version="5" indent="yes" encoding="UTF-8"/>
 
 <xsl:import href="head.xsl"/>
@@ -18,6 +20,18 @@
      Kolekcia sa cita nad celym tests/ (vzdy existuje), nie nad tests/{predmet}
      podadresarom (ten nemusi existovat, ak predmet este nema vygenerovane testy). -->
 <xsl:variable name="pouzite_otazka_id" select="collection('../xml/tests?select=*.xml;recurse=yes;on-error=ignore')/testy[@predmet = $predmet]//otazka/@id"/>
+
+<!-- rovnake pravidlo ako normalizuj_vzor() v app/utils.py: odstranenie odsadenia
+     z formatovania XML pri zachovani relativneho odsadenia riadkov -->
+<xsl:function name="my:normalizuj-vzor" as="xs:string">
+   <xsl:param name="text" as="xs:string"/>
+   <xsl:variable name="novy_riadok" select="matches($text, '^[ \t]*\n')"/>
+   <xsl:variable name="riadky" select="tokenize(replace(replace($text, '^\s*\n', ''), '\s+$', ''), '\n')"/>
+   <xsl:variable name="prvy" select="if ($novy_riadok) then () else replace(head($riadky), '^\s+', '')"/>
+   <xsl:variable name="odsadzane" select="if ($novy_riadok) then $riadky else tail($riadky)"/>
+   <xsl:variable name="odsadenie" select="(min(for $r in $odsadzane[normalize-space()] return string-length($r) - string-length(replace($r, '^\s+', ''))), 0)[1]"/>
+   <xsl:sequence select="string-join(($prvy, for $r in $odsadzane return if (normalize-space($r)) then substring($r, $odsadenie + 1) else ''), '&#10;')"/>
+</xsl:function>
 
 <xsl:template name="xsl:initial-template">
    <xsl:variable name="stat" select="if ($statistika != '') then doc($statistika) else ()"/>
@@ -322,7 +336,9 @@
                <span class="tooltip-text">
                   <xsl:if test="vzor">
                      <span class="bold">Vzor: </span>
-                     <xsl:value-of select="vzor"/>
+                     <xsl:for-each select="vzor">
+                        <pre class="tooltip-vzor"><xsl:value-of select="my:normalizuj-vzor(.)"/></pre>
+                     </xsl:for-each>
                   </xsl:if>
                   <xsl:if test="vzor and klucove_slova/slovo"><br/></xsl:if>
                   <xsl:if test="klucove_slova/slovo">

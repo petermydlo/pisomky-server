@@ -10,7 +10,7 @@ from lxml import etree as ET
 import anyio
 import ollama
 from dotenv import load_dotenv
-from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, xquery_to_string, xslt_to_string
+from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, normalizuj_vzor, xquery_to_string, xslt_to_string
 from app.mytypes import StringQuery, IntForm, StringForm
 from anyio.streams.memory import MemoryObjectSendStream
 from fastapi import APIRouter, Request
@@ -40,10 +40,9 @@ def _najdi_napovedu(otazka_id: str, spravna_odpoved: str | None = None, logger=N
       else:
          napovedy_els = [n for n in napovedy_els if not n.get('pre')]
       napovedy = [n.text.strip() for n in napovedy_els if n.text and n.text.strip()] or None
-      vzor_el = otazka_el.find('vzor')
-      vzor = vzor_el.text.strip() if vzor_el is not None and vzor_el.text else None
+      vzory = [normalizuj_vzor(v.text) for v in otazka_el.findall('vzor') if v.text and v.text.strip()]
       klucove = [s.text.strip() for s in otazka_el.findall('klucove_slova/slovo') if s.text]
-      return {'napovedy': napovedy, 'vzor': vzor, 'klucove': klucove}
+      return {'napovedy': napovedy, 'vzory': vzory, 'klucove': klucove}
    except Exception as e:
       if logger:
          logger.error(f'chyba napoveda novy format: {e}')
@@ -212,7 +211,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
 
    napovedy_data = _najdi_napovedu(otazka_id, spravna_odpoved, request.app.state.logger) if predmet else None
    napovedy = napovedy_data.get('napovedy') if isinstance(napovedy_data, dict) else napovedy_data
-   vzor = napovedy_data.get('vzor') if isinstance(napovedy_data, dict) else None
+   vzory = napovedy_data.get('vzory') if isinstance(napovedy_data, dict) else []
    klucove = napovedy_data.get('klucove') if isinstance(napovedy_data, dict) else []
 
    subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
@@ -234,7 +233,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       znenie_text=znenie_text,
       moznosti=moznosti,
       napovedy=napovedy or [],
-      vzor=vzor,
+      vzory=vzory or [],
       klucove=klucove or [],
       helped=helped,
       not_helped=not_helped,

@@ -100,7 +100,7 @@
       <xs:choice minOccurs="0" maxOccurs="unbounded">
          <xs:element name="znenie" type="InlineMixed"/>
          <xs:element name="odpoved" type="Odpoved"/>
-         <!-- vzor: vzorová odpoveď pre otvorené otázky -->
+         <!-- vzor: vzorová odpoveď pre otvorené otázky (môže byť viacriadková); viac vzor = alternatívy -->
          <xs:element name="vzor" type="xs:string"/>
          <!-- napoveda: nápoveda k celej otázke alebo k odpovedi podľa @pre -->
          <xs:element name="napoveda" type="Napoveda"/>

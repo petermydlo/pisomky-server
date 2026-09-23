@@ -193,6 +193,17 @@ button {
    font-size: 0.9em;
 }
 
+/* <pre>, lebo Saxon (indent="yes") inak zalamuje a odsadzuje dlhy text */
+.tooltip-vzor {
+   margin: 0;
+   font-size: inherit;
+   color: inherit;
+}
+
+.tooltip-vzor + .tooltip-vzor {
+   border-top: 1px solid var(--bs-gray-600);
+}
+
 .tooltip-wrap {
    position: relative;
    display: inline-block;

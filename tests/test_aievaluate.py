@@ -3,12 +3,17 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import shutil
+from pathlib import Path
+
 import pytest
+from saxonche import PySaxonProcessor
 
 from app.routers.aievaluate import (
    _normalizuj,
    _nahrad_placeholder,
    _nacitaj_udaje_ziaka,
+   _nacitaj_otvorene_otazky,
    _evaluate_test,
 )
 
@@ -97,6 +102,65 @@ def test_nacitaj_udaje_ziaka_neexistujuci_test():
    assert udaje == {'meno': '', 'priezvisko': '', 'trieda': TRIEDA, 'kod': TEST_ID}
 
 
+# --- _nacitaj_otvorene_otazky ---
+
+OPEN_TESTS_XML = f"""\
+<?xml version='1.0' encoding='utf-8'?>
+<testy predmet="{PREDMET}" trieda="{TRIEDA}" skupina="" kapitola="kap1" fileid="ab12">
+   <test id="{TEST_ID}">
+      <otazka id="q1" body="2"/>
+      <otazka id="q2" body="1"/>
+   </test>
+</testy>
+"""
+
+OPEN_ANSWERS_XML = f"""\
+<?xml version='1.0' encoding='utf-8'?>
+<testy>
+   <test id="{TEST_ID}">
+      <otazka id="q1">rmdir ./zoznamy</otazka>
+      <otazka id="q2">ls</otazka>
+   </test>
+</testy>
+"""
+
+OPEN_QUESTIONS_XML = """\
+<?xml version='1.0' encoding='utf-8'?>
+<kapitola>
+   <kategoria>
+      <otazka id="q1">
+         <znenie>vymaže prázdny adresár</znenie>
+         <vzor>rmdir ./zoznamy</vzor>
+         <vzor>rm -d ./zoznamy</vzor>
+         <vzor>cd ./zoznamy
+            cd ..
+            rmdir ./zoznamy</vzor>
+      </otazka>
+      <otazka id="q2">
+         <znenie>otázka bez vzoru</znenie>
+      </otazka>
+   </kategoria>
+</kapitola>
+"""
+
+def test_nacitaj_otvorene_otazky_viac_vzorov(tmp_path):
+   xq = tmp_path / 'res/xquery/openquestions.xq'
+   xq.parent.mkdir(parents=True)
+   shutil.copy(Path(__file__).parent.parent / 'res/xquery/openquestions.xq', xq)
+   (tmp_path / 'res/xml/answers' / PREDMET).mkdir(parents=True)
+   (tmp_path / 'res/xml/questions' / PREDMET).mkdir(parents=True)
+   nazov = f'{PREDMET}_{TRIEDA}_kap1_ab12.xml'
+   (tmp_path / 'res/xml/tests' / PREDMET / nazov).write_text(OPEN_TESTS_XML, encoding='utf-8')
+   (tmp_path / 'res/xml/answers' / PREDMET / nazov).write_text(OPEN_ANSWERS_XML, encoding='utf-8')
+   (tmp_path / 'res/xml/questions' / PREDMET / f'{PREDMET}_kap1.xml').write_text(OPEN_QUESTIONS_XML, encoding='utf-8')
+
+   with PySaxonProcessor(license=False) as proc:
+      otazky = _nacitaj_otvorene_otazky(proc, f'./res/xml/tests/{PREDMET}/{nazov}', TEST_ID, PREDMET, 'kap1')
+
+   assert [o['id'] for o in otazky] == ['q1']
+   assert otazky[0]['vzory'] == ['rmdir ./zoznamy', 'rm -d ./zoznamy', 'cd ./zoznamy\ncd ..\nrmdir ./zoznamy']
+
+
 # --- _evaluate_test ---
 
 def _fake_response(text: str):
@@ -109,7 +173,7 @@ def test_evaluate_test_parsuje_ciste_json(monkeypatch):
    )
    monkeypatch.setattr('anthropic.Anthropic', lambda: fake_client)
 
-   otazky = [{'id': 'q1', 'body': '2', 'znenie': 'Otázka?', 'vzor': 'Vzor', 'klucove': [], 'odpoved': 'Odpoveď'}]
+   otazky = [{'id': 'q1', 'body': '2', 'znenie': 'Otázka?', 'vzory': ['Vzor'], 'klucove': [], 'odpoved': 'Odpoveď'}]
    ziak = {'meno': 'Ján', 'priezvisko': 'Novák', 'trieda': '1A', 'kod': TEST_ID}
 
    vysledok = _evaluate_test(otazky, ziak)
@@ -122,7 +186,7 @@ def test_evaluate_test_parsuje_json_v_code_fence(monkeypatch):
    )
    monkeypatch.setattr('anthropic.Anthropic', lambda: fake_client)
 
-   otazky = [{'id': 'q1', 'body': '2', 'znenie': '', 'vzor': '', 'klucove': [], 'odpoved': ''}]
+   otazky = [{'id': 'q1', 'body': '2', 'znenie': '', 'vzory': [], 'klucove': [], 'odpoved': ''}]
    ziak = {'meno': '', 'priezvisko': '', 'trieda': '', 'kod': ''}
 
    vysledok = _evaluate_test(otazky, ziak)
@@ -135,7 +199,7 @@ def test_evaluate_test_odmietne_nedokoncenu_odpoved(monkeypatch):
    )
    monkeypatch.setattr('anthropic.Anthropic', lambda: fake_client)
 
-   otazky = [{'id': 'q1', 'body': '2', 'znenie': '', 'vzor': '', 'klucove': [], 'odpoved': ''}]
+   otazky = [{'id': 'q1', 'body': '2', 'znenie': '', 'vzory': [], 'klucove': [], 'odpoved': ''}]
    ziak = {'meno': '', 'priezvisko': '', 'trieda': '', 'kod': ''}
 
    with pytest.raises(ValueError, match='max_tokens'):
@@ -146,7 +210,7 @@ def test_evaluate_test_posle_placeholder_nahradeny_vzor(monkeypatch):
    fake_client.messages.create.return_value = _fake_response('[]')
    monkeypatch.setattr('anthropic.Anthropic', lambda: fake_client)
 
-   otazky = [{'id': 'q1', 'body': '1', 'znenie': 'Q', 'vzor': 'Vzor pre {meno}', 'klucove': ['k1'], 'odpoved': 'A'}]
+   otazky = [{'id': 'q1', 'body': '1', 'znenie': 'Q', 'vzory': ['Vzor pre {meno}'], 'klucove': ['k1'], 'odpoved': 'A'}]
    ziak = {'meno': 'Ján', 'priezvisko': 'Novák', 'trieda': '1A', 'kod': TEST_ID}
 
    _evaluate_test(otazky, ziak)
@@ -154,3 +218,28 @@ def test_evaluate_test_posle_placeholder_nahradeny_vzor(monkeypatch):
    poslany_prompt = fake_client.messages.create.call_args.kwargs['messages'][0]['content']
    assert 'Vzor pre Ján' in poslany_prompt
    assert 'Ján Novák' in poslany_prompt
+
+def test_evaluate_test_viac_vzorov_ako_alternativy(monkeypatch):
+   fake_client = MagicMock()
+   fake_client.messages.create.return_value = _fake_response('[]')
+   monkeypatch.setattr('anthropic.Anthropic', lambda: fake_client)
+
+   otazky = [{'id': 'q1', 'body': '1', 'znenie': 'Q', 'vzory': ['rmdir ./a', 'rm -d ./a'], 'klucove': [], 'odpoved': 'A'}]
+   _evaluate_test(otazky, {'meno': '', 'priezvisko': '', 'trieda': '', 'kod': ''})
+
+   poslany_prompt = fake_client.messages.create.call_args.kwargs['messages'][0]['content']
+   assert 'alternatives' in poslany_prompt
+   assert '- rmdir ./a' in poslany_prompt
+   assert '- rm -d ./a' in poslany_prompt
+
+def test_evaluate_test_viacriadkovy_vzor_zachova_riadky(monkeypatch):
+   fake_client = MagicMock()
+   fake_client.messages.create.return_value = _fake_response('[]')
+   monkeypatch.setattr('anthropic.Anthropic', lambda: fake_client)
+
+   otazky = [{'id': 'q1', 'body': '1', 'znenie': 'Q', 'vzory': ['prvý riadok\ndruhý riadok'], 'klucove': [], 'odpoved': 'A'}]
+   _evaluate_test(otazky, {'meno': '', 'priezvisko': '', 'trieda': '', 'kod': ''})
+
+   poslany_prompt = fake_client.messages.create.call_args.kwargs['messages'][0]['content']
+   assert 'alternatives' not in poslany_prompt
+   assert 'prvý riadok\n      druhý riadok' in poslany_prompt

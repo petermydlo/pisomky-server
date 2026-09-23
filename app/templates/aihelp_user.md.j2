@@ -5,12 +5,13 @@
 ## Options
 {{ moznosti | join(', ') }}
 {% endif %}
-{% if napovedy or vzor or klucove %}
+{% if napovedy or vzory or klucove %}
 
 ## Teacher's hints
 {% for h in napovedy %}- {{ h }}
-{% endfor %}{% if vzor %}Model answer (DO NOT reveal directly, only hint toward it): {{ vzor }}
-{% endif %}{% if klucove %}Key concepts to hint toward: {{ klucove | join(', ') }}
+{% endfor %}{% if vzory %}Model answer{% if vzory | length > 1 %}s (alternatives, each one fully correct){% endif %} (DO NOT reveal directly, only hint toward it):
+{% for v in vzory %}- {{ v | indent(2) }}
+{% endfor %}{% endif %}{% if klucove %}Key concepts to hint toward: {{ klucove | join(', ') }}
 {% endif %}
 Use these as inspiration or improve them. Do not reveal the answer.
 {% else %}

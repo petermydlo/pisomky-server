@@ -22,12 +22,12 @@ return
          let $oid     := string($otazka/@id)
          let $odpoved := string($answer_node/otazka[@id = $oid])
          let $q       := $questions_doc//otazka[@id = $oid]
-         let $vzor    := string($q/vzor)
-         where $odpoved != '' and $vzor != ''
+         let $vzory   := $q/vzor[normalize-space()]
+         where $odpoved != '' and exists($vzory)
          return
             <otazka id="{$oid}" body="{$otazka/@body}">
                <znenie>{string($q/znenie)}</znenie>
-               <vzor>{$vzor}</vzor>
+               {for $v in $vzory return <vzor>{string($v)}</vzor>}
                {for $s in $q/klucove_slova/slovo[normalize-space()] return <klucove>{normalize-space($s)}</klucove>}
                <odpoved>{$odpoved}</odpoved>
             </otazka>

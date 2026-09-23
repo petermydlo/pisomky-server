@@ -10,7 +10,7 @@ from app.utils import (
    xslt_to_string, xquery_to_string, ensure_ids, is_used,
    add_category, delete_category, update_category, restore_category, find_category,
    add_question, update_question, delete_question, restore_question, fork_question, find_question,
-   zmenene_zamrznute_polia,
+   zmenene_zamrznute_polia, normalizuj_vzor,
    delete_chapter, create_chapter, update_chapter,
    create_predmet, delete_predmet,
 )
@@ -180,7 +180,7 @@ async def get_category(id: StringQuery):
    }, status_code=200)
 
 @router.post('/admin/process_question', response_class=JSONResponse)
-async def process_question(request: Request, operacia: StringForm, X_Remote_User: StringHeader, otazka_id: StringFormOptional = None, kategoria_id: StringFormOptional = None, za_otazka_id: StringFormOptional = None, znenie: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None, odpovede: StringFormOptional = None, napovede: StringFormOptional = None, vzor: StringFormOptional = None, klucove_slova: StringFormOptional = None):
+async def process_question(request: Request, operacia: StringForm, X_Remote_User: StringHeader, otazka_id: StringFormOptional = None, kategoria_id: StringFormOptional = None, za_otazka_id: StringFormOptional = None, znenie: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None, odpovede: StringFormOptional = None, napovede: StringFormOptional = None, vzory: StringFormOptional = None, klucove_slova: StringFormOptional = None):
    try:
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
@@ -192,6 +192,7 @@ async def process_question(request: Request, operacia: StringForm, X_Remote_User
       deprecated = deprecated or None
       odpovede_list = json.loads(odpovede) if odpovede else []
       napovede_list = json.loads(napovede) if napovede else []
+      vzory_list = json.loads(vzory) if vzory else []
       klucove_slova_list = json.loads(klucove_slova) if klucove_slova else []
       if operacia == 'create':
          if not kategoria_id:
@@ -200,7 +201,7 @@ async def process_question(request: Request, operacia: StringForm, X_Remote_User
          if kat_cesta is None:
             raise HTTPException(status_code=400, detail='Kategória sa nedala vytvoriť')
          check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet_from_cesta(kat_cesta))
-         data = {k: v for k, v in {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated, 'vzor': vzor, 'klucove_slova': klucove_slova_list}.items() if v is not None}
+         data = {k: v for k, v in {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated, 'vzory': vzory_list, 'klucove_slova': klucove_slova_list}.items() if v is not None}
          data['odpovede'] = odpovede_list
          data['napovede'] = napovede_list
          nova_id, ok = add_question(kategoria_id, data, za_otazka_id=za_otazka_id)
@@ -214,7 +215,9 @@ async def process_question(request: Request, operacia: StringForm, X_Remote_User
          raise HTTPException(status_code=400, detail='Otázka nenájdená')
       check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet_from_cesta(otazka_cesta))
       if operacia == 'update':
-         data = {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated, 'odpovede': odpovede_list, 'napovede': napovede_list, 'vzor': vzor, 'klucove_slova': klucove_slova_list}
+         data = {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated, 'odpovede': odpovede_list, 'napovede': napovede_list, 'klucove_slova': klucove_slova_list}
+         # bez pola vzory (napr. stary JS v cache prehliadaca) sa existujuce vzory zachovaju
+         data['vzory'] = vzory_list if vzory is not None else [normalizuj_vzor(v.text or '') for v in otazka_el.findall('vzor')]
          if is_used(otazka_id) and zmenene_zamrznute_polia(otazka_el, data):
             nova_id = fork_question(otazka_id, data)
             if nova_id is None:
@@ -263,13 +266,12 @@ async def get_question(id: StringQuery):
       napovedy = [n.text or '' for n in otazka.findall('napoveda') if kluc and n.get('pre') == kluc]
       odpovede.append({'text': _obsah_odpovede(odp), 'spravna': odp.get('spravna') or '0', 'napovedy': napovedy})
    napovede = [n.text or '' for n in otazka.findall('napoveda') if 'pre' not in n.attrib]
-   vzor_el = otazka.find('vzor')
    klucove_slova = [s.text or '' for s in otazka.findall('klucove_slova/slovo')]
    return JSONResponse(content={
       'znenie': _serializuj_znenie(otazka),
       'odpovede': odpovede,
       'napovede': napovede,
-      'vzor': vzor_el.text if vzor_el is not None else None,
+      'vzory': [normalizuj_vzor(v.text or '') for v in otazka.findall('vzor')],
       'klucove_slova': klucove_slova,
       'body': otazka.get('body'),
       'static': otazka.get('static'),

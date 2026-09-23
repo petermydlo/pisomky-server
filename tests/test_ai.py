@@ -206,7 +206,7 @@ def test_najdi_napovedu_bez_spravnej_odpovede_len_vseobecna(questions_file):
    vysledok = _najdi_napovedu(OTAZKA_ID)
    assert vysledok is not None
    assert vysledok['napovedy'] == ['Všeobecná nápoveda k otázke']
-   assert vysledok['vzor'] == '3/4'
+   assert vysledok['vzory'] == ['3/4']
    assert vysledok['klucove'] == ['zlomky', 'menovateľ']
 
 def test_najdi_napovedu_so_spravnou_odpovedou_zahrnie_naviazanu(questions_file):
@@ -216,4 +216,4 @@ def test_najdi_napovedu_so_spravnou_odpovedou_zahrnie_naviazanu(questions_file):
 
 def test_najdi_napovedu_bez_extra_udajov(questions_file):
    vysledok = _najdi_napovedu('q_bez_extra')
-   assert vysledok == {'napovedy': None, 'vzor': None, 'klucove': []}
+   assert vysledok == {'napovedy': None, 'vzory': [], 'klucove': []}

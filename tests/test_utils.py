@@ -5,6 +5,7 @@ import lxml.etree as ET
 
 from app.utils import (
    _hash_question,
+   normalizuj_vzor,
    _hash_category,
    ensure_ids,
    find_chapter,
@@ -530,6 +531,24 @@ def test_update_question_napovede_celoplosne(questions_file):
    napovedy = [n.text for n in otazka.findall('napoveda') if 'pre' not in n.attrib]
    assert napovedy == ['Vždy platná']
 
+@pytest.mark.parametrize('text, ocakavany', [
+   ('rmdir ./a', 'rmdir ./a'),
+   ('\n   rmdir ./a\n   ', 'rmdir ./a'),
+   ('riadok1\n            riadok2\n            riadok3', 'riadok1\nriadok2\nriadok3'),
+   ('\n      def f():\n         return 1\n   ', 'def f():\n   return 1'),
+   ('if x:\n            y\n         z', 'if x:\n   y\nz'),
+   ('a\n\n      b', 'a\n\nb'),
+])
+def test_normalizuj_vzor_odstrani_odsadenie_z_xml(text, ocakavany):
+   assert normalizuj_vzor(text) == ocakavany
+
+def test_update_question_vzory_nahradi_vsetky(questions_file):
+   update_question('otq1', {'vzory': ['a', 'b']})
+   update_question('otq1', {'vzory': ['rmdir ./x', 'prvý\ndruhý']})
+   otazka = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]')
+   assert otazka is not None
+   assert [v.text for v in otazka.findall('vzor')] == ['rmdir ./x', 'prvý\ndruhý']
+
 def test_add_question_napovede_a_odpoved_napoveda(questions_file):
    nova = {
       'znenie': '<znenie>Q?</znenie>',
@@ -600,5 +619,5 @@ def test_zmenene_zamrznute_polia_zmena_znenia(questions_file):
 def test_zmenene_zamrznute_polia_len_vzor_bez_zmeny_frozen(questions_file):
    otazka = ET.parse(str(questions_file)).find('.//otazka[@id="otq1"]')
    assert otazka is not None
-   data = {'vzor': 'nový vzor'}
+   data = {'vzory': ['nový vzor']}
    assert zmenene_zamrznute_polia(otazka, data) is False

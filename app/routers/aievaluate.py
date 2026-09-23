@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import cast
 import lxml.etree as ET
 from app.mytypes import StringForm
-from app.utils import find_test_file, xquery_to_string
+from app.utils import find_test_file, normalizuj_vzor, xquery_to_string
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
 
@@ -91,7 +91,7 @@ def _nacitaj_otvorene_otazky(proc, cesta_tst: str, test_id: str, predmet: str, k
             'id':      o.get('id', ''),
             'body':    o.get('body', '1'),
             'znenie':  (o.findtext('znenie') or '').strip(),
-            'vzor':    (o.findtext('vzor') or '').strip(),
+            'vzory':   [normalizuj_vzor(v.text) for v in o.findall('vzor') if v.text and v.text.strip()],
             'klucove': [k.text.strip() for k in o.findall('klucove') if k.text],
             'odpoved': (o.findtext('odpoved') or '').strip(),
          }
@@ -99,6 +99,15 @@ def _nacitaj_otvorene_otazky(proc, cesta_tst: str, test_id: str, predmet: str, k
       ]
    except Exception:
       return []
+
+
+def _formatuj_vzory(vzory: list[str]) -> str:
+   """Viacriadkovy vzor odsadi; viac vzorov oznaci ako alternativy."""
+   odsadene = [v.replace('\n', '\n      ') for v in vzory]
+   if len(odsadene) == 1:
+      return f'Model answer:\n      {odsadene[0]}'
+   polozky = ''.join(f'\n    - {v}' for v in odsadene)
+   return f'Model answers (alternatives, matching any one is fully correct):{polozky}'
 
 
 def _evaluate_test(otazky: list[dict], ziak: dict) -> list[dict]:
@@ -110,12 +119,12 @@ def _evaluate_test(otazky: list[dict], ziak: dict) -> list[dict]:
 
    otazky_text = ''
    for i, ot in enumerate(otazky, 1):
-      vzor = _nahrad_placeholder(ot['vzor'], ziak)
+      vzory = _formatuj_vzory([_nahrad_placeholder(v, ziak) for v in ot['vzory']])
       klucove_str = ', '.join(ot['klucove']) if ot['klucove'] else '(žiadne)'
       otazky_text += f"""
 Question {i} (id: {ot['id']}, max points: {ot['body']}):
   Text: {ot['znenie']}
-  Model answer: {vzor}
+  {vzory}
   Key words: {klucove_str}
   Student's answer: {ot['odpoved']}
 """

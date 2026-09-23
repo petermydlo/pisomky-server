@@ -10,6 +10,9 @@ Rules:
 - Be fair but strict — partial knowledge deserves partial points
 - If key words are present but explanation is weak, give partial credit
 - If the answer is completely wrong or missing, give 0
+- A model answer may span several lines — the student is expected to provide all of them
+- If several model answers are listed as alternatives, each one is a complete correct answer on
+  its own — compare the student's answer to the closest one
 - The model answer may contain <any> markers — the student can use any reasonable value there
 - The model answer may contain <any:X> markers where X is a name — ALL occurrences of the same
   <any:X> across all questions must have been answered with the SAME value by the student.
