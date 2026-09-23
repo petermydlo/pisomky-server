@@ -124,11 +124,13 @@ Question {i} (id: {ot['id']}, max points: {ot['body']}):
 
    resp = client.messages.create(
       model=os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-5'),
-      max_tokens=500 + len(otazky) * 200,
+      max_tokens=16000,
       output_config={'effort': 'low'},
       system=SYSTEM_PROMPT,
       messages=[{'role': 'user', 'content': prompt}]
    )
+   if resp.stop_reason != 'end_turn':
+      raise ValueError(f'Claude nedokončil hodnotenie (stop_reason={resp.stop_reason}).')
    raw = next((b.text for b in resp.content if b.type == 'text'), '').strip()
    if '```' in raw:
       raw = raw.split('```')[1]

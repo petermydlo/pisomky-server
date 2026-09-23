@@ -84,16 +84,26 @@ def test_claude_get_test_ids_rozdeli_ciarkou():
    provider.client = MagicMock()
    provider.model = 'test-model'
    provider.client.messages.create.return_value = SimpleNamespace(
-      content=[SimpleNamespace(type='text', text='id1, id2, id3')]
+      stop_reason='end_turn', content=[SimpleNamespace(type='text', text='id1, id2, id3')]
    )
    assert provider.get_test_ids(b'data', 'image/png') == ['id1', 'id2', 'id3']
+
+def test_claude_get_test_ids_odmietne_nedokoncenu_odpoved():
+   provider = _bez_initu(ClaudeProvider)
+   provider.client = MagicMock()
+   provider.model = 'test-model'
+   provider.client.messages.create.return_value = SimpleNamespace(
+      stop_reason='max_tokens', content=[SimpleNamespace(type='text', text='id1, id')]
+   )
+   with pytest.raises(ValueError, match='max_tokens'):
+      provider.get_test_ids(b'data', 'image/png')
 
 def test_claude_get_answers_ciste_json():
    provider = _bez_initu(ClaudeProvider)
    provider.client = MagicMock()
    provider.model = 'test-model'
    provider.client.messages.create.return_value = SimpleNamespace(
-      content=[SimpleNamespace(type='text', text='{"tests": []}')]
+      stop_reason='end_turn', content=[SimpleNamespace(type='text', text='{"tests": []}')]
    )
    assert provider.get_answers(b'data', 'image/png', '<xml/>') == {'tests': []}
 
@@ -102,9 +112,19 @@ def test_claude_get_answers_json_v_code_fence():
    provider.client = MagicMock()
    provider.model = 'test-model'
    provider.client.messages.create.return_value = SimpleNamespace(
-      content=[SimpleNamespace(type='text', text='```json\n{"tests": [{"test_id": "t1"}]}\n```')]
+      stop_reason='end_turn', content=[SimpleNamespace(type='text', text='```json\n{"tests": [{"test_id": "t1"}]}\n```')]
    )
    assert provider.get_answers(b'data', 'image/png', '<xml/>') == {'tests': [{'test_id': 't1'}]}
+
+def test_claude_get_answers_odmietne_nedokoncenu_odpoved():
+   provider = _bez_initu(ClaudeProvider)
+   provider.client = MagicMock()
+   provider.model = 'test-model'
+   provider.client.messages.create.return_value = SimpleNamespace(
+      stop_reason='max_tokens', content=[SimpleNamespace(type='text', text='{"tests": [{"test_id": "t1", "odpo')]
+   )
+   with pytest.raises(ValueError, match='max_tokens'):
+      provider.get_answers(b'data', 'image/png', '<xml/>')
 
 
 # --- OllamaProvider ---

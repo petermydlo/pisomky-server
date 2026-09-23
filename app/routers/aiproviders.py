@@ -50,10 +50,12 @@ class ClaudeProvider(AIImportProvider):
       }]
       resp = self.client.messages.create(
          model=self.model,
-         max_tokens=300,
+         max_tokens=4000,
          output_config={'effort': 'low'},
          messages=messages
       )
+      if resp.stop_reason != 'end_turn':
+         raise ValueError(f'Claude nedokončil odpoveď (stop_reason={resp.stop_reason}).')
       text = next((b.text for b in resp.content if b.type == 'text'), '')
       return [s.strip() for s in text.split(',') if s.strip()]
 
@@ -67,11 +69,13 @@ class ClaudeProvider(AIImportProvider):
       }]
       resp = self.client.messages.create(
          model=self.model,
-         max_tokens=3000,
+         max_tokens=16000,
          output_config={'effort': 'low'},
          system=SYSTEM_PROMPT,
          messages=messages
       )
+      if resp.stop_reason != 'end_turn':
+         raise ValueError(f'Claude nedokončil odpoveď (stop_reason={resp.stop_reason}).')
       raw = next((b.text for b in resp.content if b.type == 'text'), '').strip()
       if '```' in raw:
          raw = raw.split('```')[1]

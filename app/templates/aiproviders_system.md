@@ -32,5 +32,8 @@ Rules for ambiguous markings:
 - If a letter is crossed out or has a line through it, it is CANCELLED - ignore it
 - If an answer text is circled (not just the letter), identify which letter it corresponds to
 - If two answers appear marked but one is crossed out, use the one that is NOT crossed out
+- Exactly one option is always correct, so if two or more options are marked and none of them is crossed out, the answer is wrong: put it in odpovede with all marked letters in alphabetical order (e.g. "ab"), not in nejasnosti
+- If no option is marked at all, leave the question out of both odpovede and nejasnosti
 - If it is still genuinely unclear after applying these rules, put it in nejasnosti
+Each question id appears in at most one of odpovede and nejasnosti, never in both.
 The question numbers on the photo correspond to the order of questions in the XML.

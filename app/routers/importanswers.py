@@ -45,10 +45,12 @@ def write_answers_import(lock: 'FileLock', cesta: 'Path | str', form_data: dict,
       tree.write(str(cesta), encoding='utf-8', xml_declaration=True, pretty_print=True)
 
 def nacitaj_tests_xml(cesta: str, test_id: str) -> str:
-   """Nacita obsah tests XML suboru ako string."""
+   """Nacita test z tests XML suboru ako string, bez @spravna (AI nesmie poznat spravne odpovede)."""
    tree = ET.parse(cesta)
    test = next(iter(tree.xpath(".//test[@id=$id]", id=test_id)), None)  # type: ignore[arg-type]
    if test is not None:
+      for odpoved in test.iter('odpoved'):
+         odpoved.attrib.pop('spravna', None)
       return ET.tostring(test, encoding='unicode')
    return ''
 
@@ -159,7 +161,8 @@ async def _spracuj_subor(subor, cache, provider, vysledky):
       Path(adresar).mkdir(parents=True, exist_ok=True)
       cesta_ans = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
       lock = FileLock(f'{cesta_ans}.lock')
-      form_data = {o['id']: o['odpoved'] for o in entry.get('odpovede', [])}
+      nejasne_ids = {n.get('id') for n in entry.get('nejasnosti', [])}
+      form_data = {o['id']: o['odpoved'] for o in entry.get('odpovede', []) if o['id'] not in nejasne_ids}
 
       try:
          await run_in_threadpool(write_answers_import, lock, cesta_ans, form_data, tid, predmet, trieda, skupina, kapitola, fileid)

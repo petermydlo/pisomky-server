@@ -495,11 +495,16 @@ Pre každý súbor appka:
    testu sa tlačí na testy (pozri kapitolu 12). Ak sa nenájde, ako záložné riešenie
    pošle obrázok nakonfigurovanému AI providerovi (Claude/Gemini/Ollama), aby
    identifikoval ID testu z textového kódu v rohu.
-2. Pre každé nájdené ID testu načíta zodpovedajúce zadanie z databázy (kontext pre AI).
+2. Pre každé nájdené ID testu načíta zodpovedajúce zadanie z databázy (kontext pre AI)
+   bez atribútu `spravna` — AI nesmie poznať správne odpovede, inak dopĺňa
+   nevyplnené otázky.
 3. Pošle obrázok + kontext zadania AI providerovi, ktorý extrahuje jednotlivé
-   odpovede a prípadné nejasnosti.
+   odpovede a prípadné nejasnosti. Ak žiak zakrúžkoval viac možností a žiadnu
+   neprečiarkol, uloží sa odpoveď so všetkými písmenami (napr. `ab`), ktorá sa
+   vyhodnotí ako nesprávna.
 4. Zapíše odpovede do príslušného súboru odpovedí (rovnaký formát ako
-   `saveanswers`), pod danou `test_id`.
+   `saveanswers`), pod danou `test_id`. Odpovede na otázky, ktoré AI označilo ako
+   nejasnosti, sa nezapíšu — učiteľ ich potvrdí ručne.
 
 Výsledok (JSON, zobrazí sa v UI) obsahuje za každý súbor/test: počet zapísaných
 odpovedí, prípadné chyby (zadanie nenájdené, chyba rozpoznávania) a zoznam nejasností,

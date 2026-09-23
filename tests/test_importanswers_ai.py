@@ -127,6 +127,23 @@ def test_spracuj_subor_qr_najde_id_vynecha_ai_get_test_ids(tests_file):
    assert otazka is not None
    assert otazka.text == 'a'
 
+def test_spracuj_subor_nezapise_odpoved_z_nejasnosti(tests_file):
+   obsah = _qr_png(TEST_ID)
+   subor = FakeUpload('scan.png', 'image/png', obsah)
+   nejasnost = {'id': 'q1', 'znenie': 'Z', 'dovod': 'Zakrúžkované a aj b'}
+   provider = FakeProvider(answers={'tests': [{
+      'test_id': TEST_ID, 'odpovede': [{'id': 'q1', 'odpoved': 'b'}], 'nejasnosti': [nejasnost],
+   }]})
+   vysledky = []
+
+   _run(_spracuj_subor(subor, {}, provider, vysledky))
+
+   assert vysledky[0]['zapisane'] == 0
+   assert vysledky[0]['nejasnosti'] == [nejasnost]
+   tree = ET.parse(str(_odpovede_subor()))
+   otazka = tree.find(f'.//test[@id="{TEST_ID}"]/otazka[@id="q1"]')
+   assert otazka is None or otazka.text != 'b'
+
 def test_spracuj_subor_qr_nic_najde_ai_fallback(tests_file):
    obsah = _prazdny_png()
    subor = FakeUpload('scan.png', 'image/png', obsah)

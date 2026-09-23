@@ -289,6 +289,17 @@ def test_nacitaj_tests_xml_najde(tests_file):
    assert KLUC in result
    assert '<test' in result
 
+def test_nacitaj_tests_xml_bez_spravnych_odpovedi(tmp_path):
+   cesta = tmp_path / 'tests.xml'
+   cesta.write_text(
+      '<testy><test id="T1"><otazka id="q1"><znenie>Z</znenie>'
+      '<odpoved spravna="0">x</odpoved><odpoved spravna="1">y</odpoved>'
+      '</otazka></test></testy>', encoding='utf-8'
+   )
+   result = nacitaj_tests_xml(str(cesta), 'T1')
+   assert result.count('<odpoved>') == 2
+   assert 'spravna' not in result
+
 def test_nacitaj_tests_xml_nenajde(tests_file):
    result = nacitaj_tests_xml(str(tests_file), 'NEEXISTUJE')
    assert result == ''

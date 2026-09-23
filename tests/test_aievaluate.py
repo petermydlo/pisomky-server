@@ -100,7 +100,7 @@ def test_nacitaj_udaje_ziaka_neexistujuci_test():
 # --- _evaluate_test ---
 
 def _fake_response(text: str):
-   return SimpleNamespace(content=[SimpleNamespace(type='text', text=text)])
+   return SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text=text)])
 
 def test_evaluate_test_parsuje_ciste_json(monkeypatch):
    fake_client = MagicMock()
@@ -127,6 +127,19 @@ def test_evaluate_test_parsuje_json_v_code_fence(monkeypatch):
 
    vysledok = _evaluate_test(otazky, ziak)
    assert vysledok == [{'id': 'q1', 'body': 0, 'dovod': 'Nesprávne'}]
+
+def test_evaluate_test_odmietne_nedokoncenu_odpoved(monkeypatch):
+   fake_client = MagicMock()
+   fake_client.messages.create.return_value = SimpleNamespace(
+      stop_reason='max_tokens', content=[SimpleNamespace(type='text', text='[{"id": "q1", "bo')]
+   )
+   monkeypatch.setattr('anthropic.Anthropic', lambda: fake_client)
+
+   otazky = [{'id': 'q1', 'body': '2', 'znenie': '', 'vzor': '', 'klucove': [], 'odpoved': ''}]
+   ziak = {'meno': '', 'priezvisko': '', 'trieda': '', 'kod': ''}
+
+   with pytest.raises(ValueError, match='max_tokens'):
+      _evaluate_test(otazky, ziak)
 
 def test_evaluate_test_posle_placeholder_nahradeny_vzor(monkeypatch):
    fake_client = MagicMock()
