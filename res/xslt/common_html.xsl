@@ -2,6 +2,17 @@
 <xsl:stylesheet version="3.0" xml:lang="sk"
    xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
+<!-- vyber suborov na odovzdanie (test/@filesave); odosiela ich test.js klikom na #save-status -->
+<xsl:template name="file-upload">
+   <div id="file-upload">
+      <label for="files">
+         <i class="bi bi-upload" title="Vybrať súbor"/>
+      </label>
+      <input id="files" type="file" name="files" multiple="true"/>
+      <ul id="files-zoznam" class="files-zoznam" hidden="hidden"/>
+   </div>
+</xsl:template>
+
 <xsl:template match="ref">
    <xsl:variable name="ref_id" select="@id"/>
    <xsl:value-of select="count(ancestor::test/otazka[@id = $ref_id]/preceding-sibling::otazka) + 1"/>

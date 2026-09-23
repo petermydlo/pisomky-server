@@ -161,7 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
    });
 
    let autosaveTimer = null;
-   const ikonClassy = ['bi-cloud-check', 'bi-cloud-upload', 'bi-cloud-slash', 'text-success', 'text-warning', 'text-primary', 'text-danger'];
+   let suborCaka = false;
+   const filesInput = document.getElementById('files');
+   const ikonClassy = ['bi-cloud-check', 'bi-cloud-upload', 'bi-cloud-slash', 'bi-cloud-arrow-up', 'text-success', 'text-warning', 'text-primary', 'text-danger'];
 
    function setIcon(stav) {
       const icon = document.getElementById('save-icon');
@@ -169,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
       icon.classList.remove(...ikonClassy);
       if (stav === 'ok')           icon.classList.add('bi-cloud-check', 'text-success');
       else if (stav === 'saving')  icon.classList.add('bi-cloud-upload', 'text-primary');
-      else if (stav === 'unsaved') icon.classList.add('bi-cloud-slash', 'text-warning');
+      else if (stav === 'unsaved') icon.classList.add(suborCaka ? 'bi-cloud-arrow-up' : 'bi-cloud-slash', 'text-warning');
       else if (stav === 'error')   icon.classList.add('bi-cloud-slash', 'text-danger');
    }
 
@@ -177,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setIcon('saving');
       const kluc = hlavicka.getAttribute('kluc');
       const udaje = new FormData();
+      let odoslaneSubory = [];
       udaje.append('predmet',  hlavicka.getAttribute('predmet'));
       udaje.append('trieda',   hlavicka.getAttribute('trieda'));
       udaje.append('skupina',  hlavicka.getAttribute('skupina'));
@@ -189,15 +192,18 @@ document.addEventListener('DOMContentLoaded', () => {
          document.querySelectorAll("#odpovede input[type='text'].odpoved").forEach(el => {
             udaje.append(el.id, el.value);
          });
-         const filesEl = document.getElementById('files');
-         if (withFiles && filesEl) {
-            Array.from(filesEl.files).forEach(file => udaje.append('subory', file));
+         if (withFiles && filesInput) {
+            odoslaneSubory = Array.from(filesInput.files);
+            odoslaneSubory.forEach(file => udaje.append('subory', file));
          }
       }
       try {
          const resp = await fetch('/saveanswers/' + kluc, { method: 'POST', body: udaje });
          if (resp.ok) {
-            setIcon('ok');
+            //odoslane subory zmiznu z vyberu, ostanu len tie vybrate pocas odosielania
+            const kluceSuboru = odoslaneSubory.map(f => `${f.name}|${f.size}|${f.lastModified}`);
+            if (odoslaneSubory.length) nastavSubory(Array.from(filesInput.files).filter(f => !kluceSuboru.includes(`${f.name}|${f.size}|${f.lastModified}`)));
+            setIcon(suborCaka ? 'unsaved' : 'ok');
          } else {
             setIcon('error');
             if (resp.status === 403) zobrazNotifikaciu('Čas na odovzdanie odpovedí vypršal!');
@@ -226,6 +232,50 @@ document.addEventListener('DOMContentLoaded', () => {
          setTimeout(() => { delete btn.dataset.disabled; btn.classList.remove('disabled'); }, 10000);
          clearTimeout(autosaveTimer);
          saveAnswers(true, true);
+      });
+   }
+
+   //vybraty, ale este neodoslany subor; zoznam vybratych suborov pod ikonou s moznostou odstranenia
+   function vykresliSubory() {
+      const zoznam = document.getElementById('files-zoznam');
+      if (!zoznam) return;
+      zoznam.replaceChildren(...Array.from(filesInput.files).map((file, i) => {
+         const li = document.createElement('li');
+         const nazov = document.createElement('span');
+         nazov.textContent = file.name;
+         nazov.title = file.name;
+         const odstran = document.createElement('button');
+         odstran.type = 'button';
+         odstran.title = 'Odstrániť zo zoznamu';
+         odstran.innerHTML = '<i class="bi bi-x"></i>';
+         odstran.addEventListener('click', () => {
+            nastavSubory(Array.from(filesInput.files).filter((_, j) => j !== i));
+            if (!suborCaka) scheduleAutosave();
+         });
+         li.append(nazov, odstran);
+         return li;
+      }));
+      zoznam.hidden = filesInput.files.length === 0;
+   }
+
+   function nastavSubory(subory) {
+      const dt = new DataTransfer();
+      subory.forEach(file => dt.items.add(file));
+      filesInput.files = dt.files;
+      zmenaSuborov();
+   }
+
+   function zmenaSuborov() {
+      suborCaka = filesInput.files.length > 0;
+      vykresliSubory();
+      if (suborCaka) setIcon('unsaved');
+   }
+
+   if (filesInput) {
+      filesInput.addEventListener('change', () => {
+         zmenaSuborov();
+         //po vyprazdneni vyberu autosave vrati ikonu do skutocneho stavu odpovedi
+         if (!suborCaka) scheduleAutosave();
       });
    }
 

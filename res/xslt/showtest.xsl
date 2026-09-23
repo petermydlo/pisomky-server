@@ -37,6 +37,12 @@
       <body>
          <div id="hlavicka" class="neviditelny" kluc="{@id}" predmet="{../@predmet}" trieda="{../@trieda}" skupina="{../@skupina}" kapitola="{../@kapitola}" fileid="{../@fileid}"/>
          <div class="flex-container-icon bg-info-subtle">
+            <xsl:if test="../@filesave = '1'">
+               <div id="save-status" title="Odoslať súbory">
+                  <i class="bi bi-cloud-check text-success" id="save-icon"/>
+               </div>
+               <xsl:call-template name="file-upload"/>
+            </xsl:if>
             <xsl:if test="$admin = true()">
                <div>
                   <a href="/admin/showresult/{@id}"><i class="bi bi-pencil-square" title="Start evaluation"/></a>

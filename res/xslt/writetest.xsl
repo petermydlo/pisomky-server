@@ -45,12 +45,7 @@
                <i class="bi bi-cloud-check text-success" id="save-icon"/>
             </div>
             <xsl:if test="../@filesave = '1'">
-               <div id="file-upload">
-                  <label for="files">
-                     <i class="bi bi-upload" title="Vybrať súbor"/>
-                  </label>
-                  <input id="files" type="file" name="files" multiple="true"/>
-               </div>
+               <xsl:call-template name="file-upload"/>
             </xsl:if>
             <xsl:if test="$admin = true()">
                <div>
