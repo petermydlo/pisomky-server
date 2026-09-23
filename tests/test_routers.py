@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import os
+import asyncio
+from types import SimpleNamespace
 import pytest
 import lxml.etree as ET
 from pathlib import Path
@@ -11,7 +13,7 @@ from app.utils import modify_test_xml
 from app.routers.testrun import write_answers
 from app.routers.results import write_marks
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
-from app.routers.tests import vymaz_testy
+from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
 
 PREDMET = 'MAT'
 TRIEDA = '1A'
@@ -348,3 +350,24 @@ def test_ziskaj_metadata_chybajuce_atributy(tmp_path):
    predmet, trieda, skupina, kapitola, fileid = ziskaj_metadata(str(cesta))
    assert predmet == ''
    assert fileid == ''
+
+
+# --- regeneratetests: blokacia pri existujucich odpovediach ---
+
+def test_ma_odpovede_bez_answers_suboru(tests_file):
+   assert ma_odpovede(tests_file) is False
+
+def test_ma_odpovede_s_odpovedami(tests_file, answers_file):
+   assert ma_odpovede(tests_file) is True
+
+def test_ma_odpovede_bez_test_dat(tests_file, answers_file):
+   answers_file.write_text('<odpovede xml:lang="sk"></odpovede>', encoding='utf-8')
+   assert ma_odpovede(tests_file) is False
+
+def test_regeneratetests_odmietne_ak_su_odpovede(tests_file, answers_file):
+   povodny = tests_file.read_text(encoding='utf-8')
+   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(proc=None, logger=None)))
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(regeneratetests(request, PREDMET, TRIEDA, KAPITOLA, FILEID, SKUPINA))  # type: ignore[arg-type]
+   assert exc.value.status_code == 409
+   assert tests_file.read_text(encoding='utf-8') == povodny

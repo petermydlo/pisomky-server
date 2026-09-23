@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
    function chybaNotifikaciu(status) {
       if (status === 404) zobrazNotifikaciu('Testy nenájdené!');
       else if (status === 403) zobrazNotifikaciu('Nemáte oprávnenie na danú akciu. Kontaktujte svojho administrátora!');
+      else if (status === 409) zobrazNotifikaciu('Testy už majú odovzdané odpovede, nie je možné ich regenerovať!');
       else if (status === 500) zobrazNotifikaciu('Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr.');
       else zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
    }

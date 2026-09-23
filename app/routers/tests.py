@@ -62,6 +62,8 @@ async def regeneratetests(request: Request, predmet: StringForm, trieda: StringF
    try:
       proc = request.app.state.proc
       subor = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
+      if ma_odpovede(Path(subor)):
+         raise HTTPException(status_code=409, detail='Testy už majú odovzdané odpovede, nie je možné ich regenerovať')
       xsltproc = proc.new_xslt30_processor()
       xsltproc.set_parameter('seed_ext', proc.make_string_value(secrets.token_hex(16)))
       xsltproc.set_parameter('fileid', proc.make_string_value(fileid))
@@ -78,9 +80,18 @@ async def regeneratetests(request: Request, predmet: StringForm, trieda: StringF
       except Exception as e:
          request.app.state.logger.error(f'chyba regeneratetests1: {e}')
          raise HTTPException(status_code=400, detail='chyba regenerates1: ' + str(e))
+   except HTTPException:
+      raise
    except Exception as e:
       request.app.state.logger.error(f'chyba regeneratetests2: {e}')
       raise HTTPException(status_code=400, detail='chyba regeneratetests2: ' + str(e))
+
+def ma_odpovede(cesta_test: Path) -> bool:
+   """True, ak k testu existuju odovzdane odpovede (answers XML s aspon jednym test[@dat])."""
+   cesta_answers = Path(str(cesta_test).replace('/tests/', '/answers/', 1))
+   if not cesta_answers.is_file():
+      return False
+   return bool(ET.parse(cesta_answers).getroot().xpath('test[@dat]'))
 
 def _vymaz_s_lockom(cesta: Path) -> None:
    """Vymaze subor aj jeho .lock (FileLock ho po sebe nemaze)."""
