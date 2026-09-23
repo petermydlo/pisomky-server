@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
          }
          const preskocene = otvorene - uspesne;
          const msg = preskocene > 0
-            ? `AI vyhodnotila ${uspesne} otázok, ${preskocene} preskočila (bez vzoru). Skontrolujte a uložte.`
+            ? `AI vyhodnotila ${uspesne} otázok, ${preskocene} preskočila (bez vzoru alebo bez odpovede žiaka). Skontrolujte a uložte.`
             : `AI vyhodnotila ${uspesne} otázok. Skontrolujte a uložte.`;
          zobrazNotifikaciu(msg, 'success', 'AI');
       } catch (err) {
