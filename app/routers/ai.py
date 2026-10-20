@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import hashlib
 import json
 import os
+import random
+import re
 import secrets
+import stat
 from typing import cast
 from datetime import datetime
 from filelock import FileLock
@@ -20,6 +24,10 @@ from fastapi.exceptions import HTTPException
 load_dotenv()
 
 router = APIRouter()
+
+CACHE_ADRESAR = '/tmp/pisomky-napovedy'
+CACHE_MAX_NAPOVEDI = 5
+CAKANIE_INTERVAL = 10
 
 
 def _najdi_napovedu(otazka_id: str, spravna_odpoved: str | None = None, logger=None) -> dict | None:
@@ -133,16 +141,146 @@ def _parsuj_hint_keys(raw: str) -> tuple[str, str]:
    return hint, keys
 
 
-async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, send: MemoryObjectSendStream, logger) -> None:
+def _cache_kluc(system_instrukcie: str, user_instrukcie: str) -> str:
+   """Hash of the prompt without the rating history, so that a changed question text,
+   answer or prompt template automatically misses the cache."""
+   return hashlib.sha256(f'{system_instrukcie}\0{user_instrukcie}'.encode('utf-8')).hexdigest()[:16]
+
+
+def _cache_subor(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str | None:
+   """Path of the hint cache of one test (one file per fileid). It lives in /tmp, which is a
+   tmpfs here: RAM only, shared by all workers, wiped on reboot. Returns None, which turns
+   the cache off, when the directory cannot be created or is not private to this user."""
+   try:
+      os.makedirs(CACHE_ADRESAR, mode=0o700, exist_ok=True)
+      st = os.lstat(CACHE_ADRESAR)
+   except OSError:
+      return None
+   if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.geteuid() or st.st_mode & 0o077:
+      return None
+   nazov = re.sub(r'[^A-Za-z0-9_.-]', '_', f'{predmet}_{trieda}{skupina}_{kapitola}_{fileid}')
+   return os.path.join(CACHE_ADRESAR, nazov + '.json')
+
+
+def _cache_nacitaj(subor: str) -> dict:
+   """Cache layout: {otazka_id: {kluc: {'generuj': bool, 'napovedy': [{'hint', 'keys', 'zle'}]}}}.
+   Entries from the earlier single-hint layout ({'hint', 'keys'}) are upgraded on load."""
+   try:
+      with open(subor, encoding='utf-8') as f:
+         data = json.load(f)
+   except (OSError, ValueError):
+      return {}
+   if not isinstance(data, dict):
+      return {}
+   for varianty in data.values():
+      for kluc, zaznam in varianty.items():
+         if 'napovedy' not in zaznam:
+            varianty[kluc] = {'generuj': False, 'napovedy': [{'hint': zaznam['hint'], 'keys': zaznam.get('keys', ''), 'zle': 0}]}
+   return data
+
+
+def _cache_zapis(subor: str, data: dict) -> None:
+   tmp = subor + '.tmp'
+   with open(tmp, 'w', encoding='utf-8') as f:
+      json.dump(data, f, ensure_ascii=False)
+   os.replace(tmp, subor)
+
+
+def _cache_ziskaj(subor: str | None, otazka_id: str, kluc: str) -> dict | None:
+   """Returns a random hint of the pool, or None when the caller has to generate a new one:
+   the pool is empty, or a student rated a hint as unhelpful and this call claims the
+   regeneration (the flag is cleared, so only one request generates)."""
+   if not subor:
+      return None
+   zaznam = _cache_nacitaj(subor).get(otazka_id, {}).get(kluc)
+   if zaznam and zaznam['generuj']:
+      with FileLock(subor + '.lock'):
+         data = _cache_nacitaj(subor)
+         zaznam = data.get(otazka_id, {}).get(kluc)
+         if zaznam and zaznam['generuj']:
+            zaznam['generuj'] = False
+            _cache_zapis(subor, data)
+            return None
+   if not zaznam or not zaznam['napovedy']:
+      return None
+   return random.choice(zaznam['napovedy'])
+
+
+def _cache_uloz(subor: str | None, otazka_id: str, kluc: str, hint: str, keys: str) -> None:
+   """Adds a hint to the pool; when the pool is full, the hint with the most unhelpful
+   votes is dropped first."""
+   if not subor:
+      return
+   with FileLock(subor + '.lock'):
+      data = _cache_nacitaj(subor)
+      zaznam = data.setdefault(otazka_id, {}).setdefault(kluc, {'generuj': False, 'napovedy': []})
+      napovedy = zaznam['napovedy']
+      if any(n['hint'] == hint for n in napovedy):
+         return
+      if len(napovedy) >= CACHE_MAX_NAPOVEDI:
+         napovedy.remove(max(napovedy, key=lambda n: n['zle']))
+      napovedy.append({'hint': hint, 'keys': keys, 'zle': 0})
+      _cache_zapis(subor, data)
+
+
+def _cache_zle(subor: str | None, otazka_id: str, hint: str) -> None:
+   """Counts an unhelpful vote for the rated hint and requests a new hint for the next
+   student asking about the same question (the hint itself stays in the pool)."""
+   if not subor or not hint or not os.path.exists(subor):
+      return
+   with FileLock(subor + '.lock'):
+      data = _cache_nacitaj(subor)
+      zmena = False
+      for zaznam in data.get(otazka_id, {}).values():
+         for n in zaznam['napovedy']:
+            if n['hint'] == hint:
+               n['zle'] += 1
+               zaznam['generuj'] = True
+               zmena = True
+      if zmena:
+         _cache_zapis(subor, data)
+
+
+def _cache_znovu_generuj(subor: str | None, otazka_id: str, kluc: str) -> None:
+   """Gives the regeneration claimed by `_cache_ziskaj` back after a failed model call."""
+   if not subor or not os.path.exists(subor):
+      return
+   with FileLock(subor + '.lock'):
+      data = _cache_nacitaj(subor)
+      zaznam = data.get(otazka_id, {}).get(kluc)
+      if zaznam and zaznam['napovedy']:
+         zaznam['generuj'] = True
+         _cache_zapis(subor, data)
+
+
+def _posli(send: MemoryObjectSendStream, udalost: tuple[str, dict]) -> None:
+   try:
+      send.send_nowait(udalost)
+   except (anyio.BrokenResourceError, anyio.ClosedResourceError):
+      pass
+
+
+async def _hlas_cakanie(send: MemoryObjectSendStream, prvy_chunk: anyio.Event, interval: float = CAKANIE_INTERVAL) -> None:
+   """Sends a `caka` event every `interval` seconds until the model produces its first
+   output. The data keeps the proxy from timing out the idle connection while the request
+   waits for the (CPU-bound) model, and tells the client how long it has been waiting."""
+   sekundy = 0.0
+   while True:
+      with anyio.move_on_after(interval):
+         await prvy_chunk.wait()
+         return
+      sekundy += interval
+      _posli(send, ('caka', {'sekundy': int(sekundy)}))
+
+
+async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, send: MemoryObjectSendStream, logger,
+                            prvy_chunk: anyio.Event, cache_subor: str | None, otazka_id: str, cache_kluc: str) -> None:
    """Runs the model call independently of the client connection, so that hint and keys
    are always saved even if the client disconnects after the first line. Events for the
    client are passed through the stream; closing it marks the end."""
 
    def posli(udalost: tuple[str, dict]) -> None:
-      try:
-         send.send_nowait(udalost)
-      except (anyio.BrokenResourceError, anyio.ClosedResourceError):
-         pass
+      _posli(send, udalost)
 
    full_text = ''
    hint_ulozeny = False
@@ -158,6 +296,7 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
          text = chunk['message']['content']
          if not text:
             continue
+         prvy_chunk.set()
          full_text += text
          if not hint_ulozeny:
             posli(('chunk', {'text': text}))
@@ -174,10 +313,20 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
       else:
          _aktualizuj_zapis(subor, zapis_id, hint=hint, keys=keys or None)
          posli(('done', {'hint': hint}))
+      if hint:
+         try:
+            _cache_uloz(cache_subor, otazka_id, cache_kluc, hint, keys)
+         except OSError as e:
+            logger.error(f'chyba zapisu cache napovedy: {e}')
    except Exception as e:
       logger.error(f'chyba napoveda stream: {e}')
       posli(('napoveda_error', {'error': 'Služba nápovedy je momentálne zaneprázdnená.'}))
+      try:
+         _cache_znovu_generuj(cache_subor, otazka_id, cache_kluc)
+      except OSError as e2:
+         logger.error(f'chyba zapisu cache napovedy: {e2}')
    finally:
+      prvy_chunk.set()
       send.close()
 
 
@@ -245,24 +394,51 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       {'role': 'user', 'content': user_instrukcie}
    ]
 
+   user_bez_spatnej_vazby = templates.get_template('aihelp_user.md.j2').render(
+      znenie_text=znenie_text,
+      moznosti=moznosti,
+      napovedy=napovedy or [],
+      vzory=vzory or [],
+      klucove=klucove or [],
+      helped=[],
+      not_helped=[],
+      spravna_odpoved=spravna_odpoved,
+   )
+   cache_kluc = _cache_kluc(system_instrukcie, user_bez_spatnej_vazby)
+
    zapis_id = secrets.token_hex(8)
    remaining = pocet_otazok - pouzite - 1
    _uloz_zapis(subor, zapis_id, otazka_id, test_id, predmet, trieda, skupina, kapitola, fileid)
+   meta = f'event: meta\ndata: {json.dumps({"zapis_id": zapis_id, "remaining": remaining})}\n\n'
+   headers = {'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+
+   cache_subor = _cache_subor(predmet, trieda, skupina, kapitola, fileid)
+   if not cache_subor:
+      request.app.state.logger.warning('cache napoved vypnuta: adresar nie je sukromny')
+   z_cache = _cache_ziskaj(cache_subor, otazka_id, cache_kluc)
+   if z_cache:
+      _aktualizuj_zapis(subor, zapis_id, hint=z_cache['hint'], keys=z_cache['keys'] or None)
+
+      async def generate_cache():
+         yield meta
+         yield f'event: chunk\ndata: {json.dumps({"text": z_cache["hint"]})}\n\n'
+         yield f'event: done\ndata: {json.dumps({"hint": z_cache["hint"]})}\n\n'
+
+      return StreamingResponse(generate_cache(), media_type='text/event-stream', headers=headers)
 
    send, receive = anyio.create_memory_object_stream[tuple[str, dict]](max_buffer_size=float('inf'))
-   request.app.state.task_group.start_soon(_generuj_napovedu, messages, subor, zapis_id, send, request.app.state.logger)
+   prvy_chunk = anyio.Event()
+   request.app.state.task_group.start_soon(_generuj_napovedu, messages, subor, zapis_id, send, request.app.state.logger,
+                                           prvy_chunk, cache_subor, otazka_id, cache_kluc)
+   request.app.state.task_group.start_soon(_hlas_cakanie, send, prvy_chunk)
 
    async def generate():
-      yield f'event: meta\ndata: {json.dumps({"zapis_id": zapis_id, "remaining": remaining})}\n\n'
+      yield meta
       async with receive:
          async for typ, data in receive:
             yield f'event: {typ}\ndata: {json.dumps(data)}\n\n'
 
-   return StreamingResponse(
-      generate(),
-      media_type='text/event-stream',
-      headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
-   )
+   return StreamingResponse(generate(), media_type='text/event-stream', headers=headers)
 
 @router.post('/ai/feedback')
 async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis_id: StringForm):
@@ -287,10 +463,14 @@ async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis
          if zapis is None:
             return {'ok': False, 'error': 'Záznam nenájdený'}
          zapis.set('val', str(val))
+         otazka_id = zapis.get('otazka_id', '')
+         hint = zapis.findtext('hint') or ''
          tree = ET.ElementTree(root)
          ET.indent(tree, space='   ')
          tree.write(subor, encoding='UTF-8', xml_declaration=True)
 
+      if val == 0:
+         _cache_zle(_cache_subor(predmet, trieda, skupina, kapitola, fileid), otazka_id, hint)
       return {'ok': True}
    except Exception as e:
       request.app.state.logger.error(f'chyba feedback: {e}')

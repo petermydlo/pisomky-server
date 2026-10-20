@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import logging
+import os
+import anyio
 import pytest
 import lxml.etree as ET
 
+from app.routers import ai
 from app.routers.ai import (
    _parsuj_hint_keys,
    _spocitaj_napovedy_testu,
@@ -10,6 +14,13 @@ from app.routers.ai import (
    _aktualizuj_zapis,
    _uloz_zapis,
    _najdi_napovedu,
+   _cache_kluc,
+   _cache_ziskaj,
+   _cache_uloz,
+   _cache_zle,
+   _cache_znovu_generuj,
+   _hlas_cakanie,
+   _generuj_napovedu,
 )
 
 PREDMET = 'MAT'
@@ -217,3 +228,202 @@ def test_najdi_napovedu_so_spravnou_odpovedou_zahrnie_naviazanu(questions_file):
 def test_najdi_napovedu_bez_extra_udajov(questions_file):
    vysledok = _najdi_napovedu('q_bez_extra')
    assert vysledok == {'napovedy': None, 'vzory': [], 'klucove': []}
+
+
+CS = './napovedy.json'
+
+# --- cache napoved ---
+
+def test_cache_kluc_stabilny_a_zavisly_od_promptu():
+   assert _cache_kluc('sys', 'user') == _cache_kluc('sys', 'user')
+   assert _cache_kluc('sys', 'user') != _cache_kluc('sys', 'iny user')
+   assert _cache_kluc('sys', 'user') != _cache_kluc('iny sys', 'user')
+
+def test_cache_ziskaj_bez_suboru():
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
+
+def test_cache_uloz_a_ziskaj():
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', 'a, b')
+   _cache_uloz(CS, OTAZKA_ID, 'k2', 'hint 2', '')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 1', 'keys': 'a, b', 'zle': 0}
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k2') == {'hint': 'hint 2', 'keys': '', 'zle': 0}
+   assert _cache_ziskaj(CS, 'q2', 'k1') is None
+
+def test_cache_uloz_rovnaky_hint_neduplikuje():
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   assert len(ai._cache_nacitaj(CS)[OTAZKA_ID]['k1']['napovedy']) == 1
+
+def test_cache_ziskaj_vyberie_nahodne_z_poolu():
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 2', '')
+   videne = {_cache_ziskaj(CS, OTAZKA_ID, 'k1')['hint'] for _ in range(60)}  # type: ignore[index]
+   assert videne == {'hint 1', 'hint 2'}
+
+def test_cache_zle_zvysi_pocet_a_hint_ostane():
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_uloz(CS, 'q2', 'k1', 'hint 1', '')
+   _cache_zle(CS, OTAZKA_ID, 'hint 1')
+   _cache_zle(CS, OTAZKA_ID, 'hint 1')
+   napovedy = ai._cache_nacitaj(CS)[OTAZKA_ID]['k1']['napovedy']
+   assert napovedy == [{'hint': 'hint 1', 'keys': '', 'zle': 2}]
+   assert ai._cache_nacitaj(CS)['q2']['k1']['napovedy'][0]['zle'] == 0
+
+def test_cache_zle_vyziada_generovanie_len_jednemu_poziadavke():
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_zle(CS, OTAZKA_ID, 'hint 1')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None  # tento poziadavok generuje novu
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is not None  # dalsi uz dostane z poolu
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 2', '')
+   assert len(ai._cache_nacitaj(CS)[OTAZKA_ID]['k1']['napovedy']) == 2
+
+def test_cache_zle_neznamy_alebo_prazdny_hint_nic_nemeni():
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_zle(CS, OTAZKA_ID, 'iny hint')
+   _cache_zle(CS, OTAZKA_ID, '')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 1', 'keys': '', 'zle': 0}
+
+def test_cache_zle_bez_suboru_nespadne():
+   _cache_zle(CS, OTAZKA_ID, 'hint 1')
+
+def test_cache_plny_pool_vyhodi_hint_s_najviac_zlymi_hlasmi():
+   for i in range(ai.CACHE_MAX_NAPOVEDI):
+      _cache_uloz(CS, OTAZKA_ID, 'k1', f'hint {i}', '')
+   _cache_zle(CS, OTAZKA_ID, 'hint 2')
+   _cache_zle(CS, OTAZKA_ID, 'hint 2')
+   _cache_zle(CS, OTAZKA_ID, 'hint 4')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'novy', '')
+   hinty = [n['hint'] for n in ai._cache_nacitaj(CS)[OTAZKA_ID]['k1']['napovedy']]
+   assert len(hinty) == ai.CACHE_MAX_NAPOVEDI
+   assert 'hint 2' not in hinty
+   assert 'novy' in hinty
+
+def test_cache_znovu_generuj_vrati_vyziadanie():
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_zle(CS, OTAZKA_ID, 'hint 1')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
+   _cache_znovu_generuj(CS, OTAZKA_ID, 'k1')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
+
+def test_cache_znovu_generuj_bez_zaznamu_nic_nevytvori():
+   _cache_znovu_generuj(CS, OTAZKA_ID, 'k1')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
+
+def test_cache_stary_format_sa_nacita_ako_pool(tmp_path):
+   (tmp_path / 'napovedy.json').write_text('{"q1": {"k1": {"hint": "stary", "keys": "a"}}}', encoding='utf-8')
+   assert _cache_ziskaj(CS, 'q1', 'k1') == {'hint': 'stary', 'keys': 'a', 'zle': 0}
+
+def test_cache_poskodeny_subor_je_prazdna_cache(tmp_path):
+   (tmp_path / 'napovedy.json').write_text('{nie json', encoding='utf-8')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint', '')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint', 'keys': '', 'zle': 0}
+
+def test_cache_subor_vytvori_sukromny_adresar_a_cestu_na_test(tmp_path, monkeypatch):
+   monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(tmp_path / 'cache'))
+   cesta = ai._cache_subor('AUT3', 'AB', '', '01', '737f')
+   assert cesta == str(tmp_path / 'cache' / 'AUT3_AB_01_737f.json')
+   assert (tmp_path / 'cache').stat().st_mode & 0o777 == 0o700
+
+def test_cache_subor_oddeli_testy_a_ocisti_nazov(tmp_path, monkeypatch):
+   monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(tmp_path / 'cache'))
+   assert ai._cache_subor('AUT3', 'AB', '', '01', '737f') != ai._cache_subor('AUT3', 'AB', '', '01', '9952')
+   cesta = ai._cache_subor('../x', 'AB', '/', '01', 'a b')
+   assert cesta is not None and os.path.dirname(cesta) == str(tmp_path / 'cache')
+
+def test_cache_subor_nesukromny_adresar_vypne_cache(tmp_path, monkeypatch):
+   adresar = tmp_path / 'cache'
+   adresar.mkdir()
+   adresar.chmod(0o755)
+   monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(adresar))
+   assert ai._cache_subor('AUT3', 'AB', '', '01', '737f') is None
+
+def test_cache_subor_symlink_vypne_cache(tmp_path, monkeypatch):
+   ciel = tmp_path / 'ciel'
+   ciel.mkdir(mode=0o700)
+   odkaz = tmp_path / 'cache'
+   odkaz.symlink_to(ciel)
+   monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(odkaz))
+   assert ai._cache_subor('AUT3', 'AB', '', '01', '737f') is None
+
+def test_cache_vypnuta_none_nic_nerobi():
+   assert _cache_ziskaj(None, OTAZKA_ID, 'k1') is None
+   _cache_uloz(None, OTAZKA_ID, 'k1', 'hint', '')
+   _cache_zle(None, OTAZKA_ID, 'hint')
+   _cache_znovu_generuj(None, OTAZKA_ID, 'k1')
+
+
+# --- _hlas_cakanie / _generuj_napovedu (anyio, oba backendy ako v produkcii) ---
+
+@pytest.fixture(params=['asyncio', 'trio'])
+def backend(request):
+   return request.param
+
+def test_hlas_cakanie_posiela_caka_do_prveho_chunku(backend):
+   async def run():
+      send, receive = anyio.create_memory_object_stream[tuple[str, dict]](max_buffer_size=float('inf'))
+      prvy_chunk = anyio.Event()
+      async with anyio.create_task_group() as tg:
+         tg.start_soon(_hlas_cakanie, send, prvy_chunk, 0.05)
+         await anyio.sleep(0.18)
+         prvy_chunk.set()
+      send.close()
+      return [u async for u in receive]
+   udalosti = anyio.run(run, backend=backend)
+   assert len(udalosti) >= 2
+   assert all(typ == 'caka' for typ, _ in udalosti)
+   assert [d['sekundy'] for _, d in udalosti][:2] == [0, 0]  # int(0.05), int(0.10)
+
+def test_hlas_cakanie_nic_neposle_ak_chunk_pride_hned(backend):
+   async def run():
+      send, receive = anyio.create_memory_object_stream[tuple[str, dict]](max_buffer_size=float('inf'))
+      prvy_chunk = anyio.Event()
+      prvy_chunk.set()
+      await _hlas_cakanie(send, prvy_chunk, 0.05)
+      send.close()
+      return [u async for u in receive]
+   assert anyio.run(run, backend=backend) == []
+
+class _FalosnyKlient:
+   def __init__(self, casti, chyba=None):
+      self.casti = casti
+      self.chyba = chyba
+
+   async def chat(self, **_):
+      if self.chyba:
+         raise self.chyba
+      casti = self.casti
+
+      async def stream():
+         for c in casti:
+            yield {'message': {'content': c}}
+      return stream()
+
+def _spusti_generovanie(monkeypatch, klient, backend):
+   monkeypatch.setattr(ai.ollama, 'AsyncClient', lambda: klient)
+   subor = f'./res/xml/feedback/{PREDMET}/{PREDMET}_1A_kap1_ab12.xml'
+   _uloz_zapis(subor, 'zapX', OTAZKA_ID, TEST_ID, PREDMET, '1A', '', 'kap1', 'ab12')
+
+   async def run():
+      send, receive = anyio.create_memory_object_stream[tuple[str, dict]](max_buffer_size=float('inf'))
+      prvy_chunk = anyio.Event()
+      await _generuj_napovedu([], subor, 'zapX', send, logging.getLogger('test'), prvy_chunk, CS, OTAZKA_ID, 'kluc1')
+      assert prvy_chunk.is_set()
+      return [u async for u in receive]
+   return anyio.run(run, backend=backend), subor
+
+def test_generuj_napovedu_ulozi_do_cache(monkeypatch, backend):
+   klient = _FalosnyKlient(['HINT: Zamyslite sa ', 'nad menovateľom\n', 'KEYS: zlomky, delenie'])
+   udalosti, subor = _spusti_generovanie(monkeypatch, klient, backend)
+   assert [typ for typ, _ in udalosti] == ['chunk', 'chunk', 'done']
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'kluc1') == {'hint': 'Zamyslite sa nad menovateľom', 'keys': 'zlomky, delenie', 'zle': 0}
+   zapis = ET.parse(subor).find('.//zapis[@id="zapX"]')
+   assert zapis is not None
+   assert zapis.findtext('hint') == 'Zamyslite sa nad menovateľom'
+   assert zapis.findtext('keys') == 'zlomky, delenie'
+
+def test_generuj_napovedu_chyba_neuklada_do_cache(monkeypatch, backend):
+   klient = _FalosnyKlient([], chyba=ConnectionError('ollama nebezi'))
+   udalosti, _ = _spusti_generovanie(monkeypatch, klient, backend)
+   assert [typ for typ, _ in udalosti] == ['napoveda_error']
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'kluc1') is None

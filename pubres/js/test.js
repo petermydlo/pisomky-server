@@ -80,6 +80,11 @@ document.addEventListener('DOMContentLoaded', () => {
             toastMessage.textContent = newlineIdx > -1 ? hintText.slice(0, newlineIdx) : hintText;
          });
 
+         es.addEventListener('caka', (e) => {
+            const data = JSON.parse(e.data);
+            toastMessage.textContent = `AI je vyťažená, čakám na odpoveď… (${data.sekundy} s)`;
+         });
+
          es.addEventListener('done', () => {
             completed = true;
             es.close();
