@@ -2,7 +2,8 @@
 <xsl:stylesheet version="3.0" xml:lang="sk"
    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
    xmlns:xs="http://www.w3.org/2001/XMLSchema"
-   xmlns:fo="http://www.w3.org/1999/XSL/Format">
+   xmlns:fo="http://www.w3.org/1999/XSL/Format"
+   xmlns:my="http://www.spsjm.sk">
 <xsl:output method="xml" version="1.1" indent="yes" encoding="UTF-8"/>
 
 <xsl:import href="scale.xsl"/>
@@ -61,7 +62,7 @@
                      </fo:table-cell>
                      <fo:table-cell display-align="before">
                         <fo:block font-size="8pt" text-align="center">STREDNÁ PRIEMYSELNÁ ŠKOLA JOZEFA MURGAŠA</fo:block>
-                        <fo:block font-size="6pt" text-align="center">Hodnotenie: <xsl:value-of select="$max1"/>%-<xsl:value-of select="$min1"/>%:1&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max2"/>%-<xsl:value-of select="$min2"/>%:2&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max3"/>%-<xsl:value-of select="$min3"/>%:3&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max4"/>%-<xsl:value-of select="$min4"/>%:4&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max5"/>%-<xsl:value-of select="$min5"/>%:5</fo:block>
+                        <fo:block font-size="6pt" text-align="center">Hodnotenie: <xsl:value-of select="my:stupnicatext(my:stupnica(.))"/></fo:block>
                      </fo:table-cell>
                      <fo:table-cell display-align="before">
                         <fo:block font-size="8pt" text-align="right">

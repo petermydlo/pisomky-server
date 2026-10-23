@@ -1,15 +1,10 @@
 declare namespace xs = "http://www.w3.org/2001/XMLSchema";
-declare namespace xsl = "http://www.w3.org/1999/XSL/Transform";
 
 declare variable $kluc as xs:string external;
 declare variable $test_cesta as xs:string external;
 declare variable $answer_cesta as xs:string external;
 
-declare variable $scale := doc('../xslt/scale.xsl');
-declare variable $min1  := xs:integer($scale//xsl:variable[@name='min1']/@select);
-declare variable $min2  := xs:integer($scale//xsl:variable[@name='min2']/@select);
-declare variable $min3  := xs:integer($scale//xsl:variable[@name='min3']/@select);
-declare variable $min4  := xs:integer($scale//xsl:variable[@name='min4']/@select);
+declare variable $stupnice := doc('../xml/lists/scales.xml')/stupnice;
 
 declare function local:spravnaodpoved($otazka as element()) as xs:string {
    string-join(
@@ -49,11 +44,13 @@ return
          )
       let $ziskane  := min(($raw, $maximum))
       let $percento := if ($maximum > 0) then round($ziskane div $maximum * 100) else 0
+      let $id       := (string($test_doc/testy/@stupnica)[. != ''], 'default')[1]
+      let $stupnica := ($stupnice/stupnica[@id = $id], $stupnice/stupnica[@id = 'default'])[1]
       let $znamka   :=
          if ($neuplne) then ''
-         else if ($percento >= $min1) then '1'
-         else if ($percento >= $min2) then '2'
-         else if ($percento >= $min3) then '3'
-         else if ($percento >= $min4) then '4'
+         else if ($percento >= xs:integer($stupnica/@min1)) then '1'
+         else if ($percento >= xs:integer($stupnica/@min2)) then '2'
+         else if ($percento >= xs:integer($stupnica/@min3)) then '3'
+         else if ($percento >= xs:integer($stupnica/@min4)) then '4'
          else '5'
       return <skore ziskane="{$ziskane}" maximum="{$maximum}" percento="{$percento}" neuplne="{$neuplne}" znamka="{$znamka}"/>

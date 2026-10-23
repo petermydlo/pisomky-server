@@ -25,9 +25,11 @@ async def selectcreate(request: Request):
       raise HTTPException(status_code=400, detail=str(e))
 
 @router.post('/admin/createtests', response_class=RedirectResponse)
-async def createtests(request: Request, predmet: StringForm, trieda: StringListForm, kapitola: StringForm, X_Remote_User: StringHeader, skupina: StringForm = '', start: StringForm = '', stop: StringForm = '', anonymne: BoolForm = False, identita: BoolForm = False):
+async def createtests(request: Request, predmet: StringForm, trieda: StringListForm, kapitola: StringForm, X_Remote_User: StringHeader, skupina: StringForm = '', start: StringForm = '', stop: StringForm = '', anonymne: BoolForm = False, identita: BoolForm = False, stupnica: StringForm = 'default'):
    try:
       proc = request.app.state.proc
+      if stupnica not in [el.get('id') for el in ET.parse('./res/xml/lists/scales.xml').getroot()]:
+         raise HTTPException(status_code=400, detail='neznáma stupnica: ' + stupnica)
       trieda_str = ','.join(trieda)
       skupina = '' if skupina == '-' else skupina
       xsltproc = proc.new_xslt30_processor()
@@ -41,6 +43,7 @@ async def createtests(request: Request, predmet: StringForm, trieda: StringListF
       xsltproc.set_parameter('anonymne', proc.make_boolean_value(anonymne))
       xsltproc.set_parameter('identita', proc.make_boolean_value(identita))
       xsltproc.set_parameter('autor', proc.make_string_value(X_Remote_User))
+      xsltproc.set_parameter('stupnica', proc.make_string_value(stupnica))
       try:
          fileid = secrets.token_hex(2)
          xsltproc.set_parameter('fileid', proc.make_string_value(fileid))

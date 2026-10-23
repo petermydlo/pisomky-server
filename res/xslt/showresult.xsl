@@ -15,7 +15,8 @@
    <xsl:variable name="sucetmaxbodov" select="my:sucetmaxbodov(.)"/>
    <xsl:variable name="sucetspravnychbodov" select="my:sucetspravnychbodov(.)"/>
    <xsl:variable name="ziskanepercenta" select="my:ziskanepercenta(.)"/>
-   <xsl:variable name="znamka" select="my:znamka($ziskanepercenta)"/>
+   <xsl:variable name="znamka" select="my:znamka($ziskanepercenta, my:stupnica(.))"/>
+   <xsl:variable name="stupnica" select="my:stupnica(.)"/>
 
    <html lang="sk">
       <head>
@@ -97,7 +98,7 @@
                   </xsl:if>
                </div>
             </div>
-            <div id="vyhodnotenie" class="flex-container-head-part znamka-{$znamka}" data-min1="{$min1}" data-min2="{$min2}" data-min3="{$min3}" data-min4="{$min4}">
+            <div id="vyhodnotenie" class="flex-container-head-part znamka-{$znamka}" data-min1="{$stupnica/@min1}" data-min2="{$stupnica/@min2}" data-min3="{$stupnica/@min3}" data-min4="{$stupnica/@min4}">
                <div class="bold">Hodnotenie: <span id="pocetbodov"><xsl:value-of select="$sucetspravnychbodov"/></span>/<xsl:value-of select="$sucetmaxbodov"/>
                   <xsl:text> (</xsl:text><span id="pocetpercent"><xsl:value-of select="floor($ziskanepercenta)"/></span>%)
                </div>

@@ -54,18 +54,6 @@
    <xsl:sequence select="if (my:sucetmaxbodov($testnode) > 0) then my:sucetspravnychbodov($testnode) div my:sucetmaxbodov($testnode) * 100 else 0"/>
 </xsl:function>
 
-<xsl:function name="my:znamka" as="xs:string">
-   <xsl:param name="percenta" as="xs:double"/>
-   <xsl:choose>
-      <xsl:when test="$percenta &gt;= $min1 and $percenta &lt;= $max1">1</xsl:when>
-      <xsl:when test="$percenta &gt;= $min2 and $percenta &lt; $min1">2</xsl:when>
-      <xsl:when test="$percenta &gt;= $min3 and $percenta &lt; $min2">3</xsl:when>
-      <xsl:when test="$percenta &gt;= $min4 and $percenta &lt; $min3">4</xsl:when>
-      <xsl:when test="$percenta &gt;= $min5 and $percenta &lt; $min4">5</xsl:when>
-      <xsl:otherwise>-</xsl:otherwise>
-   </xsl:choose>
-</xsl:function>
-
 <!-- Presné hodnotenie vrátane otvorených otázok s ručne prideleným @body (zrkadlí res/xquery/score.xq) -->
 
 <xsl:function name="my:otvorenaotazka" as="xs:boolean">

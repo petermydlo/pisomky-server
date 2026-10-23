@@ -48,7 +48,7 @@
                <fo:block font-size="8pt" text-align="right"><xsl:value-of select="@id"/></fo:block>
             </fo:block>
             <fo:block font-size="6pt" text-align="center">Hodnotenie:
-<xsl:value-of select="$max1"/>%-<xsl:value-of select="$min1"/>%:1&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max2"/>%-<xsl:value-of select="$min2"/>%:2&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max3"/>%-<xsl:value-of select="$min3"/>%:3&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max4"/>%-<xsl:value-of select="$min4"/>%:4&#xA0;&#xA0;&#xA0;<xsl:value-of select="$max5"/>%-<xsl:value-of select="$min5"/>%:5</fo:block>
+<xsl:value-of select="my:stupnicatext(my:stupnica(.))"/></fo:block>
          </fo:block>
       </fo:static-content>
       <fo:flow flow-name="xsl-region-body" line-height="1.5">

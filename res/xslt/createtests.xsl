@@ -18,6 +18,7 @@
 <xsl:param name="anonymne" select="/testy/@anonymne = 'true'"/>
 <xsl:param name="identita" select="/testy/@identita = 'true'"/>
 <xsl:param name="autor"/>
+<xsl:param name="stupnica" select="'default'"/>
 
 <!-- Náhodné miešanie: fn:random-number-generator($seed)?permute(sekvencia)
      Vytvorí deterministický generátor seedovaný hodnotami žiaka + pozíciou + generate-id(),
@@ -58,7 +59,7 @@
          <xsl:sort select="my:seat-stlpec(my:sedenie-pre-skupinu(., $skupina))"/>
       </xsl:perform-sort>
    </xsl:variable>
-   <testy xml:lang="sk" predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}" fileid="{$fileid}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{$start}" stop="{$stop}" autor="{$autor}" identita="{$identita}" anonymne="{$anonymne}">
+   <testy xml:lang="sk" predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" kapitola="{$kapitola}" fileid="{$fileid}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{$start}" stop="{$stop}" autor="{$autor}" identita="{$identita}" anonymne="{$anonymne}" stupnica="{$stupnica}">
       <xsl:if test="$vkapitola/@filesave = '1'">
          <xsl:attribute name="filesave">1</xsl:attribute>
       </xsl:if>
@@ -82,6 +83,7 @@
       </xsl:perform-sort>
    </xsl:variable>
    <testy xml:lang="sk" predmet="{@predmet}" trieda="{@trieda}" skupina="{@skupina}" kapitola="{@kapitola}" fileid="{@fileid}" gendat="{format-dateTime(current-dateTime(), '[Y0001]-[M01]-[D01]T[H01]:[m01]:[s01]')}" start="{@start}" stop="{@stop}" autor="{@autor}" identita="{@identita}" anonymne="{@anonymne}">
+      <xsl:copy-of select="@stupnica"/>
       <xsl:if test="$vkapitola/@filesave = '1'">
          <xsl:attribute name="filesave">1</xsl:attribute>
       </xsl:if>

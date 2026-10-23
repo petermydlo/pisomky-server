@@ -24,3 +24,5 @@ res/xml/**/*.xml
 res/xml/**/*.xml.old
 res/xml/**/*.xml~
 !res/xml/**/*.example.xml
+# konfiguracia hodnotiacich stupnic (nie osobne udaje)
+!res/xml/lists/scales.xml

@@ -177,3 +177,19 @@ def test_vycerpana_skupina_nespadne(proc):
       # prve dve sa este daju odlisit, tretia uz musi zopakovat jednu z hodnot
       assert hodnoty[0] != hodnoty[1]
       assert set(hodnoty) <= {'1', '2'}
+
+
+def test_stupnica_sa_zapise_a_regeneracia_ju_zachova(proc):
+   xml = _transform(proc, _roster(False), {
+      'seed_ext': 's', 'predmet': PREDMET, 'trieda': 'III.T', 'skupina': 'g', 'kapitola': '01',
+      'start': '', 'stop': '', 'anonymne': False, 'identita': True, 'fileid': 'test', 'autor': '', 'stupnica': 'prisna',
+   })
+   assert ET.fromstring(xml.encode()).get('stupnica') == 'prisna'
+   assert ET.fromstring(regeneruj(proc, xml, '01', 's2').encode()).get('stupnica') == 'prisna'
+
+
+def test_regeneracia_stareho_testu_nepridava_stupnicu(proc):
+   xml = vytvor(proc, '01', False, 's')
+   bez = xml.replace(' stupnica="default"', '', 1)
+   assert 'stupnica' not in bez
+   assert ET.fromstring(regeneruj(proc, bez, '01', 's2').encode()).get('stupnica') is None

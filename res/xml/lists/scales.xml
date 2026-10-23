@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<stupnice>
+   <stupnica id="default" nazov="Štandardná (85/70/55/40)" min1="85" min2="70" min3="55" min4="40" min5="0"/>
+   <stupnica id="prisna" nazov="Prísna (90/80/70/60)" min1="90" min2="80" min3="70" min4="60" min5="0"/>
+</stupnice>

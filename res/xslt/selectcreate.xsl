@@ -26,8 +26,14 @@
             <h1 class="odsadenieH">Vytvorenie nového testu</h1>
             <form id="createForm" action="/admin/createtests" method="post" class="odsadenieH">
                <div class="form-group">
-                  <label for="predmet" class="form-label">Predmet</label>
-                  <select id="predmet" name="predmet" class="form-select inputW" autofocus="autofocus" required="required">
+                  <label for="stupnica" class="form-label">Stupnica</label>
+                  <select id="stupnica" name="stupnica" class="form-select inputW" autofocus="autofocus" autocomplete="off">
+                     <xsl:for-each select="doc('../xml/lists/scales.xml')/stupnice/stupnica">
+                        <option value="{@id}"><xsl:value-of select="@nazov"/></option>
+                     </xsl:for-each>
+                  </select>
+                  <label for="predmet" class="form-label odsadenieHM">Predmet</label>
+                  <select id="predmet" name="predmet" class="form-select inputW" required="required">
                      <xsl:for-each-group select="collection('../xml/questions/?select=*.xml;recurse=yes')/kapitola" group-by="@predmet">
                         <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
                         <option value="{@predmet}"><xsl:value-of select="@predmet"/></option>

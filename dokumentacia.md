@@ -617,22 +617,24 @@ pre otvorené otázky) alebo `koment` (komentár) do príslušného `<otazka>` e
 súbore odpovedí, naviazané na presný `dat` (dátum odovzdania), aby sa neprepísalo
 neskoršie odovzdanie.
 
-### 10.3 Škálovanie na známku (`scale.xsl`)
+### 10.3 Hodnotiaca stupnica (`scales.xml`)
 
-Percento získaných bodov sa prevádza na klasickú 5-stupňovú známku podľa hraníc
-(v XSLT premenné `min1..min5`/`max1..max5`), predvolene:
+Percento získaných bodov sa prevádza na 5-stupňovú známku podľa hraníc zvolenej
+stupnice. Stupnice sú definované v `res/xml/lists/scales.xml`
+(`<stupnica id nazov min1..min5>`, `min5` = 0), predvolene:
 
-| Známka | Rozsah percent |
-|---|---|
-| 1 (výborný) | 90–100 % |
-| 2 (chválitebný) | 80–89 % |
-| 3 (dobrý) | 70–79 % |
-| 4 (dostatočný) | 60–69 % |
-| 5 (nedostatočný) | 0–59 % |
+| id | Názov | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|
+| `default` | Štandardná | 85–100 % | 70–84 % | 55–69 % | 40–54 % | 0–39 % |
+| `prisna` | Prísna | 90–100 % | 80–89 % | 70–79 % | 60–69 % | 0–59 % |
 
-Tieto hranice sú v súbore `res/xslt/scale.xsl` a platia globálne pre celú appku —
-zmena si podľa `AGENTS.md` vyžaduje reštart servera (Saxon si kešuje skompilované
-šablóny).
+Stupnicu vyberie učiteľ pri vytváraní testu (`/admin/selectcreate`, pole *Stupnica*);
+uloží sa ako `testy/@stupnica`. Chýbajúci alebo neznámy atribút (staré testy) sa berie
+ako `default`. Regenerácia testu stupnicu zachová. Hranice používajú `score.xq`,
+`scale.xsl` (funkcie `my:stupnica`, `my:znamka`, `my:stupnicatext`), výsledok žiaka
+aj hlavičky PDF. Pridanie stupnice = nový riadok v `scales.xml`; zmena sa prejaví až
+po reštarte servera, ak Saxon kešuje súbor (zmena existujúceho testu nie je
+podporovaná).
 
 ### 10.4 Štatistiky skupiny (`groupstatistics`)
 

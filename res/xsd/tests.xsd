@@ -154,6 +154,7 @@
          <xs:attribute name="autor" type="xs:string"/>
          <xs:attribute name="identita" type="xs:string"/>
          <xs:attribute name="anonymne" type="xs:string"/>
+         <xs:attribute name="stupnica" type="xs:string"/>
          <xs:attribute name="filesave" type="Flag"/>
          <!-- xml:lang z iného menného priestoru -->
          <xs:anyAttribute namespace="##other" processContents="lax"/>
