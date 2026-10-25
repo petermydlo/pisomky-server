@@ -244,6 +244,7 @@ function vytvorFormularOtazky(data, jeMcq) {
          <label>Body <input type="number" class="otazka-body" min="0"/></label>
          <label><input type="checkbox" class="otazka-static"/> statická</label>
          <label><input type="checkbox" class="otazka-bonus"/> bonusová</label>
+         <label><input type="checkbox" class="otazka-rating"/> rating</label>
          <label class="deprecated-checkbox"><input type="checkbox" class="otazka-deprecated"/> deprecated</label>
       </div>
       <div class="otazka-napovedy">
@@ -277,6 +278,7 @@ function vytvorFormularOtazky(data, jeMcq) {
    form.querySelector('.otazka-body').value = data.body || '';
    form.querySelector('.otazka-static').checked = data.static === '1';
    form.querySelector('.otazka-bonus').checked = data.bonus === '1';
+   form.querySelector('.otazka-rating').checked = data.rating === '1';
    form.querySelector('.otazka-deprecated').checked = data.deprecated === '1';
 
    const odpovedeWrap = form.querySelector('.otazka-odpovede');
@@ -321,6 +323,7 @@ function otvorFormularOtazky(otazkaId) {
             body: form.querySelector('.otazka-body').value,
             static: form.querySelector('.otazka-static').checked ? '1' : '',
             bonus: form.querySelector('.otazka-bonus').checked ? '1' : '',
+            rating: form.querySelector('.otazka-rating').checked ? '1' : '',
             nazov: form.querySelector('.otazka-nazov').value,
             deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
             odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),
@@ -353,6 +356,7 @@ function pridajOtazku(kategoriaId) {
          body: form.querySelector('.otazka-body').value,
          static: form.querySelector('.otazka-static').checked ? '1' : '',
          bonus: form.querySelector('.otazka-bonus').checked ? '1' : '',
+         rating: form.querySelector('.otazka-rating').checked ? '1' : '',
          nazov: form.querySelector('.otazka-nazov').value,
          deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
          odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),

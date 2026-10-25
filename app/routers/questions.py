@@ -180,7 +180,7 @@ async def get_category(id: StringQuery):
    }, status_code=200)
 
 @router.post('/admin/process_question', response_class=JSONResponse)
-async def process_question(request: Request, operacia: StringForm, X_Remote_User: StringHeader, otazka_id: StringFormOptional = None, kategoria_id: StringFormOptional = None, za_otazka_id: StringFormOptional = None, znenie: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None, odpovede: StringFormOptional = None, napovede: StringFormOptional = None, vzory: StringFormOptional = None, klucove_slova: StringFormOptional = None):
+async def process_question(request: Request, operacia: StringForm, X_Remote_User: StringHeader, otazka_id: StringFormOptional = None, kategoria_id: StringFormOptional = None, za_otazka_id: StringFormOptional = None, znenie: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, rating: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None, odpovede: StringFormOptional = None, napovede: StringFormOptional = None, vzory: StringFormOptional = None, klucove_slova: StringFormOptional = None):
    try:
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
@@ -188,6 +188,7 @@ async def process_question(request: Request, operacia: StringForm, X_Remote_User
       body = body or None
       static = static or None
       bonus = bonus or None
+      rating = rating or None
       nazov = nazov or None
       deprecated = deprecated or None
       odpovede_list = json.loads(odpovede) if odpovede else []
@@ -201,7 +202,7 @@ async def process_question(request: Request, operacia: StringForm, X_Remote_User
          if kat_cesta is None:
             raise HTTPException(status_code=400, detail='Kategória sa nedala vytvoriť')
          check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet_from_cesta(kat_cesta))
-         data = {k: v for k, v in {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated, 'vzory': vzory_list, 'klucove_slova': klucove_slova_list}.items() if v is not None}
+         data = {k: v for k, v in {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'rating': rating, 'nazov': nazov, 'deprecated': deprecated, 'vzory': vzory_list, 'klucove_slova': klucove_slova_list}.items() if v is not None}
          data['odpovede'] = odpovede_list
          data['napovede'] = napovede_list
          nova_id, ok = add_question(kategoria_id, data, za_otazka_id=za_otazka_id)
@@ -215,7 +216,7 @@ async def process_question(request: Request, operacia: StringForm, X_Remote_User
          raise HTTPException(status_code=400, detail='Otázka nenájdená')
       check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet_from_cesta(otazka_cesta))
       if operacia == 'update':
-         data = {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated, 'odpovede': odpovede_list, 'napovede': napovede_list, 'klucove_slova': klucove_slova_list}
+         data = {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'rating': rating, 'nazov': nazov, 'deprecated': deprecated, 'odpovede': odpovede_list, 'napovede': napovede_list, 'klucove_slova': klucove_slova_list}
          # bez pola vzory (napr. stary JS v cache prehliadaca) sa existujuce vzory zachovaju
          data['vzory'] = vzory_list if vzory is not None else [normalizuj_vzor(v.text or '') for v in otazka_el.findall('vzor')]
          if is_used(otazka_id) and zmenene_zamrznute_polia(otazka_el, data):
@@ -276,6 +277,7 @@ async def get_question(id: StringQuery):
       'body': otazka.get('body'),
       'static': otazka.get('static'),
       'bonus': otazka.get('bonus'),
+      'rating': otazka.get('rating'),
       'nazov': otazka.get('nazov'),
       'deprecated': otazka.get('deprecated'),
    }, status_code=200)

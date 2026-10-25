@@ -657,7 +657,7 @@ def _zostav_otazka_element(data: dict) -> ET._Element:
    aj fork_question.
    """
    el = ET.Element('otazka')
-   for attr in ('body', 'static', 'bonus', 'nazov', 'deprecated'):
+   for attr in ('body', 'static', 'bonus', 'rating', 'nazov', 'deprecated'):
       if data.get(attr):
          el.set(attr, data[attr])
    if 'znenie' in data:
@@ -716,6 +716,7 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
      'body'      - string s poctom bodov, alebo None (odstranit atribut)
      'static'    - '1', alebo None (odstranit atribut)
      'bonus'     - '1', alebo None (odstranit atribut)
+     'rating'    - '1' (hodnotenie hviezdickami), alebo None (odstranit atribut)
      'nazov'     - string s nazvom otazky, alebo None (odstranit atribut)
      'deprecated' - '1' (rucne archivovat), alebo None (odstranit atribut)
      'odpovede'  - list dictov [{'text': ..., 'spravna': '1'/'0', 'napovedy': [text, ...]}, ...]
@@ -734,7 +735,7 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
       if otazka is None:
          return False
       # atributy
-      for attr in ('body', 'static', 'bonus', 'nazov', 'paused', 'deprecated'):
+      for attr in ('body', 'static', 'bonus', 'rating', 'nazov', 'paused', 'deprecated'):
          if attr in nove_data:
             if nove_data[attr] is None:
                if attr in otazka.attrib:
@@ -840,6 +841,7 @@ def add_question(kategoria_id: str, nova_otazka: dict, za_otazka_id: str | None 
      'body'     - string s poctom bodov, volitelne
      'static'   - '1', volitelne
      'bonus'    - '1', volitelne
+     'rating'   - '1' (hodnotenie hviezdickami), volitelne
      'nazov'    - string s nazvom otazky, volitelne
      'odpovede' - list dictov [{'text': ..., 'spravna': '1'/'0', 'napovedy': [text, ...]}, ...]
      'napovede' - list textov celoplosnych napovedi (bez @pre)
