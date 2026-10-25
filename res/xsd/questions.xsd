@@ -161,10 +161,17 @@
 
    <xs:complexType name="Pokyny">
       <xs:sequence>
-         <xs:element name="head" minOccurs="0">
+         <xs:element name="head" minOccurs="0" maxOccurs="unbounded">
             <xs:complexType mixed="true">
                <xs:choice minOccurs="0" maxOccurs="unbounded">
                   <xs:element name="italic" type="InlineMixed"/>
+                  <!-- okno: odkaz otvárajúci /pubres/@src v samostatnom okne (len online verzia) -->
+                  <xs:element name="okno">
+                     <xs:complexType>
+                        <xs:attribute name="src" type="xs:string" use="required"/>
+                        <xs:attribute name="nazov" type="xs:string" use="required"/>
+                     </xs:complexType>
+                  </xs:element>
                   <xs:element name="placeholder">
                      <xs:complexType>
                         <xs:attribute name="typ" type="xs:string" use="required"/>

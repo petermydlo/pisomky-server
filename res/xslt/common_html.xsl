@@ -34,6 +34,12 @@
    </div>
 </xsl:template>
 
+<xsl:template match="okno">
+   <div>
+      <a class="okno-odkaz" href="/pubres/{@src}" target="_blank" rel="noopener"><xsl:value-of select="@nazov"/></a>
+   </div>
+</xsl:template>
+
 <xsl:template match="file">
    <a href="/pubres/subory/{@src}">
       <xsl:if test="@meno">

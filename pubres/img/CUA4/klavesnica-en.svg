@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 830 286" width="830" height="286">
+   <style>
+      rect, path { fill: #f2f2f2; stroke: #444; stroke-width: 1.5; stroke-linejoin: round; }
+      text { font-family: "DejaVu Sans", Arial, sans-serif; text-anchor: middle; }
+      .lo { font-size: 16px; fill: #000; }
+      .hi { font-size: 16px; fill: #d00000; }
+      .ch { font-size: 18px; fill: #000; font-weight: bold; }
+      .mod { font-size: 13px; fill: #000; }
+      .shift { font-size: 13px; fill: #d00000; font-weight: bold; }
+   </style>
+
+   <!-- Rad 1 -->
+   <g>
+      <rect x="10" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="35" y="30">~</text><text class="lo" x="35" y="50">`</text>
+      <rect x="64" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="89" y="30">!</text><text class="lo" x="89" y="50">1</text>
+      <rect x="118" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="143" y="30">@</text><text class="lo" x="143" y="50">2</text>
+      <rect x="172" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="197" y="30">#</text><text class="lo" x="197" y="50">3</text>
+      <rect x="226" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="251" y="30">$</text><text class="lo" x="251" y="50">4</text>
+      <rect x="280" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="305" y="30">%</text><text class="lo" x="305" y="50">5</text>
+      <rect x="334" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="359" y="30">^</text><text class="lo" x="359" y="50">6</text>
+      <rect x="388" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="413" y="30">&amp;</text><text class="lo" x="413" y="50">7</text>
+      <rect x="442" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="467" y="30">*</text><text class="lo" x="467" y="50">8</text>
+      <rect x="496" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="521" y="30">(</text><text class="lo" x="521" y="50">9</text>
+      <rect x="550" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="575" y="30">)</text><text class="lo" x="575" y="50">0</text>
+      <rect x="604" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="629" y="30">_</text><text class="lo" x="629" y="50">-</text>
+      <rect x="658" y="10" width="50" height="50" rx="6"/>
+      <text class="hi" x="683" y="30">+</text><text class="lo" x="683" y="50">=</text>
+      <rect x="712" y="10" width="104" height="50" rx="6"/>
+      <text class="mod" x="764" y="40">Backspace</text>
+   </g>
+
+   <!-- Rad 2 -->
+   <g>
+      <rect x="10" y="64" width="77" height="50" rx="6"/>
+      <text class="mod" x="48.5" y="94">Tab</text>
+      <rect x="91" y="64" width="50" height="50" rx="6"/><text class="ch" x="116" y="95">Q</text>
+      <rect x="145" y="64" width="50" height="50" rx="6"/><text class="ch" x="170" y="95">W</text>
+      <rect x="199" y="64" width="50" height="50" rx="6"/><text class="ch" x="224" y="95">E</text>
+      <rect x="253" y="64" width="50" height="50" rx="6"/><text class="ch" x="278" y="95">R</text>
+      <rect x="307" y="64" width="50" height="50" rx="6"/><text class="ch" x="332" y="95">T</text>
+      <rect x="361" y="64" width="50" height="50" rx="6"/><text class="ch" x="386" y="95">Y</text>
+      <rect x="415" y="64" width="50" height="50" rx="6"/><text class="ch" x="440" y="95">U</text>
+      <rect x="469" y="64" width="50" height="50" rx="6"/><text class="ch" x="494" y="95">I</text>
+      <rect x="523" y="64" width="50" height="50" rx="6"/><text class="ch" x="548" y="95">O</text>
+      <rect x="577" y="64" width="50" height="50" rx="6"/><text class="ch" x="602" y="95">P</text>
+      <rect x="631" y="64" width="50" height="50" rx="6"/>
+      <text class="hi" x="656" y="84">{</text><text class="lo" x="656" y="104">[</text>
+      <rect x="685" y="64" width="50" height="50" rx="6"/>
+      <text class="hi" x="710" y="84">}</text><text class="lo" x="710" y="104">]</text>
+   </g>
+
+   <!-- Rad 3 -->
+   <g>
+      <rect x="10" y="118" width="90.5" height="50" rx="6"/>
+      <text class="mod" x="55" y="148">Caps Lock</text>
+      <rect x="104.5" y="118" width="50" height="50" rx="6"/><text class="ch" x="129.5" y="149">A</text>
+      <rect x="158.5" y="118" width="50" height="50" rx="6"/><text class="ch" x="183.5" y="149">S</text>
+      <rect x="212.5" y="118" width="50" height="50" rx="6"/><text class="ch" x="237.5" y="149">D</text>
+      <rect x="266.5" y="118" width="50" height="50" rx="6"/><text class="ch" x="291.5" y="149">F</text>
+      <rect x="320.5" y="118" width="50" height="50" rx="6"/><text class="ch" x="345.5" y="149">G</text>
+      <rect x="374.5" y="118" width="50" height="50" rx="6"/><text class="ch" x="399.5" y="149">H</text>
+      <rect x="428.5" y="118" width="50" height="50" rx="6"/><text class="ch" x="453.5" y="149">J</text>
+      <rect x="482.5" y="118" width="50" height="50" rx="6"/><text class="ch" x="507.5" y="149">K</text>
+      <rect x="536.5" y="118" width="50" height="50" rx="6"/><text class="ch" x="561.5" y="149">L</text>
+      <rect x="590.5" y="118" width="50" height="50" rx="6"/>
+      <text class="hi" x="615.5" y="138">:</text><text class="lo" x="615.5" y="158">;</text>
+      <rect x="644.5" y="118" width="50" height="50" rx="6"/>
+      <text class="hi" x="669.5" y="138">"</text><text class="lo" x="669.5" y="158">'</text>
+      <rect x="698.5" y="118" width="50" height="50" rx="6"/>
+      <text class="hi" x="723.5" y="138">|</text><text class="lo" x="723.5" y="158">\</text>
+   </g>
+
+   <!-- Enter (ISO, cez dva riadky) -->
+   <path d="M739 64 H816 V168 H752.5 V114 H739 Z"/>
+   <text class="mod" x="784" y="120">Enter</text>
+
+   <!-- Rad 4 -->
+   <g>
+      <rect x="10" y="172" width="117.5" height="50" rx="6"/>
+      <text class="shift" x="68.75" y="202">Shift</text>
+      <rect x="131.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="156.5" y="203">Z</text>
+      <rect x="185.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="210.5" y="203">X</text>
+      <rect x="239.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="264.5" y="203">C</text>
+      <rect x="293.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="318.5" y="203">V</text>
+      <rect x="347.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="372.5" y="203">B</text>
+      <rect x="401.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="426.5" y="203">N</text>
+      <rect x="455.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="480.5" y="203">M</text>
+      <rect x="509.5" y="172" width="50" height="50" rx="6"/>
+      <text class="hi" x="534.5" y="192">&lt;</text><text class="lo" x="534.5" y="212">,</text>
+      <rect x="563.5" y="172" width="50" height="50" rx="6"/>
+      <text class="hi" x="588.5" y="192">&gt;</text><text class="lo" x="588.5" y="212">.</text>
+      <rect x="617.5" y="172" width="50" height="50" rx="6"/>
+      <text class="hi" x="642.5" y="192">?</text><text class="lo" x="642.5" y="212">/</text>
+      <rect x="671.5" y="172" width="144.5" height="50" rx="6"/>
+      <text class="shift" x="743.75" y="202">Shift</text>
+   </g>
+
+   <!-- Rad 5 -->
+   <g>
+      <rect x="10" y="226" width="77" height="50" rx="6"/><text class="mod" x="48.5" y="256">Ctrl</text>
+      <rect x="91" y="226" width="77" height="50" rx="6"/><text class="mod" x="129.5" y="256">Alt</text>
+      <rect x="172" y="226" width="482" height="50" rx="6"/>
+      <rect x="658" y="226" width="77" height="50" rx="6"/><text class="mod" x="696.5" y="256">Alt Gr</text>
+      <rect x="739" y="226" width="77" height="50" rx="6"/><text class="mod" x="777.5" y="256">Ctrl</text>
+   </g>
+</svg>

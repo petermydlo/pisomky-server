@@ -1,6 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
    const hlavicka = document.getElementById('hlavicka');
 
+   // Odkazy a.okno-odkaz sa otvoria v samostatnom okne (rovnake meno = jedno okno); bez JS ostava nova karta
+   document.querySelectorAll('a.okno-odkaz').forEach(a => {
+      a.addEventListener('click', (e) => {
+         const okno = window.open(a.href, 'okno-odkaz', 'popup=yes,width=880,height=380,resizable=yes');
+         if (okno) {
+            e.preventDefault();
+            okno.focus();
+         }
+      });
+   });
+
    // Rating hviezdicky - postupne rozsvecovanie
    document.querySelectorAll('.rating-wrap').forEach(wrap => {
       const stars = wrap.querySelectorAll('.rating-star');

@@ -372,7 +372,7 @@
    </xsl:copy>
 </xsl:template>
 
-<xsl:template match="miesto|obrazok|table|file">
+<xsl:template match="miesto|obrazok|table|file|okno">
    <xsl:copy-of copy-namespaces="no" select="."/>
 </xsl:template>
 
