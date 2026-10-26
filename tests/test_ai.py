@@ -8,9 +8,9 @@ import lxml.etree as ET
 
 from app.routers import ai
 from app.routers.ai import (
-   _parsuj_hint_keys,
+   _parsuj_hint,
    _spocitaj_napovedy_testu,
-   _nacitaj_predchadzajuce_keys,
+   _nacitaj_predchadzajuce,
    _aktualizuj_zapis,
    _uloz_zapis,
    _najdi_napovedu,
@@ -94,69 +94,57 @@ def questions_file(tmp_path):
    return cesta
 
 
-# --- _parsuj_hint_keys ---
+# --- _parsuj_hint ---
 
-def test_parsuj_hint_keys_len_hint():
-   hint, keys = _parsuj_hint_keys('HINT: Skús to takto')
-   assert hint == 'Skús to takto'
-   assert keys == ''
+def test_parsuj_hint_len_hint():
+   assert _parsuj_hint('HINT: Skús to takto') == 'Skús to takto'
 
-def test_parsuj_hint_keys_hint_a_keys():
-   hint, keys = _parsuj_hint_keys('HINT: Nápoveda\nKEYS: k1, k2')
-   assert hint == 'Nápoveda'
-   assert keys == 'k1, k2'
+def test_parsuj_hint_ignoruje_dalsie_riadky():
+   assert _parsuj_hint('HINT: Nápoveda\nKEYS: k1, k2') == 'Nápoveda'
 
-def test_parsuj_hint_keys_bez_znaciek():
+def test_parsuj_hint_bez_znaciek():
    raw = 'Obyčajný text bez značiek'
-   hint, keys = _parsuj_hint_keys(raw)
-   assert hint == raw
-   assert keys == ''
+   assert _parsuj_hint(raw) == raw
 
-def test_parsuj_hint_keys_case_insensitive():
-   hint, keys = _parsuj_hint_keys('hint: malé písmená\nkeys: a, b')
-   assert hint == 'malé písmená'
-   assert keys == 'a, b'
+def test_parsuj_hint_case_insensitive():
+   assert _parsuj_hint('hint: malé písmená') == 'malé písmená'
 
 
-# --- _spocitaj_napovedy_testu ---
+# --- _nacitaj_predchadzajuce ---
 
-def test_spocitaj_napovedy_testu_neexistujuci_subor():
-   assert _spocitaj_napovedy_testu('./neexistuje.xml', TEST_ID) == 0
+def test_nacitaj_predchadzajuce_neexistujuci_subor():
+   assert _nacitaj_predchadzajuce('./neexistuje.xml', OTAZKA_ID) == []
 
-def test_spocitaj_napovedy_testu_pocita_len_pre_dany_test(feedback_file):
-   assert _spocitaj_napovedy_testu(str(feedback_file), TEST_ID) == 4
-
-def test_spocitaj_napovedy_testu_iny_test(feedback_file):
-   assert _spocitaj_napovedy_testu(str(feedback_file), 'INY_TEST') == 0
-
-
-# --- _nacitaj_predchadzajuce_keys ---
-
-def test_nacitaj_predchadzajuce_keys_neexistujuci_subor():
-   assert _nacitaj_predchadzajuce_keys('./neexistuje.xml', OTAZKA_ID) == []
-
-def test_nacitaj_predchadzajuce_keys_len_so_zapisanymi_keys(feedback_file):
-   vysledok = _nacitaj_predchadzajuce_keys(str(feedback_file), OTAZKA_ID)
+def test_nacitaj_predchadzajuce_len_ohodnotene_s_hintom(feedback_file):
+   vysledok = _nacitaj_predchadzajuce(str(feedback_file), OTAZKA_ID)
    assert vysledok == [
-      {'keys': 'zlomky, delenie', 'val': '1'},
-      {'keys': 'iny, zoznam', 'val': '0'},
-   ]
+      {'hint': 'Skús to inak', 'val': '1'},
+      {'hint': 'Iná nápoveda', 'val': '0'},
+   ]  # zap4 is rated but has no hint, zap3 is neither
 
-def test_nacitaj_predchadzajuce_keys_ina_otazka(feedback_file):
-   assert _nacitaj_predchadzajuce_keys(str(feedback_file), 'q2') == []
+def test_nacitaj_predchadzajuce_ina_otazka(feedback_file):
+   assert _nacitaj_predchadzajuce(str(feedback_file), 'q2') == []
 
-def test_nacitaj_predchadzajuce_keys_limit(feedback_file):
-   vysledok = _nacitaj_predchadzajuce_keys(str(feedback_file), OTAZKA_ID, limit=1)
-   assert vysledok == [{'keys': 'iny, zoznam', 'val': '0'}]
+def test_nacitaj_predchadzajuce_limit_vezme_posledne(feedback_file):
+   vysledok = _nacitaj_predchadzajuce(str(feedback_file), OTAZKA_ID, limit=1)
+   assert vysledok == [{'hint': 'Iná nápoveda', 'val': '0'}]
+
+def test_nacitaj_predchadzajuce_predvoleny_limit_su_tri_ohodnotene(tmp_path):
+   zapisy = ''.join(f'<zapis id="z{i}" datum="2026-01-01T10:0{i}:00" otazka_id="{OTAZKA_ID}" test_id="t{i}" val="{i % 2}"><hint>hint {i}</hint></zapis>' for i in range(5))
+   zapisy += f'<zapis id="zn" datum="2026-01-01T10:09:00" otazka_id="{OTAZKA_ID}" test_id="tn" val=""><hint>neohodnoteny</hint></zapis>'
+   subor = tmp_path / 'f.xml'
+   subor.write_text(f'<feedback>{zapisy}</feedback>', encoding='utf-8')
+   assert [p['hint'] for p in _nacitaj_predchadzajuce(str(subor), OTAZKA_ID)] == ['hint 2', 'hint 3', 'hint 4']
+
 
 
 # --- _aktualizuj_zapis ---
 
 def test_aktualizuj_zapis_neexistujuci_subor_nespadne():
-   _aktualizuj_zapis('./neexistuje.xml', 'zap1', hint='x')
+   _aktualizuj_zapis('./neexistuje.xml', 'zap1', 'x')
 
 def test_aktualizuj_zapis_prida_hint(feedback_file):
-   _aktualizuj_zapis(str(feedback_file), 'zap2', hint='Nová nápoveda')
+   _aktualizuj_zapis(str(feedback_file), 'zap2', 'Nová nápoveda')
    tree = ET.parse(str(feedback_file))
    zapis = tree.find('.//zapis[@id="zap2"]')
    assert zapis is not None
@@ -172,15 +160,6 @@ def test_aktualizuj_zapis_aktualizuje_existujuci_hint(feedback_file):
    hint = zapis.find('hint')
    assert hint is not None
    assert hint.text == 'Prepísaná nápoveda'
-
-def test_aktualizuj_zapis_prida_keys(feedback_file):
-   _aktualizuj_zapis(str(feedback_file), 'zap2', keys='nove, kluce')
-   tree = ET.parse(str(feedback_file))
-   zapis = tree.find('.//zapis[@id="zap2"]')
-   assert zapis is not None
-   keys = zapis.find('keys')
-   assert keys is not None
-   assert keys.text == 'nove, kluce'
 
 def test_aktualizuj_zapis_neexistujuci_zapis_id_nespadne(feedback_file):
    _aktualizuj_zapis(str(feedback_file), 'neexistuje', hint='x')
@@ -245,79 +224,79 @@ def test_cache_ziskaj_bez_suboru():
    assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
 
 def test_cache_uloz_a_ziskaj():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', 'a, b')
-   _cache_uloz(CS, OTAZKA_ID, 'k2', 'hint 2', '')
-   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 1', 'keys': 'a, b', 'skore': 0}
-   assert _cache_ziskaj(CS, OTAZKA_ID, 'k2') == {'hint': 'hint 2', 'keys': '', 'skore': 0}
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
+   _cache_uloz(CS, OTAZKA_ID, 'k2', 'hint 2')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 1', 'skore': 0}
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k2') == {'hint': 'hint 2', 'skore': 0}
    assert _cache_ziskaj(CS, 'q2', 'k1') is None
 
 def test_cache_uloz_rovnaky_hint_neduplikuje():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
    assert len(ai._cache_nacitaj(CS)[OTAZKA_ID]['k1']['napovedy']) == 1
 
 def test_cache_ziskaj_vyberie_nahodne_z_poolu():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 2', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 2')
    videne = {_cache_ziskaj(CS, OTAZKA_ID, 'k1')['hint'] for _ in range(60)}  # type: ignore[index]
    assert videne == {'hint 1', 'hint 2'}
 
 def test_cache_ohodnot_dobre_zvysi_skore_a_hint_ostane():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
-   _cache_uloz(CS, 'q2', 'k1', 'hint 1', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
+   _cache_uloz(CS, 'q2', 'k1', 'hint 1')
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', 1)
-   assert ai._cache_nacitaj(CS)[OTAZKA_ID]['k1']['napovedy'] == [{'hint': 'hint 1', 'keys': '', 'skore': 1}]
+   assert ai._cache_nacitaj(CS)[OTAZKA_ID]['k1']['napovedy'] == [{'hint': 'hint 1', 'skore': 1}]
    assert ai._cache_nacitaj(CS)['q2']['k1']['napovedy'][0]['skore'] == 0
 
 def test_cache_ohodnot_dobre_a_potom_zle_je_neutralne_a_hint_ostane():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', 1)
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', -1)
-   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 1', 'keys': '', 'skore': 0}
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 1', 'skore': 0}
 
 def test_cache_ohodnot_zle_neohodnotenu_vyhodi_hint():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 2', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 2')
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', -1)
    assert [n['hint'] for n in ai._cache_nacitaj(CS)[OTAZKA_ID]['k1']['napovedy']] == ['hint 2']
 
 def test_cache_ohodnot_vyhodi_aj_posledny_hint_a_dalsi_poziadavok_generuje():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', -1)
    assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 2', '')
-   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 2', 'keys': '', 'skore': 0}
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 2')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 2', 'skore': 0}
 
 def test_cache_ohodnot_zmena_hodnotenia_o_dva_body():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', 1)
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', -2)
    assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
 
 def test_cache_ohodnot_neznamy_alebo_prazdny_hint_alebo_nulova_zmena_nic_nemeni():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint 1')
    _cache_ohodnot(CS, OTAZKA_ID, 'iny hint', -1)
    _cache_ohodnot(CS, OTAZKA_ID, '', -1)
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', 0)
-   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 1', 'keys': '', 'skore': 0}
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint 1', 'skore': 0}
 
 def test_cache_ohodnot_bez_suboru_nespadne():
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', -1)
 
 def test_cache_ziskaj_vyberie_z_dobrych_aj_neutralnych():
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'dobry', '')
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'neutralny', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'dobry')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'neutralny')
    _cache_ohodnot(CS, OTAZKA_ID, 'dobry', 1)
    videne = {_cache_ziskaj(CS, OTAZKA_ID, 'k1')['hint'] for _ in range(60)}  # type: ignore[index]
    assert videne == {'dobry', 'neutralny'}
 
 def test_cache_plny_pool_vyhodi_hint_s_najnizsim_skore():
    for i in range(ai.CACHE_MAX_NAPOVEDI):
-      _cache_uloz(CS, OTAZKA_ID, 'k1', f'hint {i}', '')
+      _cache_uloz(CS, OTAZKA_ID, 'k1', f'hint {i}')
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 0', 1)
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 1', 1)
    _cache_ohodnot(CS, OTAZKA_ID, 'hint 4', 1)
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'novy', '')
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'novy')
    hinty = [n['hint'] for n in ai._cache_nacitaj(CS)[OTAZKA_ID]['k1']['napovedy']]
    assert len(hinty) == ai.CACHE_MAX_NAPOVEDI
    assert 'hint 2' not in hinty  # the oldest hint with the lowest score
@@ -329,8 +308,8 @@ def test_skore_hodnotenia():
 def test_cache_poskodeny_subor_je_prazdna_cache(tmp_path):
    (tmp_path / 'napovedy.json').write_text('{nie json', encoding='utf-8')
    assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
-   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint', '')
-   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint', 'keys': '', 'skore': 0}
+   _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint')
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint', 'skore': 0}
 
 def test_cache_subor_vytvori_sukromny_adresar_a_cestu_na_test(tmp_path, monkeypatch):
    monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(tmp_path / 'cache'))
@@ -361,7 +340,7 @@ def test_cache_subor_symlink_vypne_cache(tmp_path, monkeypatch):
 
 def test_cache_vypnuta_none_nic_nerobi():
    assert _cache_ziskaj(None, OTAZKA_ID, 'k1') is None
-   _cache_uloz(None, OTAZKA_ID, 'k1', 'hint', '')
+   _cache_uloz(None, OTAZKA_ID, 'k1', 'hint')
    _cache_ohodnot(None, OTAZKA_ID, 'hint', -1)
 
 
@@ -426,15 +405,24 @@ def _spusti_generovanie(monkeypatch, klient, backend):
 
 def test_generuj_napovedu_ulozi_do_cache(monkeypatch, backend, caplog):
    caplog.set_level(logging.INFO)
-   klient = _FalosnyKlient(['HINT: Zamyslite sa ', 'nad menovateľom\n', 'KEYS: zlomky, delenie'])
+   klient = _FalosnyKlient(['HINT: Zamyslite sa ', 'nad menovateľom'])
    udalosti, subor = _spusti_generovanie(monkeypatch, klient, backend)
    assert [typ for typ, _ in udalosti] == ['chunk', 'chunk', 'done']
+   assert udalosti[-1][1] == {'hint': 'Zamyslite sa nad menovateľom'}
    assert 'zapis=zapX otazka=q1 vysledok=ok cakanie=' in caplog.text
-   assert _cache_ziskaj(CS, OTAZKA_ID, 'kluc1') == {'hint': 'Zamyslite sa nad menovateľom', 'keys': 'zlomky, delenie', 'skore': 0}
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'kluc1') == {'hint': 'Zamyslite sa nad menovateľom', 'skore': 0}
    zapis = ET.parse(subor).find('.//zapis[@id="zapX"]')
    assert zapis is not None
    assert zapis.findtext('hint') == 'Zamyslite sa nad menovateľom'
-   assert zapis.findtext('keys') == 'zlomky, delenie'
+   assert zapis.find('keys') is None
+
+def test_generuj_napovedu_dalsi_riadok_modelu_sa_neuklada(monkeypatch, backend):
+   klient = _FalosnyKlient(['HINT: Zamyslite sa nad menovateľom\n', 'KEYS: zlomky'])
+   _, subor = _spusti_generovanie(monkeypatch, klient, backend)
+   assert _cache_ziskaj(CS, OTAZKA_ID, 'kluc1') == {'hint': 'Zamyslite sa nad menovateľom', 'skore': 0}
+   zapis = ET.parse(subor).find('.//zapis[@id="zapX"]')
+   assert zapis is not None
+   assert zapis.find('keys') is None
 
 def test_generuj_napovedu_chyba_neuklada_do_cache(monkeypatch, backend, caplog):
    caplog.set_level(logging.INFO)

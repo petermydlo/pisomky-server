@@ -553,8 +553,7 @@ appka:
    nápovedy.
 3. Zavolá lokálny Ollama model (`OLLAMA_MODEL`, predvolene `llama3.1`) so systémovým
    promptom (`aihelp_system.md.j2`) — AI má dať **presne jednu vetu** nápovedy bez
-   priameho prezradenia správnej odpovede, vždy v angličtine, plus 3–5 kľúčových
-   pojmov (`KEYS:`).
+   priameho prezradenia správnej odpovede, vždy v angličtine.
 4. Odpoveď sa streamuje cez Server-Sent Events (`text/event-stream`) — žiak vidí text
    nápovedy postupne, ako ju model generuje.
 5. Použitie sa zaznamená do `res/xml/feedback/{predmet}/...xml` (element `<zapis>`)
@@ -575,11 +574,12 @@ Koreňový element `<feedback>` — **povinné**: `fileid`. **Voliteľné**: `pr
 
 Element `<zapis>` — **povinné**: `datum` (ISO dátum a čas), `otazka_id`, `test_id`,
 `val` (`"1"`, `"0"` alebo `""` = zatiaľ neohodnotené). **Voliteľné**: `id` (hash
-záznamu — jednoznačne identifikuje zápis, keď doň appka neskôr dopĺňa `<hint>`/
-`<keys>` počas streamovania odpovede, a keď žiak dodatočne odošle hodnotenie cez
-`/ai/feedback`), vnorené `<hint>` (text AI nápovedy zobrazenej žiakovi) a `<keys>`
-(kľúčové slová z `KEYS:` riadku AI odpovede — používajú sa ako kontext pre budúce
-nápovedy k tej istej otázke).
+záznamu — jednoznačne identifikuje zápis, keď doň appka neskôr dopĺňa `<hint>`
+po dokončení odpovede, a keď žiak dodatočne odošle hodnotenie cez `/ai/feedback`),
+vnorené `<hint>` (text AI nápovedy zobrazenej žiakovi — posledné 3 ohodnotené sa
+použijú ako kontext pre budúce nápovedy k tej istej otázke) a `<keys>` (kľúčové slová
+z `KEYS:` riadku — appka ich od 26. 10. 2026 už nezapisuje, nájdete ich len v
+starších záznamoch).
 
 Príklad (`res/xml/feedback/DEMO/DEMO_I.A_01_1234.example.xml`):
 

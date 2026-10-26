@@ -77,22 +77,23 @@ def _spocitaj_napovedy_testu(subor: str, test_id: str) -> int:
       return 0
 
 
-def _nacitaj_predchadzajuce_keys(subor: str, otazka_id: str, limit: int = 10) -> list[dict]:
+def _nacitaj_predchadzajuce(subor: str, otazka_id: str, limit: int = 3) -> list[dict]:
+   """Returns the last `limit` hints of the question that students rated (val 1 or 0)."""
    if not os.path.exists(subor):
       return []
    try:
       tree = ET.parse(subor)
-      zaznamy = cast(list, tree.xpath('.//zapis[@otazka_id=$id]', id=otazka_id))[-limit:]
+      zaznamy = cast(list, tree.xpath('.//zapis[@otazka_id=$id and (@val="1" or @val="0")]', id=otazka_id))
       return [
-         {'keys': keys_el.text.strip(), 'val': z.get('val', '')}
+         {'hint': hint_el.text.strip(), 'val': z.get('val', '')}
          for z in zaznamy
-         if (keys_el := z.find('keys')) is not None and keys_el.text
-      ]
+         if (hint_el := z.find('hint')) is not None and hint_el.text and hint_el.text.strip()
+      ][-limit:]
    except Exception:
       return []
 
 
-def _aktualizuj_zapis(subor: str, zapis_id: str, hint: str | None = None, keys: str | None = None) -> None:
+def _aktualizuj_zapis(subor: str, zapis_id: str, hint: str) -> None:
    if not os.path.exists(subor):
       return
    lock = FileLock(subor + '.lock')
@@ -103,16 +104,10 @@ def _aktualizuj_zapis(subor: str, zapis_id: str, hint: str | None = None, keys: 
       zapis = next((z for z in root.findall('.//zapis') if z.get('id') == zapis_id), None)
       if zapis is None:
          return
-      if hint is not None:
-         hint_el = zapis.find('hint')
-         if hint_el is None:
-            hint_el = ET.SubElement(zapis, 'hint')
-         hint_el.text = hint
-      if keys is not None:
-         keys_el = zapis.find('keys')
-         if keys_el is None:
-            keys_el = ET.SubElement(zapis, 'keys')
-         keys_el.text = keys
+      hint_el = zapis.find('hint')
+      if hint_el is None:
+         hint_el = ET.SubElement(zapis, 'hint')
+      hint_el.text = hint
       ET.indent(tree, space='   ')
       tree.write(subor, encoding='UTF-8', xml_declaration=True)
 
@@ -139,16 +134,13 @@ def _uloz_zapis(subor: str, zapis_id: str, otazka_id: str, test_id: str, predmet
       tree.write(subor, encoding='UTF-8', xml_declaration=True)
 
 
-def _parsuj_hint_keys(raw: str) -> tuple[str, str]:
+def _parsuj_hint(raw: str) -> str:
    hint = raw
-   keys = ''
    for line in raw.split('\n'):
       line = line.strip()
       if line.upper().startswith('HINT:'):
          hint = line[5:].strip()
-      elif line.upper().startswith('KEYS:'):
-         keys = line[5:].strip()
-   return hint, keys
+   return hint
 
 
 def _cache_kluc(system_instrukcie: str, user_instrukcie: str) -> str:
@@ -178,7 +170,7 @@ def _cache_subor(predmet: str, trieda: str, skupina: str, kapitola: str, fileid:
 
 
 def _cache_nacitaj(subor: str) -> dict:
-   """Cache layout: {otazka_id: {kluc: {'napovedy': [{'hint', 'keys', 'skore'}]}}}. `skore` is
+   """Cache layout: {otazka_id: {kluc: {'napovedy': [{'hint', 'skore'}]}}}. `skore` is
    the sum of the student ratings (+1 helped, -1 did not help), 0 until rated."""
    try:
       with open(subor, encoding='utf-8') as f:
@@ -206,7 +198,7 @@ def _cache_ziskaj(subor: str | None, otazka_id: str, kluc: str) -> dict | None:
    return random.choice(zaznam['napovedy'])
 
 
-def _cache_uloz(subor: str | None, otazka_id: str, kluc: str, hint: str, keys: str) -> None:
+def _cache_uloz(subor: str | None, otazka_id: str, kluc: str, hint: str) -> None:
    """Adds a hint to the pool; when the pool is full, the hint with the lowest score is
    dropped first (the oldest one of them)."""
    if not subor:
@@ -219,7 +211,7 @@ def _cache_uloz(subor: str | None, otazka_id: str, kluc: str, hint: str, keys: s
          return
       if len(napovedy) >= CACHE_MAX_NAPOVEDI:
          napovedy.remove(min(napovedy, key=lambda n: n['skore']))
-      napovedy.append({'hint': hint, 'keys': keys, 'skore': 0})
+      napovedy.append({'hint': hint, 'skore': 0})
       _cache_zapis(subor, data)
 
 
@@ -291,8 +283,8 @@ async def _hlas_cakanie(send: MemoryObjectSendStream, prvy_chunk: anyio.Event, i
 async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, send: MemoryObjectSendStream, logger,
                             prvy_chunk: anyio.Event, cache_subor: str | None, otazka_id: str, cache_kluc: str,
                             zrusenie: anyio.CancelScope | None = None, zamok: FileLock | None = None) -> None:
-   """Runs the model call independently of the client connection, so that hint and keys
-   are always saved even if the client disconnects after the first line. Events for the
+   """Runs the model call independently of the client connection, so that the hint is
+   always saved even if the client disconnects after the first chunk. Events for the
    client are passed through the stream; closing it marks the end. Only before the first
    output the call can be cancelled through `zrusenie` (the client left, so nobody waits
    for it and it must not block the queue of the model). The hint stays counted for the
@@ -303,7 +295,6 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
 
    zrusenie = zrusenie or anyio.CancelScope()
    full_text = ''
-   hint_ulozeny = False
    vysledok = 'ok'
    start = time.monotonic()
    cakanie: float | None = None
@@ -324,24 +315,14 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
                cakanie = time.monotonic() - start
             prvy_chunk.set()
             full_text += text
-            if not hint_ulozeny:
-               posli(('chunk', {'text': text}))
-               if '\n' in full_text:
-                  hint_ulozeny = True
-                  hint, _ = _parsuj_hint_keys(full_text)
-                  _aktualizuj_zapis(subor, zapis_id, hint=hint)
-                  posli(('done', {'hint': hint}))
+            posli(('chunk', {'text': text}))
 
-         hint, keys = _parsuj_hint_keys(full_text)
-         if hint_ulozeny:
-            if keys:
-               _aktualizuj_zapis(subor, zapis_id, keys=keys)
-         else:
-            _aktualizuj_zapis(subor, zapis_id, hint=hint, keys=keys or None)
-            posli(('done', {'hint': hint}))
+         hint = _parsuj_hint(full_text)
+         _aktualizuj_zapis(subor, zapis_id, hint)
+         posli(('done', {'hint': hint}))
          if hint:
             try:
-               _cache_uloz(cache_subor, otazka_id, cache_kluc, hint, keys)
+               _cache_uloz(cache_subor, otazka_id, cache_kluc, hint)
             except OSError as e:
                logger.error(f'chyba zapisu cache napovedy: {e}')
       if zrusenie.cancelled_caught:
@@ -420,9 +401,9 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
          return StreamingResponse(limit_stream(), media_type='text/event-stream',
                                   headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
-      predchadzajuce = _nacitaj_predchadzajuce_keys(subor, otazka_id)
-      helped = [p['keys'] for p in predchadzajuce if p['val'] == '1']
-      not_helped = [p['keys'] for p in predchadzajuce if p['val'] == '0']
+      predchadzajuce = _nacitaj_predchadzajuce(subor, otazka_id)
+      helped = [p['hint'] for p in predchadzajuce if p['val'] == '1']
+      not_helped = [p['hint'] for p in predchadzajuce if p['val'] == '0']
 
       templates = request.app.state.templates
       system_instrukcie = templates.get_template('aihelp_system.md.j2').render()
@@ -465,7 +446,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
          request.app.state.logger.warning('cache napoved vypnuta: adresar nie je sukromny')
       z_cache = _cache_ziskaj(cache_subor, otazka_id, cache_kluc)
       if z_cache:
-         _aktualizuj_zapis(subor, zapis_id, hint=z_cache['hint'], keys=z_cache['keys'] or None)
+         _aktualizuj_zapis(subor, zapis_id, z_cache['hint'])
 
          async def generate_cache():
             yield meta

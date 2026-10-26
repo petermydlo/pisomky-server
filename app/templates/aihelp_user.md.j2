@@ -21,11 +21,11 @@ Give the student a single short hint without revealing the answer.
 {% endif %}
 {% if helped or not_helped %}
 
-## Previous hint history for this question
-{% if helped %}Helpful approaches: {{ helped | join('; ') }}
-{% endif %}{% if not_helped %}Less helpful approaches: {{ not_helped | join('; ') }}
+## Previous hints for this question, rated by students
+{% if helped %}Helpful hints: {{ helped | join(' | ') }}
+{% endif %}{% if not_helped %}Less helpful hints: {{ not_helped | join(' | ') }}
 {% endif %}
-Prefer different key concepts than already used. Avoid less helpful approaches.
+Prefer a different angle than the hints already given. Avoid approaches similar to the less helpful hints.
 {% endif %}
 {% if spravna_odpoved %}
 
