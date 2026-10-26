@@ -29,6 +29,13 @@ router = APIRouter()
 CACHE_ADRESAR = '/tmp/pisomky-napovedy'
 CACHE_MAX_NAPOVEDI = 5
 CAKANIE_INTERVAL = 10
+# Options that make Ollama restart its runner when they differ between calls, so the warm-up in
+# main.py and the hint calls must share them. qwen3.5 is a hybrid (recurrent) model: its prompt
+# cache works only through context checkpoints, and llama.cpp creates one at (prompt length -
+# num_batch). With the default num_batch 512 that is at ~215 of the ~665 tokens of the shared
+# system prompt, so ~500 tokens were evaluated again for every hint (~11 s); with 64 the
+# checkpoint lands just below the end of the shared prefix (~2 s). Measured 2026-10-26.
+OLLAMA_RUNNER_OPTIONS = {'num_ctx': 4096, 'num_batch': 64}
 ZAMOK_CAKANIE = 30
 ZAMOK_KROK = 0.2
 
@@ -308,7 +315,7 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
             messages=messages,
             stream=True,
             think=False,
-            options={'temperature': 0.3, 'num_ctx': 4096, 'keep_alive': '45m'}
+            options={'temperature': 0.3, **OLLAMA_RUNNER_OPTIONS, 'keep_alive': '45m'}
          ):
             text = chunk['message']['content']
             if not text:

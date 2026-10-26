@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from app.utils import find_test, xslt_to_string, get_test_metadata, get_time_state, get_score, store_mcq_scores
-from app.routers.ai import _spocitaj_napovedy_testu
+from app.routers.ai import OLLAMA_RUNNER_OPTIONS, _spocitaj_napovedy_testu
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
          model=os.getenv('OLLAMA_MODEL', 'qwen3.5:9b'),
          messages=[{'role': 'user', 'content': ''}],
          think=False,
-         options={'num_predict': 1, 'keep_alive': '45m'}
+         options={**OLLAMA_RUNNER_OPTIONS, 'num_predict': 1, 'keep_alive': '45m'}
       )
    except Exception:
       pass
