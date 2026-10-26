@@ -424,20 +424,24 @@ def _spusti_generovanie(monkeypatch, klient, backend):
       return [u async for u in receive]
    return anyio.run(run, backend=backend), subor
 
-def test_generuj_napovedu_ulozi_do_cache(monkeypatch, backend):
+def test_generuj_napovedu_ulozi_do_cache(monkeypatch, backend, caplog):
+   caplog.set_level(logging.INFO)
    klient = _FalosnyKlient(['HINT: Zamyslite sa ', 'nad menovateľom\n', 'KEYS: zlomky, delenie'])
    udalosti, subor = _spusti_generovanie(monkeypatch, klient, backend)
    assert [typ for typ, _ in udalosti] == ['chunk', 'chunk', 'done']
+   assert 'zapis=zapX otazka=q1 vysledok=ok cakanie=' in caplog.text
    assert _cache_ziskaj(CS, OTAZKA_ID, 'kluc1') == {'hint': 'Zamyslite sa nad menovateľom', 'keys': 'zlomky, delenie', 'skore': 0}
    zapis = ET.parse(subor).find('.//zapis[@id="zapX"]')
    assert zapis is not None
    assert zapis.findtext('hint') == 'Zamyslite sa nad menovateľom'
    assert zapis.findtext('keys') == 'zlomky, delenie'
 
-def test_generuj_napovedu_chyba_neuklada_do_cache(monkeypatch, backend):
+def test_generuj_napovedu_chyba_neuklada_do_cache(monkeypatch, backend, caplog):
+   caplog.set_level(logging.INFO)
    klient = _FalosnyKlient([], chyba=ConnectionError('ollama nebezi'))
    udalosti, _ = _spusti_generovanie(monkeypatch, klient, backend)
    assert [typ for typ, _ in udalosti] == ['napoveda_error']
+   assert 'vysledok=chyba cakanie=- celkom=' in caplog.text
    assert _cache_ziskaj(CS, OTAZKA_ID, 'kluc1') is None
 
 
@@ -496,10 +500,11 @@ class _VisiacyKlient:
          yield {}
       return stream()
 
-def test_generuj_napovedu_zrusenie_pred_prvym_chunkom(monkeypatch, zamok_adresar, backend):
+def test_generuj_napovedu_zrusenie_pred_prvym_chunkom(monkeypatch, zamok_adresar, backend, caplog):
    monkeypatch.setattr(ai.ollama, 'AsyncClient', lambda: _VisiacyKlient())
    subor = f'./res/xml/feedback/{PREDMET}/{PREDMET}_1A_kap1_ab12.xml'
    _uloz_zapis(subor, 'zapX', OTAZKA_ID, TEST_ID, PREDMET, '1A', '', 'kap1', 'ab12')
+   caplog.set_level(logging.INFO)
    zamok = _zamok_napovede(TEST_ID)
    assert zamok is not None
    zamok.acquire()
@@ -522,6 +527,7 @@ def test_generuj_napovedu_zrusenie_pred_prvym_chunkom(monkeypatch, zamok_adresar
    assert znovu is not None
    znovu.acquire(timeout=0)  # the lock was released by the cancelled call
    znovu.release()
+   assert 'vysledok=zrusena cakanie=- celkom=' in caplog.text
 
 def test_generuj_napovedu_uvolni_zamok_po_dokonceni(monkeypatch, zamok_adresar, backend):
    zamok = _zamok_napovede(TEST_ID)

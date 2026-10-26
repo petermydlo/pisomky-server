@@ -7,6 +7,7 @@ import random
 import re
 import secrets
 import stat
+import time
 from typing import cast
 from datetime import datetime
 from filelock import FileLock, Timeout
@@ -296,6 +297,9 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
    zrusenie = zrusenie or anyio.CancelScope()
    full_text = ''
    hint_ulozeny = False
+   vysledok = 'ok'
+   start = time.monotonic()
+   cakanie: float | None = None
    try:
       with zrusenie:
          client = ollama.AsyncClient()
@@ -309,6 +313,8 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
             text = chunk['message']['content']
             if not text:
                continue
+            if cakanie is None:
+               cakanie = time.monotonic() - start
             prvy_chunk.set()
             full_text += text
             if not hint_ulozeny:
@@ -332,8 +338,9 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
             except OSError as e:
                logger.error(f'chyba zapisu cache napovedy: {e}')
       if zrusenie.cancelled_caught:
-         logger.warning('napoveda zrusena: klient odisiel pred prvym vystupom modelu')
+         vysledok = 'zrusena'
    except Exception as e:
+      vysledok = 'chyba'
       logger.error(f'chyba napoveda stream: {e}')
       posli(('napoveda_error', {'error': 'Služba nápovedy je momentálne zaneprázdnená.'}))
    finally:
@@ -341,6 +348,9 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
       send.close()
       if zamok:
          zamok.release()
+      celkom = time.monotonic() - start
+      logger.info(f'napoveda zapis={zapis_id} otazka={otazka_id} vysledok={vysledok} '
+                  f'cakanie={"-" if cakanie is None else f"{cakanie:.1f}s"} celkom={celkom:.1f}s')
 
 
 @router.get('/ai/napoveda')
@@ -368,7 +378,12 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
 
    zamok = _zamok_napovede(test_id)
    if zamok:
-      if not await _zamok_ziskaj(zamok):
+      zaciatok_zamku = time.monotonic()
+      ziskany = await _zamok_ziskaj(zamok)
+      cakanie_zamok = time.monotonic() - zaciatok_zamku
+      if cakanie_zamok >= 1:
+         request.app.state.logger.info(f'napoveda test={test_id} cakanie na zamok={cakanie_zamok:.1f}s {"ok" if ziskany else "obsadena"}')
+      if not ziskany:
          async def obsadene_stream():
             yield 'event: napoveda_obsadena\ndata: {}\n\n'
          return StreamingResponse(obsadene_stream(), media_type='text/event-stream',
