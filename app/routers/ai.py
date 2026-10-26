@@ -341,6 +341,38 @@ async def _generuj_napovedu(messages: list[dict], subor: str, zapis_id: str, sen
                   f'cakanie={"-" if cakanie is None else f"{cakanie:.1f}s"} celkom={celkom:.1f}s')
 
 
+def _priprav_prompt(templates, predmet: str, otazka_id: str, znenie_text: str, moznosti: list[str], spravna_odpoved: str | None,
+                    helped: list[str], not_helped: list[str], logger) -> tuple[list[dict], str]:
+   """Builds the messages for the model and the cache key of a hint request. The key ignores
+   the rating history (`helped`, `not_helped`), so it is the same for every student."""
+   napovedy_data = _najdi_napovedu(otazka_id, spravna_odpoved, logger) if predmet else None
+   napovedy = napovedy_data.get('napovedy') if isinstance(napovedy_data, dict) else napovedy_data
+   vzory = napovedy_data.get('vzory') if isinstance(napovedy_data, dict) else []
+   klucove = napovedy_data.get('klucove') if isinstance(napovedy_data, dict) else []
+   # sorted: every student has the options in a different order, which would give every one of
+   # them a different prompt and cache key, although the hint does not depend on the order
+   moznosti = sorted(moznosti, key=str.casefold)
+
+   def user_prompt(helped: list[str], not_helped: list[str]) -> str:
+      return templates.get_template('aihelp_user.md.j2').render(
+         znenie_text=znenie_text,
+         moznosti=moznosti,
+         napovedy=napovedy or [],
+         vzory=vzory or [],
+         klucove=klucove or [],
+         helped=helped,
+         not_helped=not_helped,
+         spravna_odpoved=spravna_odpoved,
+      )
+
+   system_instrukcie = templates.get_template('aihelp_system.md.j2').render()
+   messages = [
+      {'role': 'system', 'content': system_instrukcie},
+      {'role': 'user', 'content': user_prompt(helped, not_helped)}
+   ]
+   return messages, _cache_kluc(system_instrukcie, user_prompt([], []))
+
+
 @router.get('/ai/napoveda')
 async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuery):
    proc = request.app.state.proc
@@ -359,9 +391,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
    spravna_el = xsltpath.evaluate_single('odpoved[@spravna="1"]')
    spravna_odpoved = spravna_el.string_value.strip() if spravna_el else None
    moznosti_value = xsltpath.evaluate('odpoved')
-   # sorted: every student has the options in a different order, which would give every one of
-   # them a different prompt and cache key, although the hint does not depend on the order
-   moznosti = sorted((m.string_value.strip() for m in moznosti_value), key=str.casefold) if moznosti_value else []
+   moznosti = [m.string_value.strip() for m in moznosti_value] if moznosti_value else []
 
    if not znenie_text:
       return JSONResponse({'error': 'Prázdne znenie otázky'}, status_code=400)
@@ -389,11 +419,6 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       xsltpath.set_context(xdm_item=test_node)
       pocet_otazok = int(xsltpath.evaluate_single('count(otazka)') or 0)
 
-      napovedy_data = _najdi_napovedu(otazka_id, spravna_odpoved, request.app.state.logger) if predmet else None
-      napovedy = napovedy_data.get('napovedy') if isinstance(napovedy_data, dict) else napovedy_data
-      vzory = napovedy_data.get('vzory') if isinstance(napovedy_data, dict) else []
-      klucove = napovedy_data.get('klucove') if isinstance(napovedy_data, dict) else []
-
       subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
       pouzite = _spocitaj_napovedy_testu(subor, test_id)
 
@@ -407,35 +432,8 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       helped = [p['hint'] for p in predchadzajuce if p['val'] == '1']
       not_helped = [p['hint'] for p in predchadzajuce if p['val'] == '0']
 
-      templates = request.app.state.templates
-      system_instrukcie = templates.get_template('aihelp_system.md.j2').render()
-      user_instrukcie = templates.get_template('aihelp_user.md.j2').render(
-         znenie_text=znenie_text,
-         moznosti=moznosti,
-         napovedy=napovedy or [],
-         vzory=vzory or [],
-         klucove=klucove or [],
-         helped=helped,
-         not_helped=not_helped,
-         spravna_odpoved=spravna_odpoved,
-      )
-
-      messages = [
-         {'role': 'system', 'content': system_instrukcie},
-         {'role': 'user', 'content': user_instrukcie}
-      ]
-
-      user_bez_spatnej_vazby = templates.get_template('aihelp_user.md.j2').render(
-         znenie_text=znenie_text,
-         moznosti=moznosti,
-         napovedy=napovedy or [],
-         vzory=vzory or [],
-         klucove=klucove or [],
-         helped=[],
-         not_helped=[],
-         spravna_odpoved=spravna_odpoved,
-      )
-      cache_kluc = _cache_kluc(system_instrukcie, user_bez_spatnej_vazby)
+      messages, cache_kluc = _priprav_prompt(request.app.state.templates, predmet, otazka_id, znenie_text, moznosti,
+                                             spravna_odpoved, helped, not_helped, request.app.state.logger)
 
       zapis_id = secrets.token_hex(8)
       remaining = pocet_otazok - pouzite - 1

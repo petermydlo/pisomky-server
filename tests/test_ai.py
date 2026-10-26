@@ -2,9 +2,11 @@
 
 import logging
 import os
+from pathlib import Path
 import anyio
 import pytest
 import lxml.etree as ET
+from jinja2 import Environment, FileSystemLoader
 
 from app.routers import ai
 from app.routers.ai import (
@@ -23,6 +25,7 @@ from app.routers.ai import (
    _generuj_napovedu,
    _zamok_napovede,
    _zamok_ziskaj,
+   _priprav_prompt,
 )
 
 PREDMET = 'MAT'
@@ -535,3 +538,33 @@ def test_generuj_napovedu_uvolni_zamok_po_dokonceni(monkeypatch, zamok_adresar, 
    assert znovu is not None
    znovu.acquire(timeout=0)
    znovu.release()
+
+
+# --- _priprav_prompt ---
+
+SABLONY = Environment(loader=FileSystemLoader(Path(ai.__file__).parents[1] / 'templates'))
+
+def _prompt(moznosti, helped=(), not_helped=(), znenie='Aký je výsledok 1+1?'):
+   return _priprav_prompt(SABLONY, '', OTAZKA_ID, znenie, list(moznosti), '2', list(helped), list(not_helped), logging.getLogger('test'))
+
+def test_priprav_prompt_kluc_nezavisi_od_poradia_moznosti():
+   _, kluc1 = _prompt(['1', '2', '3', '4'])
+   _, kluc2 = _prompt(['4', '2', '1', '3'])
+   assert kluc1 == kluc2
+
+def test_priprav_prompt_moznosti_su_v_prompte_zoradene():
+   messages, _ = _prompt(['banán', 'Čerešňa', 'jablko'])
+   assert 'banán, jablko, Čerešňa' in messages[1]['content']
+
+def test_priprav_prompt_kluc_nezavisi_od_historie_ale_sprava_ju_obsahuje():
+   spravy_bez, kluc_bez = _prompt(['1', '2'])
+   spravy_s, kluc_s = _prompt(['1', '2'], helped=['pomohla mi'], not_helped=['nepomohla mi'])
+   assert kluc_bez == kluc_s
+   assert 'pomohla mi' not in spravy_bez[1]['content']
+   assert 'Helpful hints: pomohla mi' in spravy_s[1]['content']
+   assert 'Less helpful hints: nepomohla mi' in spravy_s[1]['content']
+
+def test_priprav_prompt_kluc_sa_meni_so_znenim_a_moznostami():
+   _, kluc = _prompt(['1', '2'])
+   assert _prompt(['1', '2'], znenie='Iné znenie')[1] != kluc
+   assert _prompt(['1', '5'])[1] != kluc
