@@ -22,6 +22,7 @@ from app.routers import results
 from app.routers import downloads
 from app.routers import questions
 from app.routers import ai
+from app.routers import ainapovedy
 from app.routers import importanswers
 from app.routers import aievaluate
 from app.routers.aiproviders import get_provider
@@ -91,6 +92,7 @@ app.include_router(results.router)
 app.include_router(downloads.router)
 app.include_router(questions.router)
 app.include_router(ai.router)
+app.include_router(ainapovedy.router)
 app.include_router(importanswers.router)
 app.include_router(aievaluate.router)
 

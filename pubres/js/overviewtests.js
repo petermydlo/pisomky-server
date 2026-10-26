@@ -332,6 +332,78 @@ document.addEventListener('DOMContentLoaded', () => {
       }
    });
 
+   //predgenerovanie AI napovedi: siva = ziadne, zlta = cast, zelena = vsetky (stav sa odvodzuje z cache na serveri)
+   const NAPOVEDY_POLL_MS = 10000;
+   const napovedyCasovace = new WeakMap();
+
+   function napovedyStav(ikona, stav) {
+      ikona.classList.remove('napovedy-ciastocne', 'napovedy-hotove', 'napovedy-bezi');
+      if (stav.hotove > 0 && stav.hotove < stav.celkom) ikona.classList.add('napovedy-ciastocne');
+      if (stav.celkom > 0 && stav.hotove === stav.celkom) ikona.classList.add('napovedy-hotove');
+      if (stav.bezi) ikona.classList.add('napovedy-bezi');
+      let text = `AI nápovedy: ${stav.hotove}/${stav.celkom} hotových`;
+      if (stav.bezi) text += ' (generuje sa…)';
+      else if (stav.hotove < stav.celkom) text += ' — kliknutím predgenerovať';
+      ikona.title = text;
+      clearTimeout(napovedyCasovace.get(ikona));
+      if (stav.bezi) napovedyCasovace.set(ikona, setTimeout(() => nacitajNapovedy(ikona), NAPOVEDY_POLL_MS));
+   }
+
+   async function nacitajNapovedy(ikona) {
+      try {
+         const resp = await fetch('/admin/napovedy/stav?' + new URLSearchParams(skupinaData(ikona)));
+         if (resp.ok) napovedyStav(ikona, await resp.json());
+         else ikona.title = 'AI nápovedy: stav sa nepodarilo načítať';
+      } catch (err) {
+         console.error('Chyba:', err);
+      }
+   }
+
+   //nacita stav postupne (po jednej sade), aby sa server nezahltil; len pre aktivnu kartu predmetu
+   let napovedyNacitava = false;
+   async function nacitajNapovedyKarty() {
+      if (napovedyNacitava) return;
+      napovedyNacitava = true;
+      try {
+         let ikona;
+         while ((ikona = document.querySelector('.tab-pane.active .napovedy:not([data-nacitane])'))) {
+            ikona.dataset.nacitane = '1';
+            await nacitajNapovedy(ikona);
+         }
+      } finally {
+         napovedyNacitava = false;
+      }
+   }
+
+   document.addEventListener('shown.bs.tab', nacitajNapovedyKarty);
+
+   //predgeneruje AI napovede pre vsetky otazky sady (kliknutie pocas behu len obnovi stav)
+   document.addEventListener('click', async (event) => {
+      const btn = event.target.closest('.napovedy');
+      if (!btn) return;
+      event.stopPropagation();
+      event.preventDefault();
+      if (btn.classList.contains('napovedy-bezi') || btn.classList.contains('napovedy-hotove')) {
+         await nacitajNapovedy(btn);
+         return;
+      }
+      const d = skupinaData(btn);
+      if (!confirm(`Predgenerovať AI nápovede pre ${d.predmet}:${d.trieda}${d.skupina}:${d.kapitola}?\nGenerovanie trvá niekoľko minút a beží na pozadí; kým žiaci čakajú na nápovedu, pozastaví sa.`)) return;
+      try {
+         const resp = await fetch('/admin/napovedy/pregeneruj', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams(d)
+         });
+         if (resp.ok) napovedyStav(btn, await resp.json());
+         else chybaNotifikaciu(resp.status);
+      } catch (err) {
+         console.error('Chyba:', err);
+         zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
+      }
+   });
+
    window.addEventListener('hashchange', onHashChange, false);
    onHashChange();
+   nacitajNapovedyKarty();
 });

@@ -280,7 +280,7 @@ body.admin-overview {
 .grid {
    display: grid;
    width: 100%;
-   grid-template-columns: 8% 14% 14% 13% 13% 14% 11% 13%;
+   grid-template-columns: 8% 14% 14% 12% 12% 13% 11% 16%;
    gap: 1px;
    margin-top: 1px;
 }
@@ -469,6 +469,11 @@ body.admin-overview {
 .codes .bi, .tests .bi, .results .bi,
 .groupstatistics .bi, .feedback .bi, .del .bi, .regenerate .bi, .penIcon .bi {
    font-size: 14px;
+}
+
+/* the bulb glyph fills less of its box than the other icons */
+.napovedy .bi {
+   font-size: 16px;
 }
 
 .feedback-stat {
@@ -771,6 +776,11 @@ div:hover > span.penIcon.editActions {
 #save-status.disabled { cursor: not-allowed; }
 .regenerate { color: teal; padding: 0.2rem; font-weight: bold; cursor: pointer; }
 .regenerate.disabled { color: lightgrey; cursor: not-allowed; }
+.napovedy { color: darkgray; padding: 0.2rem; font-weight: bold; cursor: pointer; }
+.napovedy.napovedy-ciastocne { color: #f2b600; }
+.napovedy.napovedy-hotove { color: #2e9e44; }
+.napovedy.napovedy-bezi .bi { animation: napovedy-pulz 1.2s ease-in-out infinite; }
+@keyframes napovedy-pulz { 50% { opacity: 0.3; } }
 
 .znamka-1 { background-color: rgba(var(--bs-success-rgb), 0.5) !important; }
 .znamka-2 { background-color: var(--bs-success-bg-subtle); }
