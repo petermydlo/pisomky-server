@@ -23,6 +23,8 @@ res/xml/archiv/
 res/xml/**/*.xml
 res/xml/**/*.xml.old
 res/xml/**/*.xml~
+# súbory nahrané žiakmi
+res/xml/**/*_subor
 !res/xml/**/*.example.xml
 # konfiguracia hodnotiacich stupnic (nie osobne udaje)
 !res/xml/lists/scales.xml
