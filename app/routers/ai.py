@@ -359,7 +359,9 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
    spravna_el = xsltpath.evaluate_single('odpoved[@spravna="1"]')
    spravna_odpoved = spravna_el.string_value.strip() if spravna_el else None
    moznosti_value = xsltpath.evaluate('odpoved')
-   moznosti = [m.string_value.strip() for m in moznosti_value] if moznosti_value else []
+   # sorted: every student has the options in a different order, which would give every one of
+   # them a different prompt and cache key, although the hint does not depend on the order
+   moznosti = sorted((m.string_value.strip() for m in moznosti_value), key=str.casefold) if moznosti_value else []
 
    if not znenie_text:
       return JSONResponse({'error': 'Prázdne znenie otázky'}, status_code=400)
