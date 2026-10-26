@@ -128,9 +128,6 @@
       </span>
       <span>
          <xsl:value-of select="."/>
-         <xsl:if test="@keys">
-            <div class="text-muted small">[<xsl:value-of select="@keys"/>]</div>
-         </xsl:if>
       </span>
    </div>
 </xsl:template>

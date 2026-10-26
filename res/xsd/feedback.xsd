@@ -6,8 +6,6 @@
       <xs:sequence>
          <!-- hint: text AI nápovedy zobrazenej žiakovi -->
          <xs:element name="hint" type="xs:string" minOccurs="0"/>
-         <!-- keys: kľúčové slová z KEYS: riadku AI odpovede (od 2026-10-26 sa nezapisuje, len staré záznamy) -->
-         <xs:element name="keys" type="xs:string" minOccurs="0"/>
       </xs:sequence>
       <!-- id: hash záznamu (voliteľný, nie vždy prítomný) -->
       <xs:attribute name="id" type="xs:string"/>

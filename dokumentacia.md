@@ -576,10 +576,8 @@ Element `<zapis>` — **povinné**: `datum` (ISO dátum a čas), `otazka_id`, `t
 `val` (`"1"`, `"0"` alebo `""` = zatiaľ neohodnotené). **Voliteľné**: `id` (hash
 záznamu — jednoznačne identifikuje zápis, keď doň appka neskôr dopĺňa `<hint>`
 po dokončení odpovede, a keď žiak dodatočne odošle hodnotenie cez `/ai/feedback`),
-vnorené `<hint>` (text AI nápovedy zobrazenej žiakovi — posledné 3 ohodnotené sa
-použijú ako kontext pre budúce nápovedy k tej istej otázke) a `<keys>` (kľúčové slová
-z `KEYS:` riadku — appka ich od 26. 10. 2026 už nezapisuje, nájdete ich len v
-starších záznamoch).
+vnorený `<hint>` (text AI nápovedy zobrazenej žiakovi — posledné 3 ohodnotené sa
+použijú ako kontext pre budúce nápovedy k tej istej otázke).
 
 Príklad (`res/xml/feedback/DEMO/DEMO_I.A_01_1234.example.xml`):
 
@@ -588,7 +586,6 @@ Príklad (`res/xml/feedback/DEMO/DEMO_I.A_01_1234.example.xml`):
 <feedback fileid="1234">
    <zapis id="a1b2c3d4e5f6a7b8" datum="2025-01-08T09:20:00" otazka_id="otq00003" test_id="demo01xnovaka" val="1">
       <hint>Think about what happens to the source code before it can be executed.</hint>
-      <keys>interpreter, kompilátor, zdrojový kód</keys>
    </zapis>
 </feedback>
 ```

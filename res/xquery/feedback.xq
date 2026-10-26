@@ -27,7 +27,7 @@ let $otazky :=
          <znenie>{$q_otazka/znenie[1]/string()}</znenie>
          <napovedy>
             {for $z in $zaznamy
-             return <napoveda val="{$z/@val}" datum="{$z/@datum}" keys="{$z/keys}">
+             return <napoveda val="{$z/@val}" datum="{$z/@datum}">
                        {$z/hint/string()}
                     </napoveda>}
          </napovedy>

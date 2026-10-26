@@ -37,14 +37,12 @@ FEEDBACK_XML = f"""\
 <feedback predmet="{PREDMET}" trieda="1A" skupina="" kapitola="kap1" fileid="ab12">
    <zapis id="zap1" datum="2026-01-01T10:00:00" otazka_id="{OTAZKA_ID}" test_id="{TEST_ID}" val="1">
       <hint>Skús to inak</hint>
-      <keys>zlomky, delenie</keys>
    </zapis>
    <zapis id="zap2" datum="2026-01-01T10:05:00" otazka_id="{OTAZKA_ID}" test_id="{TEST_ID}" val="0">
       <hint>Iná nápoveda</hint>
    </zapis>
    <zapis id="zap3" datum="2026-01-01T10:10:00" otazka_id="q2" test_id="{TEST_ID}" val=""/>
    <zapis id="zap4" datum="2026-01-01T10:15:00" otazka_id="{OTAZKA_ID}" test_id="{TEST_ID}" val="0">
-      <keys>iny, zoznam</keys>
    </zapis>
 </feedback>
 """
