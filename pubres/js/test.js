@@ -50,8 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
    });
 
+   //ukonci rozpracovanu napovedu, nova ju nahradi (server zrusi generovanie, ak este nezacalo)
+   let ukonciPredchadzajucu = null;
+
    //odosle otazku na AI a zobrazi odpoved cez SSE streaming
    function poziadajAINapovedu(otazkaId, testId) {
+      if (ukonciPredchadzajucu) ukonciPredchadzajucu();
       const toast = zabezpecToastKontajner('warning', 'AI Help (experimental)', false);
       const toastMessage = document.getElementById('toastMessage');
       const toastFeedback = document.getElementById('toastFeedback');
@@ -66,6 +70,13 @@ document.addEventListener('DOMContentLoaded', () => {
          const es = new EventSource(`/ai/napoveda?${params.toString()}`);
          let hintText = '';
          let completed = false;
+
+         ukonciPredchadzajucu = () => {
+            if (completed) return;
+            completed = true;
+            es.close();
+            resolve();
+         };
 
          toastEl.addEventListener('hidden.bs.toast', () => {
             if (!completed) {
@@ -111,6 +122,16 @@ document.addEventListener('DOMContentLoaded', () => {
             completed = true;
             toastMessage.textContent = 'Vyčerpal si všetky nápovede pre tento test.';
             deaktivujZiarovky();
+            es.close();
+            setTimeout(() => {
+               if (toastEl && toastEl.isConnected) toast.hide();
+            }, 5000);
+            resolve();
+         });
+
+         es.addEventListener('napoveda_obsadena', () => {
+            completed = true;
+            toastMessage.textContent = 'Predchádzajúca nápoveda sa ešte spracúva, skús to o chvíľu.';
             es.close();
             setTimeout(() => {
                if (toastEl && toastEl.isConnected) toast.hide();
