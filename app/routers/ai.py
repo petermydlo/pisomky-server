@@ -159,13 +159,14 @@ def _sukromny_adresar() -> bool:
    return stat.S_ISDIR(st.st_mode) and st.st_uid == os.geteuid() and not st.st_mode & 0o077
 
 
-def _cache_subor(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str | None:
-   """Path of the hint cache of one test (one file per fileid). It lives in /tmp, which is a
-   tmpfs here: RAM only, shared by all workers, wiped on reboot. Returns None, which turns
-   the cache off, when the directory cannot be created or is not private to this user."""
+def _cache_subor(predmet: str, kapitola: str) -> str | None:
+   """Path of the hint cache of one subject and chapter, shared by all sets of tests of that
+   chapter (the cache key is a hash of the prompt, which does not depend on the class). It lives
+   in /tmp, which is a tmpfs here: RAM only, shared by all workers, wiped on reboot. Returns None,
+   which turns the cache off, when the directory cannot be created or is not private to this user."""
    if not _sukromny_adresar():
       return None
-   nazov = re.sub(r'[^A-Za-z0-9_.-]', '_', f'{predmet}_{trieda}{skupina}_{kapitola}_{fileid}')
+   nazov = re.sub(r'[^A-Za-z0-9_.-]', '_', f'{predmet}_{kapitola}')
    return os.path.join(CACHE_ADRESAR, nazov + '.json')
 
 
@@ -441,7 +442,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       meta = f'event: meta\ndata: {json.dumps({"zapis_id": zapis_id, "remaining": remaining})}\n\n'
       headers = {'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
 
-      cache_subor = _cache_subor(predmet, trieda, skupina, kapitola, fileid)
+      cache_subor = _cache_subor(predmet, kapitola)
       if not cache_subor:
          request.app.state.logger.warning('cache napoved vypnuta: adresar nie je sukromny')
       z_cache = _cache_ziskaj(cache_subor, otazka_id, cache_kluc)
@@ -508,7 +509,7 @@ async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis
          ET.indent(tree, space='   ')
          tree.write(subor, encoding='UTF-8', xml_declaration=True)
 
-      _cache_ohodnot(_cache_subor(predmet, trieda, skupina, kapitola, fileid), otazka_id, hint, zmena)
+      _cache_ohodnot(_cache_subor(predmet, kapitola), otazka_id, hint, zmena)
       return {'ok': True}
    except Exception as e:
       request.app.state.logger.error(f'chyba feedback: {e}')

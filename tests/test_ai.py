@@ -314,16 +314,17 @@ def test_cache_poskodeny_subor_je_prazdna_cache(tmp_path):
    _cache_uloz(CS, OTAZKA_ID, 'k1', 'hint')
    assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') == {'hint': 'hint', 'skore': 0}
 
-def test_cache_subor_vytvori_sukromny_adresar_a_cestu_na_test(tmp_path, monkeypatch):
+def test_cache_subor_vytvori_sukromny_adresar_a_cestu_na_kapitolu(tmp_path, monkeypatch):
    monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(tmp_path / 'cache'))
-   cesta = ai._cache_subor('AUT3', 'AB', '', '01', '737f')
-   assert cesta == str(tmp_path / 'cache' / 'AUT3_AB_01_737f.json')
+   cesta = ai._cache_subor('AUT3', '01')
+   assert cesta == str(tmp_path / 'cache' / 'AUT3_01.json')
    assert (tmp_path / 'cache').stat().st_mode & 0o777 == 0o700
 
-def test_cache_subor_oddeli_testy_a_ocisti_nazov(tmp_path, monkeypatch):
+def test_cache_subor_oddeli_kapitoly_a_ocisti_nazov(tmp_path, monkeypatch):
    monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(tmp_path / 'cache'))
-   assert ai._cache_subor('AUT3', 'AB', '', '01', '737f') != ai._cache_subor('AUT3', 'AB', '', '01', '9952')
-   cesta = ai._cache_subor('../x', 'AB', '/', '01', 'a b')
+   assert ai._cache_subor('AUT3', '01') != ai._cache_subor('AUT3', 'c01')
+   assert ai._cache_subor('AUT3', '01') != ai._cache_subor('PIT3', '01')
+   cesta = ai._cache_subor('../x', 'a b/')
    assert cesta is not None and os.path.dirname(cesta) == str(tmp_path / 'cache')
 
 def test_cache_subor_nesukromny_adresar_vypne_cache(tmp_path, monkeypatch):
@@ -331,7 +332,7 @@ def test_cache_subor_nesukromny_adresar_vypne_cache(tmp_path, monkeypatch):
    adresar.mkdir()
    adresar.chmod(0o755)
    monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(adresar))
-   assert ai._cache_subor('AUT3', 'AB', '', '01', '737f') is None
+   assert ai._cache_subor('AUT3', '01') is None
 
 def test_cache_subor_symlink_vypne_cache(tmp_path, monkeypatch):
    ciel = tmp_path / 'ciel'
@@ -339,7 +340,7 @@ def test_cache_subor_symlink_vypne_cache(tmp_path, monkeypatch):
    odkaz = tmp_path / 'cache'
    odkaz.symlink_to(ciel)
    monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(odkaz))
-   assert ai._cache_subor('AUT3', 'AB', '', '01', '737f') is None
+   assert ai._cache_subor('AUT3', '01') is None
 
 def test_cache_vypnuta_none_nic_nerobi():
    assert _cache_ziskaj(None, OTAZKA_ID, 'k1') is None

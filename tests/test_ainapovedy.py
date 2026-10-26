@@ -124,7 +124,7 @@ def test_kluce_sady_sa_prepocita_po_zmene_suboru(subor, tmp_path):
 
 def test_stav_prazdna_ciastocna_uplna_cache(subor):
    kluce = _kluce(subor)
-   cache = ai._cache_subor(PREDMET, TRIEDA, '', KAPITOLA, FILEID)
+   cache = ai._cache_subor(PREDMET, KAPITOLA)
    assert _stav(kluce, cache, None) == {'hotove': 0, 'celkom': 3, 'bezi': False}
    for i, (kluc, (otazka_id, _)) in enumerate(kluce.items()):
       _cache_uloz(cache, otazka_id, kluc, f'hint {i}')
@@ -161,6 +161,30 @@ def test_ziaci_generuju_podla_zamku_testu():
    assert _ziaci_generuju() is False
 
 
+def test_cache_je_zdielana_medzi_sadami_toho_isteho_predmetu_a_kapitoly(monkeypatch, subor, tmp_path):
+   druha = tmp_path / 'res/xml/tests' / PREDMET / f'{PREDMET}_1B_{KAPITOLA}_cd34.xml'
+   druha.write_text(TESTS_XML.replace(f'trieda="{TRIEDA}"', 'trieda="1B"').replace(f'fileid="{FILEID}"', 'fileid="cd34"'), encoding='utf-8')
+   kluce_a = _kluce(subor)
+   kluce_b = _kluce(f'./res/xml/tests/{PREDMET}/{druha.name}')
+   assert set(kluce_a) == set(kluce_b)
+   cache = ai._cache_subor(PREDMET, KAPITOLA)
+   for kluc, (otazka_id, _) in kluce_a.items():
+      _cache_uloz(cache, otazka_id, kluc, 'hint z prvej sady')
+   assert _stav(kluce_b, cache, None) == {'hotove': 3, 'celkom': 3, 'bezi': False}
+   klient = _Klient([])
+   monkeypatch.setattr(ainapovedy.ollama, 'AsyncClient', lambda: klient)
+   zamok = _zamok_pregen(f'./res/xml/tests/{PREDMET}/{druha.name}')
+   assert cache is not None and zamok is not None
+   zamok.acquire()
+   anyio.run(_pregeneruj, kluce_b, cache, zamok, LOGGER)
+   assert klient.volania == []  # everything was generated for the first set
+
+
+def test_cache_inej_kapitoly_alebo_predmetu_je_oddelena():
+   assert ai._cache_subor(PREDMET, KAPITOLA) != ai._cache_subor(PREDMET, 'kap2')
+   assert ai._cache_subor(PREDMET, KAPITOLA) != ai._cache_subor('PIT', KAPITOLA)
+
+
 # --- _pregeneruj ---
 
 class _Klient:
@@ -179,7 +203,7 @@ class _Klient:
 def _spusti(monkeypatch, backend, subor, klient):
    monkeypatch.setattr(ainapovedy.ollama, 'AsyncClient', lambda: klient)
    kluce = _kluce(subor)
-   cache = ai._cache_subor(PREDMET, TRIEDA, '', KAPITOLA, FILEID)
+   cache = ai._cache_subor(PREDMET, KAPITOLA)
    assert cache is not None
    zamok = _zamok_pregen(subor)
    assert zamok is not None
@@ -199,7 +223,7 @@ def test_pregeneruj_doplni_vsetky_kluce_a_uvolni_zamok(monkeypatch, backend, sub
 
 def test_pregeneruj_preskoci_kluce_s_napovedou(monkeypatch, backend, subor):
    kluce = _kluce(subor)
-   cache = ai._cache_subor(PREDMET, TRIEDA, '', KAPITOLA, FILEID)
+   cache = ai._cache_subor(PREDMET, KAPITOLA)
    kluc, (otazka_id, _) = next(iter(kluce.items()))
    _cache_uloz(cache, otazka_id, kluc, 'uz tu je')
    klient = _Klient(['a', 'b'])
@@ -220,7 +244,7 @@ def test_pregeneruj_pocka_kym_ziak_caka_na_napovedu(monkeypatch, backend, subor)
    klient = _Klient(['a', 'b', 'c'])
    monkeypatch.setattr(ainapovedy.ollama, 'AsyncClient', lambda: klient)
    kluce = _kluce(subor)
-   cache = ai._cache_subor(PREDMET, TRIEDA, '', KAPITOLA, FILEID)
+   cache = ai._cache_subor(PREDMET, KAPITOLA)
    zamok = _zamok_pregen(subor)
    ziak = _zamok_napovede('test_a')
    assert cache is not None and zamok is not None and ziak is not None

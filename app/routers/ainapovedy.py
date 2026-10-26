@@ -133,7 +133,7 @@ def _sada(request: Request, predmet: str, trieda: str, skupina: str, kapitola: s
    if not os.path.isfile(subor):
       raise HTTPException(status_code=404, detail='Testy neexistujú')
    kluce = _kluce_sady(request.app.state.templates, predmet, kapitola, subor, request.app.state.logger)
-   return subor, _cache_subor(predmet, trieda, skupina, kapitola, fileid), kluce, _zamok_pregen(subor)
+   return subor, _cache_subor(predmet, kapitola), kluce, _zamok_pregen(subor)
 
 
 def _stav(kluce: dict[str, tuple[str, list[dict]]], cache_subor: str | None, zamok: FileLock | None) -> dict:
