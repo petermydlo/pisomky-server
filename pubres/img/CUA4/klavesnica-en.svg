@@ -89,8 +89,10 @@
 
    <!-- Rad 4 -->
    <g>
-      <rect x="10" y="172" width="117.5" height="50" rx="6"/>
-      <text class="shift" x="68.75" y="202">Shift</text>
+      <rect x="10" y="172" width="63.5" height="50" rx="6"/>
+      <text class="shift" x="41.75" y="202">Shift</text>
+      <rect x="77.5" y="172" width="50" height="50" rx="6"/>
+      <text class="hi" x="102.5" y="192">|</text><text class="lo" x="102.5" y="212">\</text>
       <rect x="131.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="156.5" y="203">Z</text>
       <rect x="185.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="210.5" y="203">X</text>
       <rect x="239.5" y="172" width="50" height="50" rx="6"/><text class="ch" x="264.5" y="203">C</text>
