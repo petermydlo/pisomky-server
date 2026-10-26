@@ -80,6 +80,10 @@ app.state.perm_cache = {}
 app.state.ai_provider = get_provider()
 
 logging.basicConfig(level=logging.INFO)
+#hypercorn.error ma vlastny handler, ktory si Hypercorn nastavuje (aj propagate) az po nacitani appky;
+#filter na root handleri zabrani, aby sa jeho spravy vypisovali este raz cez basicConfig
+for _handler in logging.getLogger().handlers:
+   _handler.addFilter(lambda zaznam: zaznam.name != "hypercorn.error")
 app.state.logger = logging.getLogger("pisomky")
 
 #spracovanie poziadaviek, len ak maju spravne nastavenu hlavicku Host
