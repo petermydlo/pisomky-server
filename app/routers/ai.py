@@ -171,23 +171,13 @@ def _cache_subor(predmet: str, trieda: str, skupina: str, kapitola: str, fileid:
 
 def _cache_nacitaj(subor: str) -> dict:
    """Cache layout: {otazka_id: {kluc: {'napovedy': [{'hint', 'keys', 'skore'}]}}}. `skore` is
-   the sum of the student ratings (+1 helped, -1 did not help), 0 until rated. Entries from
-   the earlier layouts (a single hint; `zle` counter and `generuj` flag) are upgraded on load,
-   and hints with a negative score are dropped."""
+   the sum of the student ratings (+1 helped, -1 did not help), 0 until rated."""
    try:
       with open(subor, encoding='utf-8') as f:
          data = json.load(f)
    except (OSError, ValueError):
       return {}
-   if not isinstance(data, dict):
-      return {}
-   for varianty in data.values():
-      for kluc, zaznam in varianty.items():
-         if 'napovedy' not in zaznam:
-            zaznam = {'napovedy': [{'hint': zaznam['hint'], 'keys': zaznam.get('keys', '')}]}
-         napovedy = [{'hint': n['hint'], 'keys': n.get('keys', ''), 'skore': n.get('skore', -n.get('zle', 0))} for n in zaznam['napovedy']]
-         varianty[kluc] = {'napovedy': [n for n in napovedy if n['skore'] >= 0]}
-   return data
+   return data if isinstance(data, dict) else {}
 
 
 def _cache_zapis(subor: str, data: dict) -> None:

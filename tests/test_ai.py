@@ -326,16 +326,6 @@ def test_cache_plny_pool_vyhodi_hint_s_najnizsim_skore():
 def test_skore_hodnotenia():
    assert [_skore_hodnotenia(v) for v in ('1', '0', '', None, '2')] == [1, -1, 0, 0, 0]
 
-def test_cache_stary_format_sa_nacita_ako_pool(tmp_path):
-   (tmp_path / 'napovedy.json').write_text('{"q1": {"k1": {"hint": "stary", "keys": "a"}}}', encoding='utf-8')
-   assert _cache_ziskaj(CS, 'q1', 'k1') == {'hint': 'stary', 'keys': 'a', 'skore': 0}
-
-def test_cache_format_so_zle_sa_prevedie_na_skore_a_zle_hinty_vypadnu(tmp_path):
-   (tmp_path / 'napovedy.json').write_text(
-      '{"q1": {"k1": {"generuj": true, "napovedy": [{"hint": "dobry", "keys": "a", "zle": 0}, {"hint": "zly", "keys": "", "zle": 2}]}}}',
-      encoding='utf-8')
-   assert ai._cache_nacitaj(CS)['q1']['k1'] == {'napovedy': [{'hint': 'dobry', 'keys': 'a', 'skore': 0}]}
-
 def test_cache_poskodeny_subor_je_prazdna_cache(tmp_path):
    (tmp_path / 'napovedy.json').write_text('{nie json', encoding='utf-8')
    assert _cache_ziskaj(CS, OTAZKA_ID, 'k1') is None
