@@ -1077,6 +1077,19 @@ def store_mcq_scores(kluc: str, cache: dict | None = None) -> None:
    except Exception:
       pass
 
+def je_odhalene(kluc: str, cache: dict | None = None) -> bool:
+   """Vrati True, ak ucitel odhalil zakovi spravne odpovede (answers test/@odhalene)."""
+   test_subor = find_test_file(kluc, cache)
+   if not test_subor:
+      return False
+   answer_subor = test_subor.replace('/tests/', '/answers/', 1)
+   try:
+      tree = ET.parse(answer_subor)
+   except (OSError, ET.XMLSyntaxError):
+      return False
+   test = _xfind(tree, './/test[@id=$id]', id=kluc)
+   return test is not None and test.get('odhalene') == '1'
+
 def get_score(proc: 'PySaxonProcessor', kluc: str, cache: dict | None = None) -> dict | None:
    """Vypocita skore testu cez XQuery. Vracia dict so ziskane/maximum/percento, alebo None."""
    test_subor = find_test_file(kluc, cache)

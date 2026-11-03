@@ -403,6 +403,47 @@ document.addEventListener('DOMContentLoaded', () => {
       }
    });
 
+   //odhalenie spravnych odpovedi zakom: checkbox pri teste a hlavickovy checkbox sady
+   function aktualizujHlavicku(kontajner) {
+      const hlavicka = kontajner.querySelector('.odhalit-vsetky');
+      if (!hlavicka) return;
+      const boxy = [...kontajner.querySelectorAll('.odhalit-test:not(:disabled)')];
+      const zaskrtnute = boxy.filter(b => b.checked).length;
+      hlavicka.disabled = boxy.length === 0;
+      hlavicka.checked = boxy.length > 0 && zaskrtnute === boxy.length;
+      hlavicka.indeterminate = zaskrtnute > 0 && zaskrtnute < boxy.length;
+   }
+
+   document.addEventListener('change', async (event) => {
+      const box = event.target.closest('.odhalit-test, .odhalit-vsetky');
+      if (!box) return;
+      const kontajner = box.closest('.collapse');
+      const jeTest = box.classList.contains('odhalit-test');
+      const data = {...skupinaData(box), odhalene: box.checked ? '1' : '0'};
+      if (jeTest) data.kluc = box.value;
+      try {
+         const resp = await fetch('/admin/setrevealed', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams(data)
+         });
+         if (resp.ok) {
+            if (!jeTest) kontajner.querySelectorAll('.odhalit-test:not(:disabled)').forEach(b => { b.checked = box.checked; });
+         } else {
+            if (jeTest) box.checked = !box.checked;
+            if (resp.status === 409) zobrazNotifikaciu('Správne odpovede sa dajú odhaliť až po skončení testu!');
+            else chybaNotifikaciu(resp.status);
+         }
+      } catch (err) {
+         console.error('Chyba:', err);
+         if (jeTest) box.checked = !box.checked;
+         zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
+      }
+      aktualizujHlavicku(kontajner);
+   });
+
+   document.querySelectorAll('.odhalit-vsetky').forEach(h => aktualizujHlavicku(h.closest('.collapse')));
+
    window.addEventListener('hashchange', onHashChange, false);
    onHashChange();
    nacitajNapovedyKarty();

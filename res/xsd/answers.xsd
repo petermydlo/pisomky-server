@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
+   <xs:simpleType name="Flag">
+      <xs:restriction base="xs:string">
+         <xs:enumeration value="1"/>
+      </xs:restriction>
+   </xs:simpleType>
+
    <!-- Odpoveď žiaka na jednu otázku: text (napr. "a", "b", alebo voľný text) -->
    <xs:complexType name="OtazkaOdpoved">
       <xs:simpleContent>
@@ -22,6 +28,8 @@
       <xs:attribute name="id" type="xs:string" use="required"/>
       <!-- dat: dátum a čas odovzdania vo formáte ISO 8601 -->
       <xs:attribute name="dat" type="xs:dateTime" use="required"/>
+      <!-- odhalene: učiteľ odhalil žiakovi správne odpovede a hodnotenie (po skončení testu) -->
+      <xs:attribute name="odhalene" type="Flag"/>
    </xs:complexType>
 
    <xs:element name="odpovede">

@@ -11,7 +11,7 @@ from fastapi.exceptions import HTTPException
 
 from app.utils import modify_test_xml
 from app.routers.testrun import write_answers
-from app.routers.results import write_marks
+from app.routers.results import write_marks, write_odhalene
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
 from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
 
@@ -371,3 +371,62 @@ def test_regeneratetests_odmietne_ak_su_odpovede(tests_file, answers_file):
       asyncio.run(regeneratetests(request, PREDMET, TRIEDA, KAPITOLA, FILEID, SKUPINA))  # type: ignore[arg-type]
    assert exc.value.status_code == 409
    assert tests_file.read_text(encoding='utf-8') == povodny
+
+
+# --- write_odhalene ---
+
+ANSWERS_DVA_XML = """\
+<?xml version='1.0' encoding='utf-8'?>
+<odpovede xml:lang="sk">
+   <test id="T1" dat="2026-01-01T10:00:00"/>
+   <test id="T2" dat="2026-01-01T10:05:00" odhalene="1"/>
+</odpovede>
+"""
+
+
+def _odhalene(cesta, kluc):
+   test = ET.parse(str(cesta)).find(f'.//test[@id="{kluc}"]')
+   assert test is not None
+   return test.get('odhalene')
+
+
+def test_write_odhalene_jeden_test(tmp_path):
+   cesta = tmp_path / 'a.xml'
+   cesta.write_text(ANSWERS_DVA_XML, encoding='utf-8')
+   zmenene = write_odhalene(FileLock(f'{cesta}.lock'), cesta, True, {'T1', 'T2'}, 'T1')
+   assert zmenene == ['T1']
+   assert _odhalene(cesta, 'T1') == '1'
+
+
+def test_write_odhalene_test_pred_koncom_vrati_409(tmp_path):
+   cesta = tmp_path / 'a.xml'
+   cesta.write_text(ANSWERS_DVA_XML, encoding='utf-8')
+   with pytest.raises(HTTPException) as e:
+      write_odhalene(FileLock(f'{cesta}.lock'), cesta, True, set(), 'T1')
+   assert e.value.status_code == 409
+   assert _odhalene(cesta, 'T1') is None
+
+
+def test_write_odhalene_neznamy_kluc_vrati_404(tmp_path):
+   cesta = tmp_path / 'a.xml'
+   cesta.write_text(ANSWERS_DVA_XML, encoding='utf-8')
+   with pytest.raises(HTTPException) as e:
+      write_odhalene(FileLock(f'{cesta}.lock'), cesta, True, {'T1'}, 'X')
+   assert e.value.status_code == 404
+
+
+def test_write_odhalene_cela_sada_odhali_len_skoncene(tmp_path):
+   cesta = tmp_path / 'a.xml'
+   cesta.write_text(ANSWERS_DVA_XML.replace(' odhalene="1"', ''), encoding='utf-8')
+   zmenene = write_odhalene(FileLock(f'{cesta}.lock'), cesta, True, {'T2'})
+   assert zmenene == ['T2']
+   assert _odhalene(cesta, 'T1') is None
+   assert _odhalene(cesta, 'T2') == '1'
+
+
+def test_write_odhalene_skrytie_nepotrebuje_skoncene(tmp_path):
+   cesta = tmp_path / 'a.xml'
+   cesta.write_text(ANSWERS_DVA_XML, encoding='utf-8')
+   zmenene = write_odhalene(FileLock(f'{cesta}.lock'), cesta, False, set())
+   assert zmenene == ['T2']
+   assert _odhalene(cesta, 'T2') is None

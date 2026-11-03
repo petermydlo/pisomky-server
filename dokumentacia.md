@@ -474,7 +474,8 @@ Koreňový element `<odpovede>` — **povinné**: `predmet`, `trieda`, `skupina`
 `kapitola`, `fileid`. **Voliteľné**: `autor`.
 
 Element `<test>` (jeden pokus) — **povinné**: `id` (kľúč), `dat` (dátum a čas
-odovzdania, ISO 8601).
+odovzdania, ISO 8601). **Voliteľné**: `odhalene="1"` — učiteľ odhalil žiakovi
+správne odpovede (pozri kapitolu 10.2).
 
 Element `<otazka>` — **povinné**: `id`; textový obsah = odpoveď žiaka (napr. písmeno
 `a`/`b`, alebo voľný text/príkaz pri otvorenej otázke). **Voliteľné**: `body`
@@ -614,6 +615,17 @@ pre otvorené otázky) alebo `koment` (komentár) do príslušného `<otazka>` e
 súbore odpovedí, naviazané na presný `dat` (dátum odovzdania), aby sa neprepísalo
 neskoršie odovzdanie.
 
+**Odhalenie správnych odpovedí žiakovi.** V prehľade `/admin` je pred stĺpcom *Kód*
+checkbox pri každom teste a v hlavičke sady jeden pre všetky testy sady.
+`POST /admin/setrevealed` (`odhalene=1|0`, s `kluc` pre jeden test, bez neho pre celú
+sadu) nastaví/zruší `test/@odhalene` v súbore odpovedí. Odhaliť sa dá len test, ktorému
+už skončil čas písania (stav `after`, teda s nastaveným `stop`) a ktorý má odovzdané
+odpovede; server to kontroluje (409), nie len zakázaný checkbox. Skryť sa dá kedykoľvek.
+Po zadaní kódu a pri zapnutom `@odhalene` (a po skončení času) žiak namiesto
+samotného skóre uvidí `showresult_student.xsl`: pri MCQ správne/nesprávne
+odpovede rovnako ako učiteľ, pri otvorených otázkach svoj text, body a komentár
+učiteľa (neohodnotená otázka je označená ako „nehodnotené“).
+
 ### 10.3 Hodnotiaca stupnica (`scales.xml`)
 
 Percento získaných bodov sa prevádza na 5-stupňovú známku podľa hraníc zvolenej
@@ -736,6 +748,7 @@ Tieto skripty spúšťa učiteľ/admin ručne z príkazového riadka na serveri,
 | `/admin/changetime` | POST | Zmení začiatok/koniec písania (pre celú sadu alebo jedného žiaka) |
 | `/admin/showresult/{kluc}` | GET | Formulár na opravu/hodnotenie jedného žiaka |
 | `/admin/savemarks/{kluc}` | POST | Uloží body a komentáre k odpovediam žiaka |
+| `/admin/setrevealed` | POST | Odhalí/skryje žiakom správne odpovede (jeden test alebo celá sada) |
 | `/admin/groupstatistics` | POST | Štatistika úspešnosti skupiny/kategórií/otázok |
 | `/admin/downloadresult/{kluc}` | GET | PDF s výsledkom jedného žiaka |
 | `/admin/downloadtests` | POST | PDF so zadaniami všetkých testov sady (s QR kódmi) |

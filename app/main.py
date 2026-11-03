@@ -10,7 +10,7 @@ from saxonche import PySaxonProcessor
 from fastapi.responses import HTMLResponse
 from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
-from app.utils import find_test, xslt_to_string, get_test_metadata, get_time_state, get_score, store_mcq_scores
+from app.utils import find_test, xslt_to_string, get_test_metadata, get_time_state, get_score, store_mcq_scores, je_odhalene
 from app.routers.ai import OLLAMA_RUNNER_OPTIONS, _spocitaj_napovedy_testu
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
@@ -132,6 +132,9 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
          return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'beforeTime'})
       if stav == 'after':
          await run_in_threadpool(store_mcq_scores, kluc, request.app.state.kluc_cache)
+         if je_odhalene(kluc, request.app.state.kluc_cache):
+            vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showresult_student.xsl', xdm_node=node, xslt_pools=request.app.state.xslt_pools)
+            return HTMLResponse(content=vysledok, status_code=200)
          score = get_score(proc, kluc, request.app.state.kluc_cache)
          if score:
             return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'scored', 'score': score})

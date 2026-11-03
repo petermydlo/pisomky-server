@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 
 from pathlib import Path
-from app.mytypes import StringForm, StringPath, StringHeader
-from app.utils import find_test, xslt_to_string, xquery_to_string
+from app.mytypes import StringForm, StringFormOptional, StringPath, StringHeader
+from app.utils import find_test, xslt_to_string, xquery_to_string, test_xml_path, get_time_state
 import lxml.etree as ET
 from fastapi.concurrency import run_in_threadpool
 from filelock import FileLock
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import HTMLResponse
+from typing import TYPE_CHECKING
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.exceptions import HTTPException
+
+if TYPE_CHECKING:
+   from saxonche import PySaxonProcessor
 
 router = APIRouter()
 
@@ -60,6 +64,59 @@ def write_marks(lock: FileLock, cesta: Path, form_data: dict, kluc: str, dat: st
          tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
       except Exception as e:
          raise Exception('chyba znamky: ' + str(e))
+
+@router.post('/admin/setrevealed', response_class=JSONResponse)
+async def setrevealed(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, odhalene: StringForm, skupina: StringForm = '', kluc: StringFormOptional = None):
+   """Odhali (odhalene=1) alebo skryje (odhalene=0) zakom spravne odpovede; bez kluca pre celu sadu testov."""
+   try:
+      cesta_testov = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
+   except ValueError as e:
+      raise HTTPException(status_code=400, detail=str(e))
+   cesta = Path(cesta_testov.replace('/tests/', '/answers/', 1))
+   if not cesta.is_file():
+      raise HTTPException(status_code=404, detail='Súbor odpovedí nenájdený')
+   odhalit = odhalene == '1'
+   skoncene = skoncene_testy(request.app.state.proc, cesta_testov) if odhalit else set()
+   lock = FileLock(f'{cesta}.lock')
+   try:
+      zmenene = await run_in_threadpool(write_odhalene, lock, cesta, odhalit, skoncene, kluc)
+   except HTTPException:
+      raise
+   except Exception as e:
+      request.app.state.logger.error(f'chyba setrevealed: {e}')
+      raise HTTPException(status_code=400, detail='chyba setrevealed: ' + str(e))
+   return JSONResponse(content={'zmenene': zmenene}, status_code=200)
+
+def skoncene_testy(proc: 'PySaxonProcessor', cesta_testov: str) -> set[str]:
+   """Vrati id testov, ktorym uz skoncil cas pisania (stav 'after')."""
+   node = proc.parse_xml(xml_file_name=cesta_testov)
+   xp = proc.new_xpath_processor()
+   xp.set_context(xdm_item=node)
+   return {t.get_attribute_value('id') for t in (xp.evaluate('/testy/test') or []) if get_time_state(t, t.get_parent()) == 'after'}
+
+def write_odhalene(lock: FileLock, cesta: Path, odhalit: bool, skoncene: set[str], kluc: str | None = None) -> list[str]:
+   """Nastavi/zrusi test/@odhalene v subore odpovedi; odhalit sa daju len testy zo 'skoncene' a s elementom v subore."""
+   with lock:
+      xmlParser = ET.XMLParser(remove_blank_text=True)
+      tree = ET.parse(cesta, xmlParser)
+      testy = [t for t in tree.getroot().findall('test') if kluc is None or t.get('id') == kluc]
+      if kluc is not None and not testy:
+         raise HTTPException(status_code=404, detail='Test nenájdený v súbore odpovedí')
+      if odhalit and kluc is not None and kluc not in skoncene:
+         raise HTTPException(status_code=409, detail='Test ešte neskončil')
+      zmenene = []
+      for t in testy:
+         if odhalit:
+            if t.get('id') in skoncene and t.get('odhalene') != '1':
+               t.set('odhalene', '1')
+               zmenene.append(str(t.get('id')))
+         elif 'odhalene' in t.attrib:
+            del t.attrib['odhalene']
+            zmenene.append(str(t.get('id')))
+      if zmenene:
+         ET.indent(tree, space='   ')
+         tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
+      return zmenene
 
 @router.post('/admin/groupstatistics', response_class=HTMLResponse)
 async def groupstatistics(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', X_Remote_User: StringHeader = ''):

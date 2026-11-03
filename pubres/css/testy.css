@@ -429,6 +429,39 @@ body.admin-overview {
    align-items: center;
 }
 
+.flex-container-table-odpoved > div.odpoved-siroka {
+   flex: 100%;
+}
+
+.odpoved-text {
+   margin: 0;
+   white-space: pre-wrap;
+   font-family: inherit;
+}
+
+.grid > div.odhalit-hlavicka {
+   flex-direction: column;
+   gap: 0;
+   padding-top: 0.1rem;
+   padding-bottom: 0.1rem;
+}
+
+.odhalit-hlavicka i {
+   font-size: 0.7rem;
+   line-height: 1;
+}
+
+.odhalit-hlavicka input {
+   margin: 0;
+}
+
+.odhalit-bunka {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   gap: 0.4rem;
+}
+
 /* groupstatistics */
 .gs-riadok {
    display: flex;

@@ -10,6 +10,13 @@
 
 <xsl:param name="autor"/>
 
+<xsl:function name="my:skoncil" as="xs:boolean">
+   <xsl:param name="testnode" as="element()"/>
+   <xsl:variable name="stop" select="normalize-space(($testnode/@stop[normalize-space(.) != ''], $testnode/../@stop[normalize-space(.) != ''])[1])"/>
+   <xsl:variable name="dt" select="if (matches($stop, 'T\d\d:\d\d$')) then concat($stop, ':00') else $stop"/>
+   <xsl:sequence select="$dt castable as xs:dateTime and xs:dateTime($dt) &lt; adjust-dateTime-to-timezone(current-dateTime(), ())"/>
+</xsl:function>
+
 <xsl:template name="xsl:initial-template">
    <xsl:variable name="vsetky" select="
       collection('../xml/tests?select=*.xml;recurse=yes;on-error=ignore')/testy[@predmet != 'DEMO'][@autor=$autor or @autor='' or not(@autor)] |
@@ -141,7 +148,8 @@
                               <xsl:if test="$ma-test">
                                  <div class="collapse {generate-id()}">
                                     <div class="grid">
-                                       <div class="neviditelny grid-span span2"/>
+                                       <div class="neviditelny"/>
+                                       <div class="bold bg-info bg-opacity-25 odhalit-bunka odhalit-hlavicka"><i class="bi bi-eye"/><input type="checkbox" class="form-check-input odhalit-vsetky" title="Odhaliť žiakom správne odpovede"/></div>
                                        <div class="bold bg-info bg-opacity-25">Kód</div>
                                        <div class="bold bg-info bg-opacity-25">Start</div>
                                        <div class="bold bg-info bg-opacity-25">Stop</div>
@@ -210,7 +218,22 @@
    <xsl:param name="id"/>
    <xsl:param name="vybtesty"/>
    <xsl:variable name="rid" select="@id"/>
-   <div class="neviditelny grid-span span2"></div>
+   <xsl:variable name="rodpoved" select="$vybtesty/odpovede/test[@id = $rid]"/>
+   <xsl:variable name="odhalene" select="$rodpoved/@odhalene = '1'"/>
+   <xsl:variable name="mozno-odhalit" select="exists($rodpoved) and my:skoncil(.)"/>
+   <div class="neviditelny"></div>
+   <div class="odhalit-bunka">
+      <input type="checkbox" class="form-check-input odhalit-test" value="{@id}">
+         <xsl:if test="$odhalene"><xsl:attribute name="checked">checked</xsl:attribute></xsl:if>
+         <xsl:if test="not($odhalene or $mozno-odhalit)">
+            <xsl:attribute name="disabled">disabled</xsl:attribute>
+            <xsl:attribute name="title">Odhaliť sa dá až po skončení testu a odovzdaní odpovedí</xsl:attribute>
+         </xsl:if>
+         <xsl:if test="$odhalene or $mozno-odhalit">
+            <xsl:attribute name="title">Odhaliť žiakovi správne odpovede</xsl:attribute>
+         </xsl:if>
+      </input>
+   </div>
    <div class="truncate" title="{@id}"><a class="kluc" href="/admin/{@id}"><xsl:value-of select="@id"/></a></div>
    <div><span><xsl:value-of select="@start"/></span><span id="{@id}" class="startT penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
    <div><span><xsl:value-of select="@stop"/></span><span id="{@id}" class="stopT penIcon" title="Stop time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
