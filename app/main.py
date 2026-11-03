@@ -7,7 +7,7 @@ import anyio
 from typing import Annotated
 from fastapi import FastAPI, Header, Request
 from saxonche import PySaxonProcessor
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from app.utils import find_test, xslt_to_string, get_test_metadata, get_time_state, get_score, store_mcq_scores, je_odhalene
@@ -26,6 +26,7 @@ from app.routers import ainapovedy
 from app.routers import importanswers
 from app.routers import aievaluate
 from app.routers.aiproviders import get_provider
+from app.permissions import readonly_blokuje
 
 
 async def custom_http_exception_handler(request: Request, _: HTTPException):
@@ -88,6 +89,13 @@ app.state.logger = logging.getLogger("pisomky")
 
 #spracovanie poziadaviek, len ak maju spravne nastavenu hlavicku Host
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=[os.getenv('ALLOWED_HOST', 'pisomky.ternac.net')])
+
+#ucty s opravnenim 'readonly' (.perm) smu na /admin* len citat, pozri permissions.readonly_blokuje
+@app.middleware('http')
+async def readonly_ucty(request: Request, call_next):
+   if readonly_blokuje(request.app.state.perm_cache, request.headers.get('X-Remote-User'), request.method, request.url.path):
+      return JSONResponse(status_code=403, content={'detail': 'Účet je iba na čítanie'})
+   return await call_next(request)
 
 #zakomponovanie ineho suboru
 app.include_router(tests.router)

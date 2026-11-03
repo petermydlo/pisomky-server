@@ -5,12 +5,24 @@
 Format riadku: 'meno: akcia:PREDMET[,PREDMET...] akcia:ALL ...'
 Akcie: create, edit, delete, createp (vytvorenie predmetu, davaj len ako ALL),
 deletep (vymazanie celeho predmetu). Chybajuci zaznam alebo akcia = zakazane.
+Zvlastna akcia 'readonly:ALL' robi z uctu iba citaci: na /admin* su povolene len GET/HEAD/OPTIONS
+a POST na cesty z READONLY_POST_POVOLENE, vsetko ostatne (aj AI) vrati 403 (pozri readonly_blokuje).
 """
 
 from pathlib import Path
 from fastapi.exceptions import HTTPException
 
 PERM_FILE = Path('.perm')
+
+#POST cesty, ktore len zobrazuju/generuju vystup a nic nemenia (povolene pre 'readonly' ucet)
+READONLY_POST_POVOLENE = frozenset({
+   '/admin/showquestions',
+   '/admin/groupstatistics',
+   '/admin/feedbackreport',
+   '/admin/downloadresults',
+   '/admin/downloadtests',
+   '/admin/downloadcodes',
+})
 
 
 def _parse_perm_file(cesta: Path) -> dict[str, dict[str, set[str]]]:
@@ -62,6 +74,17 @@ def check_permission(cache: dict, user: str, akcia: str, predmet: str) -> None:
    """Vyhodi HTTPException(403), ak pouzivatel nema opravnenie 'akcia' pre 'predmet'."""
    if not has_permission(cache, user, akcia, predmet):
       raise HTTPException(status_code=403, detail=f'Nemáte oprávnenie "{akcia}" pre predmet {predmet}')
+
+
+def readonly_blokuje(cache: dict, user: str | None, method: str, path: str) -> bool:
+   """True, ak ma byt poziadavka 'readonly' pouzivatela na /admin* zamietnuta."""
+   if not user or not path.startswith('/admin'):
+      return False
+   if not has_permission(cache, user, 'readonly', 'ALL'):
+      return False
+   if method in ('GET', 'HEAD', 'OPTIONS'):
+      return False
+   return not (method == 'POST' and path.rstrip('/') in READONLY_POST_POVOLENE)
 
 
 def predmet_from_cesta(cesta: str) -> str:

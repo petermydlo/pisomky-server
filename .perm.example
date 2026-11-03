@@ -4,3 +4,5 @@
 # createp/deletep: vytvorenie/vymazanie celeho predmetu. createp davaj len ako ALL
 # (novy predmet este neexistuje, takze createp:PREDMET by sa nikdy nedalo splnit).
 ucitel1: edit:SXT4 delete:ALL create:AUT3,PIT4 createp:ALL deletep:SXT4
+# readonly:ALL = ucet len na citanie (na /admin* iba GET a zobrazovacie POST, pozri READONLY_POST_POVOLENE v app/permissions.py)
+ctenar: readonly:ALL

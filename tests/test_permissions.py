@@ -83,3 +83,30 @@ def test_deletep_konkretny_predmet(perm_file):
    cache = {}
    assert permissions.has_permission(cache, 'mydlo', 'deletep', 'SXT4') is True
    assert permissions.has_permission(cache, 'mydlo', 'deletep', 'AUT3') is False
+
+
+def test_readonly_blokuje_zapisove_cesty(perm_file):
+   perm_file.write_text('ctenar: readonly:ALL\n', encoding='utf-8')
+   cache = {}
+   for metoda, cesta in [('POST', '/admin/createtests'), ('DELETE', '/admin/deletetests'), ('POST', '/admin/savemarks/abc'),
+                         ('POST', '/admin/process_question'), ('POST', '/admin/ai/evaluate-open'),
+                         ('POST', '/admin/setrevealed')]:
+      assert permissions.readonly_blokuje(cache, 'ctenar', metoda, cesta) is True, (metoda, cesta)
+
+
+def test_readonly_povoluje_citanie_a_zobrazovacie_post(perm_file):
+   perm_file.write_text('ctenar: readonly:ALL\n', encoding='utf-8')
+   cache = {}
+   for metoda, cesta in [('GET', '/admin'), ('GET', '/admin/showresult/abc'), ('HEAD', '/admin/question'),
+                         ('POST', '/admin/showquestions'), ('POST', '/admin/groupstatistics'),
+                         ('POST', '/admin/feedbackreport'), ('POST', '/admin/downloadresults'),
+                         ('POST', '/admin/downloadtests'), ('POST', '/admin/downloadcodes')]:
+      assert permissions.readonly_blokuje(cache, 'ctenar', metoda, cesta) is False, (metoda, cesta)
+
+
+def test_readonly_sa_tyka_len_uctu_s_readonly_a_len_admin(perm_file):
+   perm_file.write_text('ctenar: readonly:ALL\nucitel: edit:ALL\n', encoding='utf-8')
+   cache = {}
+   assert permissions.readonly_blokuje(cache, 'ucitel', 'POST', '/admin/createtests') is False
+   assert permissions.readonly_blokuje(cache, None, 'POST', '/admin/createtests') is False
+   assert permissions.readonly_blokuje(cache, 'ctenar', 'POST', '/saveanswers/abc') is False
