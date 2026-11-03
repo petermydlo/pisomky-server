@@ -5,7 +5,7 @@
 <!-- Bootstrap CSS + Bootstrap Icons – spoločné pre všetky stránky -->
 <xsl:template name="cdn-css">
    <link nonce="NGINX_CSP_NONCE" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous"/>
-   <link nonce="NGINX_CSP_NONCE" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"/>
+   <link rel="stylesheet" href="/pubres/css/bootstrap-icons/bootstrap-icons.min.css"/>
 </xsl:template>
 
 <!-- Popper.js – vyžadovaný pre Bootstrap dropdown (napr. selectcreate) -->
