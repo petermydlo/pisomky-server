@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -14,10 +15,12 @@ from saxonche import PySaxonProcessor
 from app.routers import ai, ainapovedy
 from app.routers.ai import _cache_nacitaj, _cache_uloz, _priprav_prompt, _zamok_napovede
 from app.routers.ainapovedy import (
+   _beat_cesta,
    _kluce_sady,
    _pocet_hotovych,
    _pregeneruj,
    _stav,
+   _zapis_beat,
    _zamok_drzany,
    _zamok_pregen,
    _ziaci_generuju,
@@ -136,14 +139,27 @@ def test_stav_bez_cache_je_nula(subor):
    assert _pocet_hotovych(_kluce(subor), None) == 0
 
 
-def test_stav_bezi_podla_zamku(subor):
+def test_stav_bezi_podla_beat_suboru(subor):
    zamok = _zamok_pregen(subor)
    assert zamok is not None
    assert _stav({}, None, zamok)['bezi'] is False
+   beat = _beat_cesta(zamok)
+   _zapis_beat(beat)
+   assert _stav({}, None, _zamok_pregen(subor))['bezi'] is True  # any instance, the lock is not needed
+   stary = time.time() - ainapovedy.BEAT_TTL - 1
+   os.utime(beat, (stary, stary))
+   assert _stav({}, None, zamok)['bezi'] is False  # worker gone: the beat went stale
+
+
+def test_stav_nesaha_na_zamok(subor):
+   zamok = _zamok_pregen(subor)
+   assert zamok is not None
    zamok.acquire()
    try:
-      assert _stav({}, None, zamok)['bezi'] is True  # also for the instance that holds the lock
-      assert _stav({}, None, _zamok_pregen(subor))['bezi'] is True
+      assert _stav({}, None, zamok)['bezi'] is False  # held lock without a beat is not a running job
+      druha = _zamok_pregen(subor)
+      assert druha is not None
+      assert _zamok_drzany(druha) is True  # the lock itself still works for the start
    finally:
       zamok.release()
 
@@ -219,6 +235,24 @@ def test_pregeneruj_doplni_vsetky_kluce_a_uvolni_zamok(monkeypatch, backend, sub
    assert _stav(kluce, cache, zamok) == {'hotove': 3, 'celkom': 3, 'bezi': False}
    hinty = {n['hint'] for varianty in _cache_nacitaj(cache).values() for v in varianty.values() for n in v['napovedy']}
    assert hinty == {'prvy', 'druhy', 'treti'}
+
+
+def test_pregeneruj_bije_pocas_volania_a_potom_zmaze_beat(monkeypatch, backend, subor):
+   monkeypatch.setattr(ainapovedy, 'BEAT_KROK', 0.02)
+   videne = []
+
+   class Pomaly(_Klient):
+      async def chat(self, **kwargs):
+         beat = _beat_cesta(_zamok_pregen(subor))  # type: ignore[arg-type]
+         prvy = os.stat(beat).st_mtime_ns
+         await anyio.sleep(0.15)  # a long model call: the beat keeps going meanwhile
+         videne.append(os.stat(beat).st_mtime_ns > prvy)
+         return await super().chat(**kwargs)
+
+   kluce, cache, zamok = _spusti(monkeypatch, backend, subor, Pomaly(['a', 'b', 'c']))
+   assert videne == [True, True, True]
+   assert not os.path.exists(_beat_cesta(zamok))
+   assert _stav(kluce, cache, zamok)['bezi'] is False
 
 
 def test_pregeneruj_preskoci_kluce_s_napovedou(monkeypatch, backend, subor):

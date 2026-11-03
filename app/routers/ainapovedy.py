@@ -3,6 +3,7 @@
 import glob
 import hashlib
 import os
+import time
 import anyio
 import ollama
 from filelock import FileLock, Timeout
@@ -25,6 +26,10 @@ from app.utils import test_xml_path
 router = APIRouter()
 
 VOLNO_KROK = 2
+#while a pre-generation job runs it touches its beat file every BEAT_KROK s; it counts as running
+#while the file is younger than BEAT_TTL s (a few missed beats = the worker is gone)
+BEAT_KROK = 10
+BEAT_TTL = 30
 
 # {cesta testov: ((mtime testov, mtime otazok), {cache kluc: (otazka_id, messages)})}
 _KLUCE_CACHE: dict[str, tuple[tuple[int, int], dict[str, tuple[str, list[dict]]]]] = {}
@@ -82,6 +87,32 @@ def _zamok_pregen(subor: str) -> FileLock | None:
    return FileLock(os.path.join(ai.CACHE_ADRESAR, f'pregen_{hashlib.sha256(subor.encode("utf-8")).hexdigest()[:16]}.lock'))
 
 
+def _beat_cesta(zamok: FileLock) -> str:
+   return str(zamok.lock_file).removesuffix('.lock') + '.beat'
+
+
+def _zapis_beat(cesta: str) -> None:
+   """Marks the job as running. Display only, so a failure (full tmpfs) must not stop the job."""
+   try:
+      with open(cesta, 'a'):
+         os.utime(cesta)
+   except OSError:
+      pass
+
+
+def _bezi(zamok: FileLock | None) -> bool:
+   """True while the job of the set runs. The lock is not probed on purpose: a probe holds it for
+   a moment and a start trying to take it then would wrongly think the job runs. The lock only
+   serves the start (one job per set, released by the kernel when the worker dies); this state
+   comes from the beat file, which a worker that died stops touching."""
+   if not zamok:
+      return False
+   try:
+      return time.time() - os.stat(_beat_cesta(zamok)).st_mtime < BEAT_TTL
+   except OSError:
+      return False
+
+
 def _zamok_drzany(zamok: FileLock) -> bool:
    """True when somebody holds the lock. A new instance is used for the probe: an instance is
    reentrant, so the one that holds the lock would always acquire it again."""
@@ -99,9 +130,13 @@ def _ziaci_generuju() -> bool:
    return any(_zamok_drzany(FileLock(cesta)) for cesta in glob.glob(os.path.join(ai.CACHE_ADRESAR, 'bezi_*.lock')))
 
 
-async def _pregeneruj(kluce: dict[str, tuple[str, list[dict]]], cache_subor: str, zamok: FileLock, logger) -> None:
-   """Generates one hint for every key without a hint in the cache, one after another. While
-   a student waits for a hint the job pauses, so it never queues in front of the students."""
+async def _bi(cesta: str) -> None:
+   while True:
+      _zapis_beat(cesta)
+      await anyio.sleep(BEAT_KROK)
+
+
+async def _generuj(kluce: dict[str, tuple[str, list[dict]]], cache_subor: str, logger) -> None:
    try:
       client = ollama.AsyncClient()
       for kluc, (otazka_id, messages) in kluce.items():
@@ -120,7 +155,24 @@ async def _pregeneruj(kluce: dict[str, tuple[str, list[dict]]], cache_subor: str
             _cache_uloz(cache_subor, otazka_id, kluc, hint)
    except Exception as e:
       logger.error(f'chyba pregeneracia napovedi: {e}')
+
+
+async def _pregeneruj(kluce: dict[str, tuple[str, list[dict]]], cache_subor: str, zamok: FileLock, logger) -> None:
+   """Generates one hint for every key without a hint in the cache, one after another. While
+   a student waits for a hint the job pauses, so it never queues in front of the students.
+   A second task keeps the beat file fresh independently of how long one model call takes."""
+   beat = _beat_cesta(zamok)
+   _zapis_beat(beat)
+   try:
+      async with anyio.create_task_group() as tg:
+         tg.start_soon(_bi, beat)
+         await _generuj(kluce, cache_subor, logger)
+         tg.cancel_scope.cancel()
    finally:
+      try:
+         os.remove(beat)
+      except OSError:
+         pass
       zamok.release()
 
 
@@ -137,7 +189,7 @@ def _sada(request: Request, predmet: str, trieda: str, skupina: str, kapitola: s
 
 
 def _stav(kluce: dict[str, tuple[str, list[dict]]], cache_subor: str | None, zamok: FileLock | None) -> dict:
-   return {'hotove': _pocet_hotovych(kluce, cache_subor), 'celkom': len(kluce), 'bezi': bool(zamok and _zamok_drzany(zamok))}
+   return {'hotove': _pocet_hotovych(kluce, cache_subor), 'celkom': len(kluce), 'bezi': _bezi(zamok)}
 
 
 @router.get('/admin/napovedy/stav')
@@ -154,6 +206,7 @@ async def napovedy_pregeneruj(request: Request, predmet: StringForm, trieda: Str
    spusteny = False
    try:
       zamok.acquire(timeout=0)
+      _zapis_beat(_beat_cesta(zamok))  #so the response below already says the job runs
       request.app.state.task_group.start_soon(_pregeneruj, kluce, cache_subor, zamok, request.app.state.logger)
       spusteny = True
    except Timeout:
