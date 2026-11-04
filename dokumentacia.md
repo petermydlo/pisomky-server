@@ -552,7 +552,7 @@ appka:
    na jednu otázku; žiak tak môže minúť viac nápovied na jednu otázku a menej na iné.
    Ak je rozpočet vyčerpaný, appka pošle `napoveda_limit` event namiesto textu
    nápovedy.
-3. Zavolá lokálny Ollama model (`OLLAMA_MODEL`, predvolene `llama3.1`) so systémovým
+3. Zavolá lokálny Ollama model (`OLLAMA_MODEL`, predvolene `qwen3.5:9b`) so systémovým
    promptom (`aihelp_system.md.j2`) — AI má dať **presne jednu vetu** nápovedy bez
    priameho prezradenia správnej odpovede, vždy v angličtine.
 4. Odpoveď sa streamuje cez Server-Sent Events (`text/event-stream`) — žiak vidí text

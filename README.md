@@ -16,7 +16,7 @@ FastAPI webová aplikácia pre tvorbu a správu školských písomiek. Umožňuj
 
 - Python 3.11+
 - [Apache FOP](https://xmlgraphics.apache.org/fop/) — generovanie PDF (`fop` musí byť v PATH)
-- [Ollama](https://ollama.com/) — AI nápoveda (model `llama3.1`)
+- [Ollama](https://ollama.com/) — AI nápoveda (model `qwen3.5:9b`)
 
 ## Inštalácia
 
@@ -34,7 +34,7 @@ ANTHROPIC_API_KEY=xxxxxx
 ANTHROPIC_MODEL=claude-sonnet-5
 GEMINI_API_KEY=yyyyyy
 GEMINI_MODEL=gemini-3.6-flash
-OLLAMA_MODEL=llama3.1
+OLLAMA_MODEL=qwen3.5:9b
 OLLAMA_VISION_MODEL=gemma4:26b
 ALLOWED_HOST=your.domain.here
 ```
