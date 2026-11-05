@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
       yield
    app.state.proc.close()
 
-app = FastAPI(lifespan=lifespan, exception_handlers=exceptions, docs_url=None, redoc_url=None)  # type: ignore[arg-type]
+app = FastAPI(lifespan=lifespan, exception_handlers=exceptions, docs_url=None, redoc_url=None, openapi_url=None)  # type: ignore[arg-type]
 
 #globalny Saxon procesor aby sa nemusel vytvarat niekolkokrat
 app.state.proc = PySaxonProcessor(license=False)
