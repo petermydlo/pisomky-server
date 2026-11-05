@@ -174,10 +174,15 @@
             </xsl:if>
          </div>
          <div class="posledny okraj">
-            <div class="bold znenie">
-               <xsl:if test="@bonus"><xsl:text>Bonusová </xsl:text><xsl:number count="otazka[@bonus]" format="1: "/></xsl:if>
-               <xsl:if test="not(@bonus)"><xsl:number count="otazka" format="01. "/></xsl:if>
-               <xsl:apply-templates select="znenie"/>
+            <div class="bold znenie otazka-header">
+               <span>
+                  <xsl:if test="@bonus"><xsl:text>Bonusová </xsl:text><xsl:number count="otazka[@bonus]" format="1: "/></xsl:if>
+                  <xsl:if test="not(@bonus)"><xsl:number count="otazka" format="01. "/></xsl:if>
+                  <xsl:apply-templates select="znenie"/>
+               </span>
+               <xsl:if test="odpoved and not($je_rating_formular) and normalize-space($rtest/otazka[@id = $idotazky]) != '' and normalize-space($rtest/otazka[@id = $idotazky]) != '-'">
+                  <span class="otazka-ikony"><i class="bi bi-circle-fill text-success odpovedane-vysledok" title="Odpovedané"/></span>
+               </xsl:if>
             </div>
          </div>
       </div>
@@ -231,7 +236,7 @@
       <xsl:variable name="pismodpoved">
          <xsl:number count="odpoved" format="a"/>
       </xsl:variable>
-      <span>
+      <span class="odp-riadok">
          <span class="bold">
             <xsl:if test="@spravna = 1">
                <xsl:attribute name="class">bold bg-warning</xsl:attribute>
@@ -245,7 +250,7 @@
             <xsl:value-of select="$pismodpoved"/><xsl:text>)</xsl:text>
          </span>
          <xsl:text> </xsl:text>
-         <xsl:apply-templates/>
+         <span class="odp-telo"><xsl:apply-templates/></span>
       </span>
    </div>
 </xsl:template>

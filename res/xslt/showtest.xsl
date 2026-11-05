@@ -203,9 +203,9 @@
 
 <xsl:template match="odpoved">
    <div>
-      <span>
+      <span class="odp-riadok">
          <span class="bold"><xsl:number count="odpoved" format="a) "/></span>
-         <xsl:apply-templates/>
+         <span class="odp-telo"><xsl:apply-templates/></span>
       </span>
    </div>
 </xsl:template>

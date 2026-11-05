@@ -176,17 +176,23 @@
                   <xsl:apply-templates select="znenie"/>
                </span>
                <xsl:if test="not($je_rating_formular)">
-                  <span class="ai-napoveda-btn{if ($napovedy_zostatok le 0) then ' hint-vycerpany' else ''}">
-                     <xsl:attribute name="data-otazka-id">
-                        <xsl:value-of select="@id"/>
-                     </xsl:attribute>
-                     <xsl:attribute name="data-test-id">
-                        <xsl:value-of select="ancestor::test/@id"/>
-                     </xsl:attribute>
-                     <xsl:attribute name="title">
-                        <xsl:value-of select="concat('AI help (zostatok: ', $napovedy_zostatok, ')')"/>
-                     </xsl:attribute>
-                     <i class="bi bi-lightbulb text-warning text-opacity-50"/>
+                  <span class="otazka-ikony">
+                     <xsl:if test="odpoved">
+                        <xsl:variable name="vyb" select="normalize-space($rtest/otazka[@id = $idotazky])"/>
+                        <i class="bi bi-circle-fill text-success odpovedane{if ($vyb = ('', '-')) then ' skryte' else ''}" title="Odpovedané"/>
+                     </xsl:if>
+                     <span class="ai-napoveda-btn{if ($napovedy_zostatok le 0) then ' hint-vycerpany' else ''}">
+                        <xsl:attribute name="data-otazka-id">
+                           <xsl:value-of select="@id"/>
+                        </xsl:attribute>
+                        <xsl:attribute name="data-test-id">
+                           <xsl:value-of select="ancestor::test/@id"/>
+                        </xsl:attribute>
+                        <xsl:attribute name="title">
+                           <xsl:value-of select="concat('AI help (zostatok: ', $napovedy_zostatok, ')')"/>
+                        </xsl:attribute>
+                        <i class="bi bi-lightbulb text-warning text-opacity-50"/>
+                     </span>
                   </span>
                </xsl:if>
             </div>
@@ -243,7 +249,7 @@
    <xsl:param name="idotazky" tunnel="yes"/>
    <xsl:variable name="vybodpoved" select="$rtest/otazka[@id = $idotazky]"/>
    <div>
-      <span>
+      <span class="odp-riadok">
          <xsl:variable name="pismodpoved">
             <xsl:number count="odpoved" format="a"/>
          </xsl:variable>
@@ -252,7 +258,7 @@
                <xsl:attribute name="checked">true</xsl:attribute>
             </xsl:if>
          </input>
-         <xsl:apply-templates/>
+         <span class="odp-telo"><xsl:apply-templates/></span>
       </span>
    </div>
 </xsl:template>

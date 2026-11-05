@@ -26,6 +26,17 @@ document.addEventListener('DOMContentLoaded', () => {
       });
    });
 
+   // Zelená fajka pri otázke s vybranou odpoveďou (skryté radio "-" = nezodpovedané)
+   document.querySelectorAll('.odpovedane').forEach(fajka => {
+      const otazka = fajka.closest('.flex-container-table-otazka');
+      const radia = otazka.querySelectorAll('input[type=radio].odpoved');
+      radia.forEach(radio => {
+         radio.addEventListener('change', () => {
+            fajka.classList.toggle('skryte', !Array.from(radia).some(r => r.checked));
+         });
+      });
+   });
+
    function deaktivujZiarovky() {
       document.querySelectorAll('.ai-napoveda-btn').forEach(el => el.classList.add('hint-vycerpany'));
    }

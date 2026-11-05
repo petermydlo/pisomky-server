@@ -55,6 +55,11 @@
                </div>
                <div class="bold">Známka: <xsl:value-of select="$znamka"/></div>
             </div>
+            <div class="flex-container-head-part legenda bg-info-subtle">
+               <div><span class="stvorcek bg-danger"/> Chybná odpoveď žiaka</div>
+               <div><span class="stvorcek bg-warning"/> Správna odpoveď</div>
+               <div><span class="stvorcek bg-success"/> Správna odpoveď žiaka</div>
+            </div>
          </div>
          <xsl:if test="$neuplny">
             <div class="pokyny bold">Niektoré otvorené otázky ešte nie sú ohodnotené, konečné hodnotenie sa môže zmeniť.</div>
@@ -86,10 +91,15 @@
             </xsl:choose>
          </div>
          <div class="posledny okraj">
-            <div class="bold znenie">
-               <xsl:if test="@bonus"><xsl:text>Bonusová </xsl:text><xsl:number count="otazka[@bonus]" format="1: "/></xsl:if>
-               <xsl:if test="not(@bonus)"><xsl:number count="otazka" format="01. "/></xsl:if>
-               <xsl:apply-templates select="znenie"/>
+            <div class="bold znenie otazka-header">
+               <span>
+                  <xsl:if test="@bonus"><xsl:text>Bonusová </xsl:text><xsl:number count="otazka[@bonus]" format="1: "/></xsl:if>
+                  <xsl:if test="not(@bonus)"><xsl:number count="otazka" format="01. "/></xsl:if>
+                  <xsl:apply-templates select="znenie"/>
+               </span>
+               <xsl:if test="$je_mcq and normalize-space($vybodpoved) != '' and normalize-space($vybodpoved) != '-'">
+                  <span class="otazka-ikony"><i class="bi bi-circle-fill text-success odpovedane-vysledok" title="Odpovedané"/></span>
+               </xsl:if>
             </div>
          </div>
       </div>

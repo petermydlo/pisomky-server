@@ -131,6 +131,24 @@ button {
    width: 100%;
 }
 
+.otazka-ikony {
+   display: inline-flex;
+   align-items: center;
+   gap: 0.5rem;
+   flex-shrink: 0;
+   text-indent: 0;
+}
+
+.bi.odpovedane,
+.bi.odpovedane-vysledok {
+   font-size: 13px;
+}
+
+.otazka-header > span:first-child {
+   flex: 1;
+   min-width: 0;
+}
+
 /* Štýlovanie tlačidla AI nápovedy */
 .ai-napoveda-btn {
    cursor: pointer;
@@ -373,6 +391,14 @@ body.admin-overview {
    margin-top: 1rem;
 }
 
+.legenda .stvorcek {
+   display: inline-block;
+   width: 1rem;
+   height: 1rem;
+   vertical-align: middle;
+   border: 1px solid black;
+}
+
 .flex-container-table {
    display: flex;
    flex-direction: column;
@@ -431,6 +457,24 @@ body.admin-overview {
 
 .flex-container-table-odpoved > div.odpoved-siroka {
    flex: 100%;
+}
+
+.odp-riadok {
+   display: flex;
+   align-items: baseline;
+   flex: 1;
+   min-width: 0;
+}
+
+.odp-riadok > .bold,
+.odp-riadok > input {
+   flex: none;
+}
+
+.odp-telo {
+   flex: 1;
+   min-width: 0;
+   padding-left: 0.25rem;
 }
 
 .odpoved-text {

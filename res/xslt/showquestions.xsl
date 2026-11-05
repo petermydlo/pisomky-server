@@ -413,7 +413,7 @@
 
 <xsl:template match="odpoved">
    <div>
-      <span>
+      <span class="odp-riadok">
          <span class="bold">
             <xsl:if test="@spravna = 1">
                <xsl:attribute name="class">bold bg-success</xsl:attribute>
@@ -421,7 +421,7 @@
             <xsl:number count="odpoved" format="a)"/>
          </span>
          <xsl:text> </xsl:text>
-         <xsl:apply-templates/>
+         <span class="odp-telo"><xsl:apply-templates/></span>
       </span>
       <xsl:if test="@spravna = 1">
          <xsl:variable name="klic" select="@napoveda_key"/>
