@@ -11,6 +11,7 @@ import shutil
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import lxml.etree as ET
 import pytest
@@ -125,7 +126,7 @@ def test_createtests_kopiruje_tabulku_aj_so_spravnymi_hodnotami(proc):
    vysledok = executable.transform_to_string(xdm_node=proc.parse_xml(xml_text=TRIEDY_XML))
    strom = ET.fromstring(vysledok.encode())
    assert [b.get('odpoved') for b in strom.iterfind('.//otazka/tabulka//bunka[@odpoved]')] == ['0', '1', '1', '0']
-   assert strom.xpath('.//otazka/tabulka/@povolene') == ['01']
+   assert _xp(strom, './/otazka/tabulka/@povolene') == ['01']
 
 
 def test_formular_ma_polia_skryte_pole_a_nema_napovedu(proc):
@@ -251,16 +252,16 @@ def test_znamka_sa_pocita_z_nezaokruhlenych_bodov(proc):
 def test_store_mcq_scores_zapise_body_tabulky():
    store_mcq_scores('k1')
    odpovede = ET.parse(ANSWERS_DIR / TEST_SUBOR).getroot()
-   assert odpovede.xpath('string(test/otazka[@id="o1"]/@body)') == '50'
-   assert odpovede.xpath('string(test/otazka[@id="o2"]/@body)') == '93.75'
-   assert odpovede.xpath('test/otazka[@id="o3"]') == []     # bez odpovede sa nezapisuje
+   assert _xp(odpovede, 'string(test/otazka[@id="o1"]/@body)') == '50'
+   assert _xp(odpovede, 'string(test/otazka[@id="o2"]/@body)') == '93.75'
+   assert _xp(odpovede, 'test/otazka[@id="o3"]') == []     # bez odpovede sa nezapisuje
 
 
 def test_fork_otazky_zachova_tabulku():
    nova_id = fork_question('q1', {'znenie': '<znenie>Upravene znenie</znenie>', 'body': '100', 'odpovede': []})
    kapitola = ET.parse(QUESTIONS_FILE).getroot()
-   stara = kapitola.xpath('//otazka[@id="q1"]')[0]
-   nova = kapitola.xpath('//otazka[@id=$id]', id=nova_id)[0]
+   stara = _xp(kapitola, '//otazka[@id="q1"]')[0]
+   nova = _xp(kapitola, '//otazka[@id=$id]', id=nova_id)[0]
    assert stara.get('deprecated') == '1'
    assert [b.get('odpoved') for b in nova.iterfind('.//tabulka//bunka[@odpoved]')] == ['0', '1', '1', '0']
    assert nova.find('tabulka').get('povolene') == '01'
@@ -281,12 +282,17 @@ NOVA_TABULKA = """<tabulka povolene="">
 </tabulka>"""
 
 
-def _request():
+def _xp(uzol: Any, vyraz: str, **parametre: Any) -> list[Any]:
+   """XPath vysledok ako zoznam (lxml-stubs vracaju zjednotenie typov, s ktorym si pyright neporadi)."""
+   return uzol.xpath(vyraz, **parametre)
+
+
+def _request() -> Any:
    return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(logger=logging.getLogger('test'))))
 
 
 def _otazka(id_otazky):
-   return ET.parse(QUESTIONS_FILE).getroot().xpath('//otazka[@id=$id]', id=id_otazky)[0]
+   return _xp(ET.parse(QUESTIONS_FILE).getroot(), '//otazka[@id=$id]', id=id_otazky)[0]
 
 
 def test_over_tabulku_normalizuje_prazdne_povolene():

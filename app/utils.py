@@ -662,12 +662,12 @@ def over_tabulku(text: str) -> ET._Element:
       raise ValueError(f'Tabuľka nie je platné XML: {e}')
    if tabulka.tag != 'tabulka':
       raise ValueError('Koreňový element musí byť <tabulka>.')
-   for nazov in tabulka.attrib:
-      if nazov != 'povolene':
-         raise ValueError(f'Tabuľka nepozná atribút {nazov}.')
+   neznamy = [str(nazov) for nazov in tabulka.attrib if nazov != 'povolene']
+   if neznamy:
+      raise ValueError(f'Tabuľka nepozná atribút {neznamy[0]}.')
    povolene = tabulka.get('povolene', '')
-   if povolene == '':
-      tabulka.attrib.pop('povolene', None)
+   if povolene == '' and 'povolene' in tabulka.attrib:
+      del tabulka.attrib['povolene']
    hlavicky = [d for d in tabulka if d.tag == 'hlavicka']
    riadky = [d for d in tabulka if d.tag == 'riadok']
    if len(hlavicky) + len(riadky) != len(tabulka):
@@ -686,9 +686,9 @@ def over_tabulku(text: str) -> ET._Element:
       for bunka in bunky:
          if len(bunka):
             raise ValueError('<bunka> nesmie obsahovať ďalšie elementy.')
-         for nazov in bunka.attrib:
-            if nazov != 'odpoved':
-               raise ValueError(f'Bunka nepozná atribút {nazov}.')
+         neznamy = [str(nazov) for nazov in bunka.attrib if nazov != 'odpoved']
+         if neznamy:
+            raise ValueError(f'Bunka nepozná atribút {neznamy[0]}.')
          if 'odpoved' in bunka.attrib:
             odpoved = bunka.get('odpoved', '').strip()
             if not odpoved:
