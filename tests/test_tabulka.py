@@ -4,17 +4,25 @@ Tabuľka na vyplnenie (otazka/tabulka): kopírovanie do testu, formulár žiaka,
 (res/xslt/grading.xsl, res/xquery/score.xq) a pohľad na vyhodnotený test.
 """
 
+import asyncio
+import logging
 import re
 import shutil
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 
 import lxml.etree as ET
 import pytest
 import xmlschema
+from fastapi.exceptions import HTTPException
 from saxonche import PySaxonProcessor
 
-from app.utils import body_tabulka, format_body, format_percent, store_mcq_scores, xslt_to_string, xquery_to_string
+from app.routers.questions import process_question
+from app.utils import (
+   add_question, body_tabulka, fork_question, format_body, format_percent, over_tabulku, serializuj_tabulku,
+   store_mcq_scores, update_question, xslt_to_string, xquery_to_string, zmenene_zamrznute_polia,
+)
 
 PROJECT_ROOT = Path(__file__).parent.parent
 PREDMET = 'TSTTAB'
@@ -246,3 +254,122 @@ def test_store_mcq_scores_zapise_body_tabulky():
    assert odpovede.xpath('string(test/otazka[@id="o1"]/@body)') == '50'
    assert odpovede.xpath('string(test/otazka[@id="o2"]/@body)') == '93.75'
    assert odpovede.xpath('test/otazka[@id="o3"]') == []     # bez odpovede sa nezapisuje
+
+
+def test_fork_otazky_zachova_tabulku():
+   nova_id = fork_question('q1', {'znenie': '<znenie>Upravene znenie</znenie>', 'body': '100', 'odpovede': []})
+   kapitola = ET.parse(QUESTIONS_FILE).getroot()
+   stara = kapitola.xpath('//otazka[@id="q1"]')[0]
+   nova = kapitola.xpath('//otazka[@id=$id]', id=nova_id)[0]
+   assert stara.get('deprecated') == '1'
+   assert [b.get('odpoved') for b in nova.iterfind('.//tabulka//bunka[@odpoved]')] == ['0', '1', '1', '0']
+   assert nova.find('tabulka').get('povolene') == '01'
+   assert [c.tag for c in nova][:2] == ['znenie', 'tabulka']     # tabulka hned za znenim
+
+
+# --- editor: tabulka ako XML text ---
+
+NOVA_TABULKA = """<tabulka povolene="">
+   <hlavicka>
+      <bunka>Slovo</bunka>
+      <bunka>Preklad</bunka>
+   </hlavicka>
+   <riadok>
+      <bunka>dom</bunka>
+      <bunka odpoved="house"/>
+   </riadok>
+</tabulka>"""
+
+
+def _request():
+   return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(logger=logging.getLogger('test'))))
+
+
+def _otazka(id_otazky):
+   return ET.parse(QUESTIONS_FILE).getroot().xpath('//otazka[@id=$id]', id=id_otazky)[0]
+
+
+def test_over_tabulku_normalizuje_prazdne_povolene():
+   tabulka = over_tabulku(NOVA_TABULKA)
+   assert tabulka.get('povolene') is None
+   assert [b.get('odpoved') for b in tabulka.iterfind('.//bunka[@odpoved]')] == ['house']
+
+
+@pytest.mark.parametrize('xml, chyba', [
+   ('<tabulka>', 'platné XML'),
+   ('<inak/>', 'Koreňový element'),
+   ('<tabulka x="1"><riadok><bunka odpoved="1"/></riadok></tabulka>', 'nepozná atribút x'),
+   ('<tabulka><hlavicka><bunka></bunka></hlavicka><riadok><bunka></bunka></riadok></tabulka>', 'aspoň jedno pole'),
+   ('<tabulka><riadok><bunka odpoved=" "/></riadok></tabulka>', 'nesmie byť prázdny'),
+   ('<tabulka povolene="01"><riadok><bunka odpoved="2"/></riadok></tabulka>', 'povolenými'),
+   ('<tabulka><riadok><bunka odpoved="1"/><bunka>a</bunka></riadok><riadok><bunka odpoved="1"/></riadok></tabulka>', 'rovnaký počet buniek'),
+   ('<tabulka><riadok><bunka odpoved="1"/></riadok><hlavicka><bunka>A</bunka></hlavicka></tabulka>', 'musí byť prvá'),
+   ('<tabulka><hlavicka><bunka>A</bunka></hlavicka><hlavicka><bunka>B</bunka></hlavicka><riadok><bunka odpoved="1"/></riadok></tabulka>', 'najviac jedna'),
+   ('<tabulka><riadok><bunka odpoved="1"/></riadok><nieco/></tabulka>', 'len <hlavicka> a <riadok>'),
+   ('<tabulka><hlavicka><bunka>A</bunka></hlavicka></tabulka>', 'aspoň jeden <riadok>'),
+   ('<tabulka><riadok><bunka odpoved="1">text</bunka></riadok></tabulka>', 'nemá mať text'),
+   ('<tabulka><riadok><bunka odpoved="1"><b/></bunka></riadok></tabulka>', 'ďalšie elementy'),
+])
+def test_over_tabulku_odmieta_chyby(xml, chyba):
+   with pytest.raises(ValueError, match=re.escape(chyba)):
+      over_tabulku(xml)
+
+
+def test_serializacia_tabulky_sa_da_vratit_bez_straty():
+   text = serializuj_tabulku(_otazka('q1'))
+   assert text.startswith('<tabulka povolene="01">') and '\n   <hlavicka>' in text
+   assert not zmenene_zamrznute_polia(_otazka('q1'), {'tabulka': text})     # rovnaka tabulka, len odsadena inak
+   assert serializuj_tabulku(ET.fromstring('<otazka/>')) == ''
+
+
+def test_update_question_nahradi_a_odstrani_tabulku():
+   assert update_question('q1', {'tabulka': NOVA_TABULKA})
+   otazka = _otazka('q1')
+   assert [c.tag for c in otazka][:2] == ['znenie', 'tabulka']
+   assert [b.get('odpoved') for b in otazka.iterfind('.//bunka[@odpoved]')] == ['house']
+   assert update_question('q1', {'body': '50'})           # bez kluca tabulka sa nemeni
+   assert _otazka('q1').find('tabulka') is not None
+   assert update_question('q1', {'tabulka': ''})
+   assert _otazka('q1').find('tabulka') is None
+
+
+def test_update_question_s_neplatnou_tabulkou_nic_nezapise():
+   pred = QUESTIONS_FILE.read_text(encoding='utf-8')
+   with pytest.raises(ValueError):
+      update_question('q1', {'tabulka': '<tabulka><riadok><bunka></bunka></riadok></tabulka>'})
+   assert QUESTIONS_FILE.read_text(encoding='utf-8') == pred
+
+
+def test_add_question_prida_otazku_s_tabulkou():
+   nova_id, ok = add_question('kat1', {'znenie': '<znenie>Preklad</znenie>', 'body': '10', 'tabulka': NOVA_TABULKA})
+   assert ok
+   nova = _otazka(nova_id)
+   assert [c.tag for c in nova] == ['znenie', 'tabulka']
+   assert nova.find('tabulka').get('povolene') is None
+
+
+def test_zmena_tabulky_je_zmena_zamrznuteho_pola():
+   otazka = _otazka('q1')
+   assert zmenene_zamrznute_polia(otazka, {'tabulka': NOVA_TABULKA})
+   assert zmenene_zamrznute_polia(otazka, {'tabulka': ''})        # odstranenie tabulky
+   assert not zmenene_zamrznute_polia(otazka, {})                   # bez pola sa tabulka nemeni
+
+
+def test_fork_s_novou_tabulkou_pouzije_novu():
+   nova_id = fork_question('q1', {'znenie': '<znenie>Nove</znenie>', 'body': '100', 'tabulka': NOVA_TABULKA})
+   assert [b.get('odpoved') for b in _otazka(nova_id).iterfind('.//bunka[@odpoved]')] == ['house']
+   assert [b.get('odpoved') for b in _otazka('q1').iterfind('.//bunka[@odpoved]')] == ['0', '1', '1', '0']
+
+
+def test_process_question_odmieta_mcq_aj_tabulku_naraz():
+   with pytest.raises(HTTPException) as chyba:
+      asyncio.run(process_question(_request(), operacia='create', X_Remote_User='x', kategoria_id='kat1',
+                                   znenie='<znenie>a</znenie>', odpovede='[{"text": "a", "spravna": "1"}]', tabulka=NOVA_TABULKA))
+   assert chyba.value.status_code == 400 and 'MCQ' in chyba.value.detail
+
+
+def test_process_question_vrati_chybu_neplatnej_tabulky():
+   with pytest.raises(HTTPException) as chyba:
+      asyncio.run(process_question(_request(), operacia='create', X_Remote_User='x', kategoria_id='kat1',
+                                   znenie='<znenie>a</znenie>', tabulka='<tabulka><riadok><bunka></bunka></riadok></tabulka>'))
+   assert chyba.value.status_code == 400 and 'aspoň jedno pole' in chyba.value.detail

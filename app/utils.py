@@ -2,6 +2,7 @@
 
 import os
 import re
+import copy
 import glob
 import shutil
 import hashlib
@@ -652,6 +653,84 @@ def _pridaj_napovede(otazka: ET._Element, napovede: list[str]) -> None:
       el = ET.SubElement(otazka, 'napoveda')
       el.text = text
 
+def over_tabulku(text: str) -> ET._Element:
+   """Skontroluje a normalizuje XML <tabulka> z editora (pozri Tabulka v questions.xsd). Pri chybe vyhodi
+   ValueError so spravou pre ucitela; prazdny atribut povolene sa vynecha."""
+   try:
+      tabulka = ET.fromstring(text.strip(), ET.XMLParser(remove_blank_text=True, remove_comments=True, remove_pis=True))
+   except ET.XMLSyntaxError as e:
+      raise ValueError(f'Tabuľka nie je platné XML: {e}')
+   if tabulka.tag != 'tabulka':
+      raise ValueError('Koreňový element musí byť <tabulka>.')
+   for nazov in tabulka.attrib:
+      if nazov != 'povolene':
+         raise ValueError(f'Tabuľka nepozná atribút {nazov}.')
+   povolene = tabulka.get('povolene', '')
+   if povolene == '':
+      tabulka.attrib.pop('povolene', None)
+   hlavicky = [d for d in tabulka if d.tag == 'hlavicka']
+   riadky = [d for d in tabulka if d.tag == 'riadok']
+   if len(hlavicky) + len(riadky) != len(tabulka):
+      raise ValueError('Tabuľka smie obsahovať len <hlavicka> a <riadok>.')
+   if len(hlavicky) > 1 or (hlavicky and tabulka[0] is not hlavicky[0]):
+      raise ValueError('Hlavička môže byť najviac jedna a musí byť prvá.')
+   if not riadky:
+      raise ValueError('Tabuľka musí mať aspoň jeden <riadok>.')
+   pocty = set()
+   pocet_poli = 0
+   for riadok in tabulka:
+      bunky = list(riadok)
+      if not bunky or any(b.tag != 'bunka' for b in bunky):
+         raise ValueError(f'<{riadok.tag}> smie obsahovať len <bunka> (aspoň jednu).')
+      pocty.add(len(bunky))
+      for bunka in bunky:
+         if len(bunka):
+            raise ValueError('<bunka> nesmie obsahovať ďalšie elementy.')
+         for nazov in bunka.attrib:
+            if nazov != 'odpoved':
+               raise ValueError(f'Bunka nepozná atribút {nazov}.')
+         if 'odpoved' in bunka.attrib:
+            odpoved = bunka.get('odpoved', '').strip()
+            if not odpoved:
+               raise ValueError('Atribút odpoved nesmie byť prázdny.')
+            if povolene and any(znak not in povolene for znak in odpoved):
+               raise ValueError(f'Odpoveď "{odpoved}" obsahuje znak, ktorý nie je medzi povolenými ({povolene}).')
+            if (bunka.text or '').strip():
+               raise ValueError('Bunka s atribútom odpoved (pole na vyplnenie) nemá mať text.')
+            bunka.set('odpoved', odpoved)
+            pocet_poli += 1
+   if len(pocty) > 1:
+      raise ValueError('Všetky riadky (aj hlavička) musia mať rovnaký počet buniek.')
+   if pocet_poli == 0:
+      raise ValueError('Tabuľka musí mať aspoň jedno pole na vyplnenie (bunka s atribútom odpoved).')
+   return tabulka
+
+def serializuj_tabulku(otazka: ET._Element) -> str:
+   """Tabulka otazky ako odsadeny XML text pre editor, alebo '' ak ju otazka nema."""
+   tabulka = otazka.find('tabulka')
+   if tabulka is None:
+      return ''
+   kopia = copy.deepcopy(tabulka)
+   ET.indent(kopia, space='   ')
+   return ET.tostring(kopia, encoding='unicode', with_tail=False)
+
+def _vloz_tabulku(otazka: ET._Element, tabulka: ET._Element) -> None:
+   """Vlozi <tabulka> hned za <znenie> (alebo na zaciatok otazky)."""
+   znenie = otazka.find('znenie')
+   otazka.insert(otazka.index(znenie) + 1 if znenie is not None else 0, tabulka)
+
+def _normalizovana_tabulka(tabulka: ET._Element | None) -> str:
+   """Tabulka bez odsadenia a bielych znakov, na porovnanie starej a novej verzie."""
+   if tabulka is None:
+      return ''
+   kopia = copy.deepcopy(tabulka)
+   if kopia.get('povolene') == '':
+      del kopia.attrib['povolene']
+   for el in kopia.iter():
+      el.tail = None
+      el.text = (el.text or '').strip() or None if el.tag == 'bunka' else None
+   return ET.tostring(kopia, encoding='unicode')
+
 def _zostav_otazka_element(data: dict) -> ET._Element:
    """Zostavi novy <otazka> element z data dictu (rovnaky tvar ako add_question's
    nova_otazka), bez @id (ten prideli az ensure_ids). Pouziva sa v add_question
@@ -664,6 +743,8 @@ def _zostav_otazka_element(data: dict) -> ET._Element:
    if 'znenie' in data:
       znenie_el = ET.fromstring(data['znenie'])
       el.append(znenie_el)
+   if data.get('tabulka'):
+      _vloz_tabulku(el, over_tabulku(data['tabulka']))
    _pridaj_odpovede(el, data.get('odpovede', []))
    if data.get('napovede'):
       _pridaj_napovede(el, data['napovede'])
@@ -690,7 +771,7 @@ def _serializuj_obsah(el: ET._Element | None) -> str:
 def zmenene_zamrznute_polia(otazka_el: ET._Element, data: dict) -> bool:
    """Vrati True, ak by zapis data (z process_question operacia='update') zmenil
    niektore z poli, ktore createtests.xsl kopiruje/zamrazi do vygenerovaneho testu
-   (znenie, text/spravna odpovedi, body, static, bonus) oproti aktualnemu stavu
+   (znenie, tabulka, text/spravna odpovedi, body, static, bonus) oproti aktualnemu stavu
    otazka_el. Zmena len vzory/klucove_slova/napoveda (citaju sa zivo pri AI
    napovede, nekopiruju sa do testu) sa nepocita.
    """
@@ -700,6 +781,10 @@ def zmenene_zamrznute_polia(otazka_el: ET._Element, data: dict) -> bool:
          return True
    for attr in ('body', 'static', 'bonus'):
       if attr in data and (otazka_el.get(attr) or None) != (data[attr] or None):
+         return True
+   if 'tabulka' in data:
+      nova_tabulka = over_tabulku(data['tabulka']) if data['tabulka'] else None
+      if _normalizovana_tabulka(otazka_el.find('tabulka')) != _normalizovana_tabulka(nova_tabulka):
          return True
    if 'odpovede' in data:
       stare = tuple((_serializuj_obsah(o), o.get('spravna') or '0') for o in otazka_el.findall('odpoved'))
@@ -721,6 +806,7 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
      'nazov'     - string s nazvom otazky, alebo None (odstranit atribut)
      'deprecated' - '1' (rucne archivovat), alebo None (odstranit atribut)
      'odpovede'  - list dictov [{'text': ..., 'spravna': '1'/'0', 'napovedy': [text, ...]}, ...]
+     'tabulka'   - XML string <tabulka>, alebo '' (tabulku odstranit); bez kluca sa tabulka nemeni
      'napovede'  - list textov celoplosnych napovedi (bez @pre)
      'vzory'     - list vzorovych odpovedi (alternativy, kazda moze byt viacriadkova)
    Vracia True ak uspech, False ak otazka nenajdena.
@@ -750,6 +836,12 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
             otazka.remove(stare)
          nove_znenie = ET.fromstring(nove_data['znenie'])
          otazka.insert(0, nove_znenie)
+      # tabulka
+      if 'tabulka' in nove_data:
+         for stara_tabulka in otazka.findall('tabulka'):
+            otazka.remove(stara_tabulka)
+         if nove_data['tabulka']:
+            _vloz_tabulku(otazka, over_tabulku(nove_data['tabulka']))
       # odpovede
       if 'odpovede' in nove_data:
          for old in otazka.findall('napoveda'):
@@ -903,6 +995,9 @@ def fork_question(otazka_id: str, nova_data: dict, cache: dict | None = None) ->
          return None
       kategoria_id = kategoria.get('id')
       nova = _zostav_otazka_element(nova_data)
+      tabulka = stara.find('tabulka')      # formular bez pola tabulka (stary JS v keši) ju necha zo starej otazky
+      if tabulka is not None and 'tabulka' not in nova_data:
+         _vloz_tabulku(nova, copy.deepcopy(tabulka))
       kategoria.append(nova)
       stara.set('deprecated', '1')
       ET.indent(tree, space='   ')

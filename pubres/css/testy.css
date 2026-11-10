@@ -730,15 +730,21 @@ div:hover > span.penIcon.editActions {
    font-weight: bold;
 }
 
-.otazka-odpovede-fieldset {
+.otazka-odpovede-fieldset,
+.otazka-tabulka-fieldset {
    border: 1px solid silver;
    border-radius: 0.25rem;
    padding: 0.5rem;
 }
 
-.otazka-odpovede-fieldset legend {
+.otazka-odpovede-fieldset legend,
+.otazka-tabulka-fieldset legend {
    font-weight: bold;
    padding-inline: 0.25rem;
+}
+
+.otazka-tabulka {
+   font-family: monospace;
 }
 
 .odpoved-riadok {

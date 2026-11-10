@@ -230,6 +230,20 @@ function zostavCeloplosneNapovede(form) {
    return Array.from(form.querySelectorAll('.otazka-napovedy .napoveda-text')).map(t => t.value).filter(t => t.trim() !== '');
 }
 
+const SABLONA_TABULKY = `<tabulka povolene="">
+   <hlavicka>
+      <bunka></bunka>
+   </hlavicka>
+   <riadok>
+      <bunka></bunka>
+   </riadok>
+</tabulka>`;
+
+//XML tabulky, alebo prazdny retazec (odstrani tabulku z otazky); text v textarei ostava aj po odskrtnuti checkboxu
+function zostavTabulku(form) {
+   return form.querySelector('.otazka-ma-tabulku').checked ? form.querySelector('.otazka-tabulka').value : '';
+}
+
 function vytvorFormularOtazky(data, jeMcq) {
    const form = document.createElement('form');
    form.className = 'otazka-formular';
@@ -252,6 +266,11 @@ function vytvorFormularOtazky(data, jeMcq) {
          <button type="button" class="otazka-pridaj-napovedu">+ celoplošná nápoveda</button>
       </div>
       <label><input type="checkbox" class="otazka-ma-odpovede"/> má odpovede (MCQ)</label>
+      <label><input type="checkbox" class="otazka-ma-tabulku"/> má tabuľku</label>
+      <fieldset class="otazka-tabulka-fieldset">
+         <legend>Tabuľka (XML)</legend>
+         <textarea class="otazka-tabulka" rows="12" spellcheck="false"></textarea>
+      </fieldset>
       <fieldset class="otazka-odpovede-fieldset">
          <legend>Odpovede</legend>
          <div class="otazka-odpovede"></div>
@@ -273,7 +292,10 @@ function vytvorFormularOtazky(data, jeMcq) {
    const znenieRaw = (data.znenie || '').replace(/^<znenie[^>]*>/, '').replace(/<\/znenie>$/, '');
    form.querySelector('.otazka-znenie').value = znenieRaw;
    form.querySelector('.otazka-nazov').value = data.nazov || '';
-   form.querySelector('.otazka-ma-odpovede').checked = !!jeMcq;
+   const jeTabulka = !!data.tabulka;
+   form.querySelector('.otazka-ma-odpovede').checked = !!jeMcq && !jeTabulka;
+   form.querySelector('.otazka-ma-tabulku').checked = jeTabulka;
+   form.querySelector('.otazka-tabulka').value = data.tabulka || SABLONA_TABULKY;
    form.querySelector('.otazka-klucove-slova').value = (data.klucove_slova || []).join(', ');
    form.querySelector('.otazka-body').value = data.body || '';
    form.querySelector('.otazka-static').checked = data.static === '1';
@@ -296,10 +318,20 @@ function vytvorFormularOtazky(data, jeMcq) {
 
    function aktualizujVetvu() {
       const mcq = form.querySelector('.otazka-ma-odpovede').checked;
+      const tabulka = form.querySelector('.otazka-ma-tabulku').checked;
       form.querySelector('.otazka-odpovede-fieldset').style.display = mcq ? '' : 'none';
-      form.querySelector('.otazka-otvorena').style.display = mcq ? 'none' : '';
+      form.querySelector('.otazka-tabulka-fieldset').style.display = tabulka ? '' : 'none';
+      form.querySelector('.otazka-otvorena').style.display = mcq || tabulka ? 'none' : '';
    }
-   form.querySelector('.otazka-ma-odpovede').addEventListener('change', aktualizujVetvu);
+   //otazka ma najviac jednu z vetiev (MCQ alebo tabulka); obsah vypnutej vetvy ostava vo formulari
+   form.querySelector('.otazka-ma-odpovede').addEventListener('change', (e) => {
+      if (e.target.checked) form.querySelector('.otazka-ma-tabulku').checked = false;
+      aktualizujVetvu();
+   });
+   form.querySelector('.otazka-ma-tabulku').addEventListener('change', (e) => {
+      if (e.target.checked) form.querySelector('.otazka-ma-odpovede').checked = false;
+      aktualizujVetvu();
+   });
    aktualizujVetvu();
 
    return form;
@@ -327,6 +359,7 @@ function otvorFormularOtazky(otazkaId) {
             nazov: form.querySelector('.otazka-nazov').value,
             deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
             odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),
+            tabulka: zostavTabulku(form),
             napovede: JSON.stringify(zostavCeloplosneNapovede(form)),
             vzory: JSON.stringify(mcq ? [] : zostavVzory(form)),
             klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),
@@ -360,6 +393,7 @@ function pridajOtazku(kategoriaId) {
          nazov: form.querySelector('.otazka-nazov').value,
          deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
          odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),
+         tabulka: zostavTabulku(form),
          napovede: JSON.stringify(zostavCeloplosneNapovede(form)),
          vzory: JSON.stringify(mcq ? [] : zostavVzory(form)),
          klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),
