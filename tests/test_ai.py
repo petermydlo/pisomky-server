@@ -111,6 +111,20 @@ def test_parsuj_hint_case_insensitive():
    assert _parsuj_hint('hint: malé písmená') == 'malé písmená'
 
 
+# --- _spocitaj_napovedy_testu ---
+
+def test_spocitaj_napovedy_testu_neexistujuci_subor():
+   assert _spocitaj_napovedy_testu('./neexistuje.xml', TEST_ID) == 0
+
+
+def test_spocitaj_napovedy_testu_pocita_len_pre_dany_test(feedback_file):
+   assert _spocitaj_napovedy_testu(str(feedback_file), TEST_ID) == 4
+
+
+def test_spocitaj_napovedy_testu_iny_test(feedback_file):
+   assert _spocitaj_napovedy_testu(str(feedback_file), 'INY_TEST') == 0
+
+
 # --- _nacitaj_predchadzajuce ---
 
 def test_nacitaj_predchadzajuce_neexistujuci_subor():
