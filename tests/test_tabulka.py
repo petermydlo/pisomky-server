@@ -373,3 +373,23 @@ def test_process_question_vrati_chybu_neplatnej_tabulky():
       asyncio.run(process_question(_request(), operacia='create', X_Remote_User='x', kategoria_id='kat1',
                                    znenie='<znenie>a</znenie>', tabulka='<tabulka><riadok><bunka></bunka></riadok></tabulka>'))
    assert chyba.value.status_code == 400 and 'aspoň jedno pole' in chyba.value.detail
+
+
+def test_test_moze_mixovat_mcq_a_tabulku(proc):
+   test = f"""<testy xml:lang="sk" predmet="{PREDMET}" trieda="X" skupina="" kapitola="01" fileid="1234" gendat="2026-01-01T00:00:00">
+   <test id="k1">
+      <otazka id="o1" body="2"><znenie>MCQ</znenie><odpoved spravna="1">prva</odpoved><odpoved spravna="0">druha</odpoved></otazka>
+      <otazka id="o2" body="4"><znenie>Tabulka</znenie>{TABULKA_2X1}</otazka>
+   </test>
+</testy>
+"""
+   (TESTY_DIR / TEST_SUBOR).write_text(test, encoding='utf-8')
+   (ANSWERS_DIR / TEST_SUBOR).write_text('<odpovede><test id="k1" dat="2026-01-02T10:00:00" odhalene="1"><otazka id="o1">a</otazka><otazka id="o2">0|1|1|1</otazka></test></odpovede>', encoding='utf-8')
+   rel = f'../xml/%s/{PREDMET}/{TEST_SUBOR}'
+   vysledok = xquery_to_string(proc, str(PROJECT_ROOT / 'res/xquery/score.xq'), params={'kluc': 'k1', 'test_cesta': rel % 'tests', 'answer_cesta': rel % 'answers'})
+   skore = ET.fromstring(vysledok.encode())
+   assert (skore.get('ziskane'), skore.get('maximum'), skore.get('neuplne')) == ('5', '6', 'false')     # MCQ 2 + tabulka 3 zo 4 poli
+   assert 'Hodnotenie: 5/6' in _html(proc, 'showresult_student.xsl')
+   assert 'id="pocetbodov">5</span>/6' in _html(proc, 'showresult.xsl')     # pohlad ucitela
+   assert 'ai-napoveda-btn' in _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})      # nápoveda ostáva pri MCQ
+
