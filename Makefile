@@ -1,10 +1,14 @@
 VENV = .venv
 
-.PHONY: test lint run dev
+.PHONY: test validate lint run dev
 
 
 test:
 	$(VENV)/bin/pytest
+
+# banka otazok, testy, odpovede, feedback a archivy oproti res/xsd/*.xsd (iba lokalne, res/xml/ nie je v gite)
+validate:
+	$(VENV)/bin/pytest tests/test_xsd.py -q
 
 lint:
 	$(VENV)/bin/ruff check app/
