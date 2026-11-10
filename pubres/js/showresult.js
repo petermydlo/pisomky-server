@@ -4,6 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
    const min2 = parseFloat(vyhodnotenie.dataset.min2);
    const min3 = parseFloat(vyhodnotenie.dataset.min3);
    const min4 = parseFloat(vyhodnotenie.dataset.min4);
+   //body otazok s automatickym hodnotenim (MCQ, tabulka), ktore nemaju pole na body
+   const autoBody = parseFloat(vyhodnotenie.dataset.autoBody) || 0;
+   const autoMax = parseFloat(vyhodnotenie.dataset.autoMax) || 0;
    const hlavicka = document.getElementById('hlavicka');
 
    document.addEventListener('change', (e) => {
@@ -13,11 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (e.target.matches("input[type='number'][id^='h_'], input[type='number'][id^='bh_']")) {
-         let maxPoints = 0;
+         let maxPoints = autoMax;
          document.querySelectorAll("input[type='number'][id^='h_']").forEach(el => {
             maxPoints += parseFloat(el.getAttribute('max'));
          });
-         let totalPoints = 0;
+         let totalPoints = autoBody;
          document.querySelectorAll("input[type='number'][id^='h_'], input[type='number'][id^='bh_']").forEach(el => {
             totalPoints += parseFloat(el.value);
          });

@@ -399,3 +399,33 @@ def test_test_moze_mixovat_mcq_a_tabulku(proc):
    assert 'id="pocetbodov">5</span>/6' in _html(proc, 'showresult.xsl')     # pohlad ucitela
    assert 'ai-napoveda-btn' in _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})      # nápoveda ostáva pri MCQ
 
+
+def test_vyhodnotenie_odovzda_skriptu_body_automatickych_otazok(proc):
+   """Zivy sucet v showresult.js pripocitava k rucnym bodom MCQ a tabulku (tie nemaju pole na body)."""
+   test = f"""<testy xml:lang="sk" predmet="{PREDMET}" trieda="X" skupina="" kapitola="01" fileid="1234" gendat="2026-01-01T00:00:00">
+   <test id="k1">
+      <otazka id="o1" body="2"><znenie>MCQ</znenie><odpoved spravna="1">prva</odpoved><odpoved spravna="0">druha</odpoved></otazka>
+      <otazka id="o2" body="4"><znenie>Tabulka</znenie>{TABULKA_2X1}</otazka>
+      <otazka id="o3" body="10"><znenie>Otvorena</znenie></otazka>
+      <otazka id="o4" body="1" bonus="1"><znenie>Bonus MCQ</znenie><odpoved spravna="1">prva</odpoved><odpoved spravna="0">druha</odpoved></otazka>
+   </test>
+</testy>
+"""
+   (TESTY_DIR / TEST_SUBOR).write_text(test, encoding='utf-8')
+   (ANSWERS_DIR / TEST_SUBOR).write_text('<odpovede><test id="k1" dat="2026-01-02T10:00:00"><otazka id="o1">a</otazka><otazka id="o2">0|1|1|1</otazka><otazka id="o3" body="6.5">x</otazka><otazka id="o4">a</otazka></test></odpovede>', encoding='utf-8')
+   html = _html(proc, 'showresult.xsl')
+   assert 'data-auto-body="6"' in html      # MCQ 2 + tabulka 3 + bonus 1
+   assert 'data-auto-max="6"' in html       # bonus sa do maxima nepocita
+
+
+def test_hlavicka_otazky_vypisuje_body_naformatovane(proc):
+   """'(6.5b)' namiesto surovej hodnoty body="6.50" vo vsetkych vystupoch."""
+   (TESTY_DIR / TEST_SUBOR).write_text(f"""<testy xml:lang="sk" predmet="{PREDMET}" trieda="X" skupina="" kapitola="01" fileid="1234" gendat="2026-01-01T00:00:00">
+   <test id="k1"><otazka id="o1" body="6.50"><znenie>Tabulka</znenie>{TABULKA_2X1}</otazka></test></testy>
+""", encoding='utf-8')
+   (ANSWERS_DIR / TEST_SUBOR).write_text('<odpovede><test id="k1" dat="2026-01-02T10:00:00"/></odpovede>', encoding='utf-8')
+   for xsl, parametre in (('writetest.xsl', {'admin': False, 'napovedy_zostatok': 3}), ('showtest.xsl', {'admin': False, 'napovedy_zostatok': 3}),
+                          ('showresult.xsl', None), ('downloadresult.xsl', {'kluc': 'k1'})):
+      vystup = _html(proc, xsl, parametre)
+      assert '(6.5b)' in vystup and '6.50b' not in vystup, xsl
+

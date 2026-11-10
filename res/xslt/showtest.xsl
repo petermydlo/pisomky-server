@@ -1,11 +1,14 @@
 <?xml version="1.1" encoding="UTF-8"?>
 <xsl:stylesheet version="3.0" xml:lang="sk"
    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-   xmlns:xs="http://www.w3.org/2001/XMLSchema">
+   xmlns:xs="http://www.w3.org/2001/XMLSchema"
+   xmlns:my="http://www.spsjm.sk"
+   exclude-result-prefixes="my">
 <xsl:output method="html" version="5" indent="yes" encoding="UTF-8"/>
 
 <xsl:import href="head.xsl"/>
 <xsl:import href="common_html.xsl"/>
+<xsl:import href="formatbodov.xsl"/>
 
 <xsl:param name="admin" as="xs:boolean"/>
 <xsl:param name="napovedy_zostatok" as="xs:integer" required="yes"/>
@@ -197,7 +200,7 @@
 
 <xsl:template match="znenie">
    <xsl:apply-templates select="node()[not(self::obrazok)]"/>
-   <xsl:if test="../@body and ../@body != 0"> (<xsl:value-of select="../@body"/>b)</xsl:if>
+   <xsl:if test="../@body and ../@body != 0"> (<xsl:value-of select="my:body-text(../@body)"/>b)</xsl:if>
    <xsl:if test="not(../@body)"> (1b)</xsl:if>
    <xsl:apply-templates select="obrazok"/>
 </xsl:template>

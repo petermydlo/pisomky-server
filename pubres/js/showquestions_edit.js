@@ -71,7 +71,7 @@ function vytvorFormularKategorie(data) {
       </label>
       <div class="otazka-atributy-riadok">
          <label>Počet otázok na výber <input type="number" class="kat-pocet" min="0"/></label>
-         <label>Body <input type="number" class="kat-body" min="0"/></label>
+         <label>Body <input type="number" class="kat-body" min="0" step="any"/></label>
          <label><input type="checkbox" class="kat-static"/> statická</label>
          <label><input type="checkbox" class="kat-bonus"/> bonusová</label>
          <label class="deprecated-checkbox"><input type="checkbox" class="kat-deprecated"/> deprecated</label>
@@ -255,7 +255,7 @@ function vytvorFormularOtazky(data, jeMcq) {
          <textarea class="otazka-znenie" rows="3"></textarea>
       </label>
       <div class="otazka-atributy-riadok">
-         <label>Body <input type="number" class="otazka-body" min="0"/></label>
+         <label>Body <input type="number" class="otazka-body" min="0" step="any"/></label>
          <label><input type="checkbox" class="otazka-static"/> statická</label>
          <label><input type="checkbox" class="otazka-bonus"/> bonusová</label>
          <label><input type="checkbox" class="otazka-rating"/> rating</label>

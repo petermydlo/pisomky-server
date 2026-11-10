@@ -17,6 +17,10 @@
    <xsl:variable name="ziskanepercenta" select="my:ziskanepercenta(.)"/>
    <xsl:variable name="znamka" select="my:znamka($ziskanepercenta, my:stupnica(.))"/>
    <xsl:variable name="stupnica" select="my:stupnica(.)"/>
+   <!-- otazky s automatickym hodnotenim (MCQ, tabulka) nemaju pole na body, showresult.js ich pripocita k rucnym -->
+   <xsl:variable name="auto" select="otazka[not(@rating)][exists(odpoved) or exists(tabulka)]"/>
+   <xsl:variable name="autobody" select="sum(for $o in $auto return my:otazkaziskanebodypresne($o, $riestest))"/>
+   <xsl:variable name="automax" select="sum(for $o in $auto[not(@bonus)] return xs:decimal($o/@body))"/>
 
    <html lang="sk">
       <head>
@@ -98,7 +102,7 @@
                   </xsl:if>
                </div>
             </div>
-            <div id="vyhodnotenie" class="flex-container-head-part znamka-{$znamka}" data-min1="{$stupnica/@min1}" data-min2="{$stupnica/@min2}" data-min3="{$stupnica/@min3}" data-min4="{$stupnica/@min4}">
+            <div id="vyhodnotenie" class="flex-container-head-part znamka-{$znamka}" data-min1="{$stupnica/@min1}" data-min2="{$stupnica/@min2}" data-min3="{$stupnica/@min3}" data-min4="{$stupnica/@min4}" data-auto-body="{$autobody}" data-auto-max="{$automax}">
                <div class="bold">Hodnotenie: <span id="pocetbodov"><xsl:value-of select="my:body-text($sucetspravnychbodov)"/></span>/<xsl:value-of select="my:body-text($sucetmaxbodov)"/>
                   <xsl:text> (</xsl:text><span id="pocetpercent"><xsl:value-of select="my:percent-text($ziskanepercenta)"/></span>%)
                </div>
@@ -230,7 +234,7 @@
 
 <xsl:template match="znenie">
    <xsl:apply-templates select="node()[not(self::obrazok)]"/>
-   <xsl:if test="../@body and ../@body != 0"> (<xsl:value-of select="../@body"/>b)</xsl:if>
+   <xsl:if test="../@body and ../@body != 0"> (<xsl:value-of select="my:body-text(../@body)"/>b)</xsl:if>
    <xsl:if test="not(../@body)"> (1b)</xsl:if>
    <xsl:apply-templates select="obrazok"/>
 </xsl:template>

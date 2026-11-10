@@ -8,6 +8,7 @@
 
 <xsl:import href="scale.xsl"/>
 <xsl:import href="common_fo.xsl"/>
+<xsl:import href="formatbodov.xsl"/>
 
 <xsl:param name="qrdir"/>
 
@@ -207,7 +208,7 @@
 
 <xsl:template match="znenie">
    <xsl:apply-templates/>
-   <xsl:if test="../@body and ../@body != 0"> (<xsl:value-of select="../@body"/>b)</xsl:if>
+   <xsl:if test="../@body and ../@body != 0"> (<xsl:value-of select="my:body-text(../@body)"/>b)</xsl:if>
    <xsl:if test="not(../@body)"> (1b)</xsl:if>
 </xsl:template>
 
