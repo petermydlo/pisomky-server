@@ -75,3 +75,24 @@ def test_stupnicatext(proc):
 <xsl:template match="test"><xsl:value-of select="my:stupnicatext(my:stupnica(.))"/></xsl:template></xsl:stylesheet>''')
    text = exe.transform_to_string(xdm_node=zdroj)
    assert text == '\xa0\xa0\xa0'.join(['100%-90%:1', '89%-80%:2', '79%-70%:3', '69%-60%:4', '59%-0%:5'])
+
+
+def test_stupnicatext_s_desatinnymi_hranicami(proc):
+   xsltproc = proc.new_xslt30_processor()
+   xsltproc.set_cwd(str(PROJECT_ROOT))
+   zdroj = proc.parse_xml(xml_text='<stupnica min1="90" min2="79.99" min3="69.99" min4="59.99" min5="0"/>')
+   exe = xsltproc.compile_stylesheet(stylesheet_text='''<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:my="http://www.spsjm.sk">
+<xsl:import href="res/xslt/scale.xsl"/><xsl:output method="text"/>
+<xsl:template match="stupnica"><xsl:value-of select="my:stupnicatext(.)"/></xsl:template></xsl:stylesheet>''')
+   text = exe.transform_to_string(xdm_node=zdroj)
+   assert text == '\xa0\xa0\xa0'.join(['100%-90%:1', '89.99%-79.99%:2', '79.98%-69.99%:3', '69.98%-59.99%:4', '59.98%-0%:5'])
+
+
+def test_znamka_pri_desatinnej_hranici(proc):
+   xsltproc = proc.new_xslt30_processor()
+   xsltproc.set_cwd(str(PROJECT_ROOT))
+   zdroj = proc.parse_xml(xml_text='<stupnica min1="90" min2="79.99" min3="69.99" min4="59.99" min5="0"/>')
+   exe = xsltproc.compile_stylesheet(stylesheet_text='''<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:my="http://www.spsjm.sk">
+<xsl:import href="res/xslt/scale.xsl"/><xsl:output method="text"/>
+<xsl:template match="stupnica"><xsl:value-of select="my:znamka(69.99, .), my:znamka(69.98, .), my:znamka(79.99, .)" separator=" "/></xsl:template></xsl:stylesheet>''')
+   assert exe.transform_to_string(xdm_node=zdroj) == '3 4 2'

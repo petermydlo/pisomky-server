@@ -1,9 +1,11 @@
 <?xml version="1.1" encoding="UTF-8"?>
 <xsl:stylesheet version="3.0" xml:lang="sk"
    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-   xmlns:xs="http://www.w3.org/2001/XMLSchema">
+   xmlns:xs="http://www.w3.org/2001/XMLSchema"
+   xmlns:my="http://www.spsjm.sk">
 <xsl:output method="html" version="5" indent="yes" encoding="UTF-8"/>
 <xsl:import href="head.xsl"/>
+<xsl:import href="formatbodov.xsl"/>
 
 <xsl:template match="statistika">
    <xsl:variable name="tests" select="doc('../xml/tests/' || @predmet || '/' || @predmet || '_' || @trieda || @skupina || '_' || @kapitola || '_' || @fileid || '.xml')"/>
@@ -19,7 +21,7 @@
          <link rel="stylesheet" type="text/css" href="/pubres/css/testy.css"/>
          <style nonce="NGINX_CSP_NONCE">
             <xsl:for-each select="//otazka">
-               <xsl:value-of select="'.pb-' || translate(@id, '.', '-') || ' { width: ' || @percento || '%; }'"/>
+               <xsl:value-of select="'.pb-' || translate(@id, '.', '-') || ' { width: ' || my:percent-text(@percento) || '%; }'"/>
             </xsl:for-each>
          </style>
       </head>
@@ -37,11 +39,11 @@
             <xsl:value-of select="@skupina"/>
             <xsl:text> </xsl:text>
             <xsl:value-of select="@kapitola"/>
-            <xsl:variable name="celk_body" select="sum(kategoria/otazka/xs:integer(@body))"/>
-            <xsl:variable name="celk_max" select="sum(kategoria/otazka/xs:integer(@maxbody))"/>
+            <xsl:variable name="celk_body" select="sum(kategoria/otazka/xs:decimal(@body))"/>
+            <xsl:variable name="celk_max" select="sum(kategoria/otazka/xs:decimal(@maxbody))"/>
             <xsl:if test="$celk_max > 0">
                <xsl:text> (</xsl:text>
-               <xsl:value-of select="round($celk_body div $celk_max * 100)"/>
+               <xsl:value-of select="my:percent-text($celk_body div $celk_max * 100)"/>
                <xsl:text>%)</xsl:text>
             </xsl:if>
          </div>
@@ -60,7 +62,7 @@
                            </span>
                            <xsl:if test="@percento != ''">
                               <xsl:text> (</xsl:text>
-                              <xsl:value-of select="@percento"/>
+                              <xsl:value-of select="my:percent-text(@percento)"/>
                               <xsl:text>%)</xsl:text>
                            </xsl:if>
                         </a>
@@ -97,8 +99,8 @@
    <xsl:variable name="collapse_id" select="'gs_' || @id"/>
    <xsl:variable name="farba">
       <xsl:choose>
-         <xsl:when test="xs:integer(@percento) >= 75">bg-success-subtle</xsl:when>
-         <xsl:when test="xs:integer(@percento) >= 50">bg-warning-subtle</xsl:when>
+         <xsl:when test="xs:decimal(@percento) >= 75">bg-success-subtle</xsl:when>
+         <xsl:when test="xs:decimal(@percento) >= 50">bg-warning-subtle</xsl:when>
          <xsl:otherwise>bg-danger-subtle</xsl:otherwise>
       </xsl:choose>
    </xsl:variable>
@@ -115,7 +117,7 @@
          <div class="progress gs-progress">
             <div class="progress-bar pb-{@id}" role="progressbar"
                  aria-valuenow="{@percento}" aria-valuemin="0" aria-valuemax="100">
-               <xsl:value-of select="@percento"/>
+               <xsl:value-of select="my:percent-text(@percento)"/>
                <xsl:text>%</xsl:text>
             </div>
          </div>
@@ -127,20 +129,20 @@
                   <xsl:text> / </xsl:text>
                   <span class="bold"><xsl:value-of select="xs:integer(@spravne) + xs:integer(@nespravne)"/></span>
                   <xsl:text> (</xsl:text>
-                  <xsl:value-of select="@percento"/>
+                  <xsl:value-of select="my:percent-text(@percento)"/>
                   <xsl:text>%)</xsl:text>
                </span>
             </span>
          </xsl:if>
-         <xsl:if test="not(@spravne) and not(@nespravne) and xs:integer(@maxbody) > 0">
+         <xsl:if test="not(@spravne) and not(@nespravne) and xs:decimal(@maxbody) > 0">
             <span class="tooltip-wrap gs-ikona">
                <span><i class="bi bi-bar-chart"/></span>
                <span class="tooltip-text">
-                  <xsl:value-of select="@body"/>
+                  <xsl:value-of select="my:body-text(@body)"/>
                   <xsl:text>b / </xsl:text>
-                  <xsl:value-of select="@maxbody"/>
+                  <xsl:value-of select="my:body-text(@maxbody)"/>
                   <xsl:text>b (</xsl:text>
-                  <xsl:value-of select="@percento"/>
+                  <xsl:value-of select="my:percent-text(@percento)"/>
                   <xsl:text>%)</xsl:text>
                </span>
             </span>
@@ -151,6 +153,15 @@
             <xsl:apply-templates select="znenie"/>
          </div>
       </xsl:if>
+   </div>
+</xsl:template>
+
+<xsl:template match="obrazok">
+   <div class="centrovane">
+      <img src="/pubres/img/{@src}">
+         <xsl:if test="@vyska"><xsl:attribute name="height"><xsl:value-of select="@vyska"/>px</xsl:attribute></xsl:if>
+         <xsl:if test="@sirka"><xsl:attribute name="width"><xsl:value-of select="@sirka"/>px</xsl:attribute></xsl:if>
+      </img>
    </div>
 </xsl:template>
 

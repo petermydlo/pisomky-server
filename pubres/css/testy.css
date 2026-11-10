@@ -980,3 +980,51 @@ div:hover > span.penIcon.editActions {
    text-align: center;
    padding: 0 2px;
 }
+
+table.tabulka {
+   margin: 0.5rem auto;
+   border-collapse: collapse;
+}
+
+table.tabulka th,
+table.tabulka td {
+   border: 1px solid black;
+   padding: 0.25rem 0.75rem;
+   min-width: 3.5rem;
+   text-align: center;
+}
+
+table.tabulka th {
+   background-color: var(--bs-secondary-bg);
+   border-bottom: 3px solid black;
+}
+
+table.tabulka input.bunka-vstup {
+   width: 3rem;
+   margin: 0;
+   text-align: center;
+}
+
+table.tabulka input.bunka-siroka {
+   width: 12rem;
+}
+
+.bunka-spravna {
+   padding: 0 0.25rem;
+   font-size: 0.85em;
+}
+
+.flex-container-table-odpoved > div.tabulka-obal {
+   flex-direction: column;
+   justify-content: center;
+}
+
+.tabulka-body {
+   text-align: center;
+   font-weight: bold;
+}
+
+.gs-znenie img {
+   max-width: 100%;
+   height: auto;
+}

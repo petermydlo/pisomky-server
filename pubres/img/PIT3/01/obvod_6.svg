@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+   <rect width="1920" height="1080" fill="#ffffff"/>
+   <g fill="none" stroke="#000000" stroke-width="6" stroke-linejoin="miter" stroke-linecap="butt">
+      <polyline points="100,195 460,195"/>
+      <polyline points="200,195 200,885 460,885"/>
+      <polyline points="100,515 460,515"/>
+      <polyline points="300,515 300,245 460,245"/>
+      <polyline points="100,835 460,835"/>
+      <polyline points="360,835 360,565 460,565"/>
+      <polyline points="150,835 150,950 760,950 760,910 800,910"/>
+      <polyline points="580,220 800,220"/>
+      <polyline points="600,540 800,540"/>
+      <polyline points="680,540 680,270 800,270"/>
+      <polyline points="600,860 800,860"/>
+      <polyline points="680,860 680,590 800,590"/>
+      <polyline points="920,245 1200,245"/>
+      <polyline points="920,565 1200,565"/>
+      <polyline points="1060,565 1060,295 1200,295"/>
+      <polyline points="920,885 1100,885 1100,615 1200,615"/>
+      <polyline points="1340,270 1700,270"/>
+      <polyline points="1340,590 1700,590"/>
+   </g>
+   <g stroke="#000000" stroke-width="4">
+      <rect x="460" y="170" width="120" height="100" fill="#f4dcd9"/>
+      <rect x="460" y="490" width="120" height="100" fill="#d9e5f2"/>
+      <circle cx="590" cy="540" r="10" fill="#d9e5f2"/>
+      <rect x="460" y="810" width="120" height="100" fill="#d9e5f2"/>
+      <circle cx="590" cy="860" r="10" fill="#d9e5f2"/>
+      <rect x="800" y="195" width="120" height="100" fill="#f4dcd9"/>
+      <rect x="800" y="515" width="120" height="100" fill="#d9e5f2"/>
+      <rect x="800" y="835" width="120" height="100" fill="#dce8d6"/>
+      <rect x="1200" y="220" width="120" height="100" fill="#dce8d6"/>
+      <circle cx="1330" cy="270" r="10" fill="#dce8d6"/>
+      <rect x="1200" y="540" width="120" height="100" fill="#f4dcd9"/>
+      <circle cx="1330" cy="590" r="10" fill="#f4dcd9"/>
+   </g>
+   <g font-family="sans-serif" font-size="46" text-anchor="middle" dominant-baseline="central" fill="#000000">
+      <text x="520" y="220">&amp;</text>
+      <text x="520" y="540">=1</text>
+      <text x="520" y="860">=1</text>
+      <text x="860" y="245">&amp;</text>
+      <text x="860" y="565">=1</text>
+      <text x="860" y="885">≥1</text>
+      <text x="1260" y="270">≥1</text>
+      <text x="1260" y="590">&amp;</text>
+      <text x="70" y="195" font-size="48" font-weight="bold">A</text>
+      <text x="70" y="515" font-size="48" font-weight="bold">B</text>
+      <text x="70" y="835" font-size="48" font-weight="bold">C</text>
+      <text x="1745" y="270" font-size="48" font-weight="bold">X</text>
+      <text x="1745" y="590" font-size="48" font-weight="bold">Y</text>
+   </g>
+   <g fill="#000000">
+      <circle cx="200" cy="195" r="12"/>
+      <circle cx="300" cy="515" r="12"/>
+      <circle cx="360" cy="835" r="12"/>
+      <circle cx="150" cy="835" r="12"/>
+      <circle cx="680" cy="540" r="12"/>
+      <circle cx="680" cy="860" r="12"/>
+      <circle cx="1060" cy="565" r="12"/>
+   </g>
+</svg>

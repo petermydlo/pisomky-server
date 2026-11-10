@@ -9,6 +9,12 @@
       </xs:restriction>
    </xs:simpleType>
 
+   <xs:simpleType name="Body">
+      <xs:restriction base="xs:decimal">
+         <xs:minInclusive value="0"/>
+      </xs:restriction>
+   </xs:simpleType>
+
    <xs:simpleType name="Flag">
       <xs:restriction base="xs:string">
          <xs:enumeration value="1"/>
@@ -52,6 +58,7 @@
                <xs:attribute name="src" type="xs:string"/>
                <xs:attribute name="alt" type="xs:string"/>
                <xs:attribute name="vyska" type="xs:string"/>
+               <xs:attribute name="sirka" type="xs:string"/>
             </xs:complexType>
          </xs:element>
          <xs:element name="file">
@@ -105,10 +112,37 @@
       </xs:simpleContent>
    </xs:complexType>
 
+   <!-- odpoved: správna hodnota (neprázdna); bunka s týmto atribútom je pole na vyplnenie, bez neho je to text -->
+   <xs:simpleType name="TabulkaOdpoved">
+      <xs:restriction base="xs:string">
+         <xs:pattern value=".*\S.*"/>
+      </xs:restriction>
+   </xs:simpleType>
+
+   <xs:complexType name="TabulkaBunka" mixed="true">
+      <xs:attribute name="odpoved" type="TabulkaOdpoved"/>
+   </xs:complexType>
+
+   <xs:complexType name="TabulkaRiadok">
+      <xs:sequence>
+         <xs:element name="bunka" type="TabulkaBunka" maxOccurs="unbounded"/>
+      </xs:sequence>
+   </xs:complexType>
+
+   <!-- povolene: znaky, ktoré sa dajú do polí napísať (napr. "01"); bez neho voľný text -->
+   <xs:complexType name="Tabulka">
+      <xs:sequence>
+         <xs:element name="hlavicka" type="TabulkaRiadok" minOccurs="0"/>
+         <xs:element name="riadok" type="TabulkaRiadok" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="povolene" type="xs:string"/>
+   </xs:complexType>
+
    <xs:complexType name="Otazka" mixed="true">
       <xs:choice minOccurs="0" maxOccurs="unbounded">
          <xs:element name="znenie" type="InlineMixed"/>
          <xs:element name="odpoved" type="Odpoved"/>
+         <xs:element name="tabulka" type="Tabulka"/>
          <!-- vzor: vzorová odpoveď pre otvorené otázky (môže byť viacriadková); viac vzor = alternatívy -->
          <xs:element name="vzor" type="xs:string"/>
          <!-- napoveda: nápoveda k celej otázke alebo k odpovedi podľa @pre -->
@@ -127,7 +161,7 @@
       <xs:attribute name="deprecated" type="Flag"/>
       <xs:attribute name="paused" type="Flag"/>
       <xs:attribute name="static" type="Flag"/>
-      <xs:attribute name="body" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="body" type="Body"/>
       <!-- pomer: napr. "1:4" pre partial scoring -->
       <xs:attribute name="pomer" type="xs:string"/>
       <xs:attribute name="rating" type="xs:string"/>
@@ -147,7 +181,7 @@
       </xs:sequence>
       <xs:attribute name="id" type="xs:string" use="required"/>
       <xs:attribute name="pocet" type="xs:nonNegativeInteger" use="required"/>
-      <xs:attribute name="body" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="body" type="Body"/>
       <xs:attribute name="nazov" type="xs:string"/>
       <xs:attribute name="deprecated" type="Flag"/>
       <xs:attribute name="paused" type="Flag"/>

@@ -8,6 +8,7 @@
 
 <xsl:import href="head.xsl"/>
 <xsl:import href="common_html.xsl"/>
+<xsl:import href="formatbodov.xsl"/>
 
 <xsl:param name="predmet"/>
 <xsl:param name="statistika"/>
@@ -67,7 +68,7 @@
                      Kapitola: <xsl:value-of select="$id_kap"/>
                      <xsl:if test="$maxbody_kap > 0">
                         <xsl:text> (</xsl:text>
-                        <xsl:value-of select="round($body_kap div $maxbody_kap * 100)"/>
+                        <xsl:value-of select="my:percent-text($body_kap div $maxbody_kap * 100)"/>
                         <xsl:text>%)</xsl:text>
                      </xsl:if>
                      </a>
@@ -265,7 +266,7 @@
             </xsl:if>
             <i class="bi {if (napoveda[not(@pre)]) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Nápoveda"/>
             <span class="kval-separator"/>
-            <i class="bi {if ($stat_otazka and round($stat_otazka/@percento) >= 90) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Úspešnosť ≥ 90%"/>
+            <i class="bi {if ($stat_otazka and xs:decimal($stat_otazka/@percento) >= 90) then 'bi-star-fill text-warning' else 'bi-star-fill opacity-25 text-secondary'}" title="Úspešnosť ≥ 90%"/>
             <xsl:variable name="idealny_vyber">
                <xsl:choose>
                   <xsl:when test="@static and $stat_otazka/@pocet_vyber_kat">
@@ -366,11 +367,11 @@
                      <xsl:text> / </xsl:text>
                      <span class="bold"><xsl:value-of select="round($stat_otazka/@spravne) + round($stat_otazka/@nespravne)"/></span>
                      <xsl:text> (</xsl:text>
-                     <xsl:value-of select="round($stat_otazka/@percento)"/>
+                     <xsl:value-of select="my:percent-text($stat_otazka/@percento)"/>
                      <xsl:text>%)</xsl:text>
                   </xsl:if>
                   <xsl:if test="not($stat_otazka/@spravne)">
-                     <xsl:value-of select="round($stat_otazka/@percento)"/>
+                     <xsl:value-of select="my:percent-text($stat_otazka/@percento)"/>
                      <xsl:text>%</xsl:text>
                   </xsl:if>
                </span>
@@ -382,7 +383,7 @@
                <span class="tooltip-text">
                   <xsl:value-of select="round($stat_otazka/@vyber)"/>
                   <xsl:text> (</xsl:text>
-                  <xsl:value-of select="round($stat_otazka/@vyber_kat_percento)"/>
+                  <xsl:value-of select="my:percent-text($stat_otazka/@vyber_kat_percento)"/>
                   <xsl:text>%)</xsl:text>
                </span>
             </span>
@@ -392,6 +393,15 @@
       <xsl:if test="odpoved">
          <div class="flex-container-table-odpoved">
             <xsl:apply-templates select="odpoved[position() mod 2 = 1]" mode="row"/>
+         </div>
+      </xsl:if>
+      <xsl:if test="tabulka">
+         <div class="flex-container-table-odpoved">
+            <div class="odpoved-siroka tabulka-obal">
+               <xsl:apply-templates select="tabulka">
+                  <xsl:with-param name="rezim" select="'riesenie'"/>
+               </xsl:apply-templates>
+            </div>
          </div>
       </xsl:if>
    </div>

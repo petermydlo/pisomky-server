@@ -55,7 +55,7 @@ def _kluce_sady(templates, predmet: str, kapitola: str, subor: str, logger) -> d
    videne: set[tuple] = set()
    for otazka in ET.parse(subor).getroot().iterfind('test/otazka'):
       znenie = str(otazka.xpath('string(znenie)'))
-      if not znenie:
+      if not znenie or otazka.find('tabulka') is not None:
          continue
       otazka_id = otazka.get('id', '')
       moznosti = [str(o.xpath('string(.)')).strip() for o in otazka.iterfind('odpoved')]

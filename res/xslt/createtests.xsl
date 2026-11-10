@@ -274,6 +274,7 @@
       <xsl:for-each select="fn:random-number-generator($seed5)?permute(my:nahodne-odpovede(odpoved, $seed5, $pomer))">
          <xsl:copy-of copy-namespaces="no" select="."/>
       </xsl:for-each>
+      <xsl:copy-of copy-namespaces="no" select="tabulka"/>
       <xsl:apply-templates select="miesto"/>
    </otazka>
 </xsl:template>

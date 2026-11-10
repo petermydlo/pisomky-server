@@ -50,8 +50,8 @@
                </div>
             </div>
             <div class="flex-container-head-part znamka-{$znamka}">
-               <div class="bold">Hodnotenie: <xsl:value-of select="$sucetspravnychbodov"/>/<xsl:value-of select="$sucetmaxbodov"/>
-                  <xsl:text> (</xsl:text><xsl:value-of select="floor($ziskanepercenta)"/>%)
+               <div class="bold">Hodnotenie: <xsl:value-of select="my:body-text($sucetspravnychbodov)"/>/<xsl:value-of select="my:body-text($sucetmaxbodov)"/>
+                  <xsl:text> (</xsl:text><xsl:value-of select="my:percent-text($ziskanepercenta)"/>%)
                </div>
                <div class="bold">Známka: <xsl:value-of select="$znamka"/></div>
             </div>
@@ -85,8 +85,9 @@
          <div class="prvy bold vystredene">
             <xsl:choose>
                <xsl:when test="@rating or $je_rating_formular"/>
-               <xsl:when test="$vybodpoved/@body"><xsl:value-of select="$vybodpoved/@body"/>/<xsl:value-of select="$max"/></xsl:when>
-               <xsl:when test="$je_mcq">0/<xsl:value-of select="$max"/></xsl:when>
+               <xsl:when test="tabulka"><xsl:value-of select="my:body-text(my:bodytabulka(., $rtest))"/>/<xsl:value-of select="my:body-text($max)"/></xsl:when>
+               <xsl:when test="$vybodpoved/@body"><xsl:value-of select="my:body-text($vybodpoved/@body)"/>/<xsl:value-of select="my:body-text($max)"/></xsl:when>
+               <xsl:when test="$je_mcq">0/<xsl:value-of select="my:body-text($max)"/></xsl:when>
                <xsl:otherwise><span class="sive">nehodnotené</span></xsl:otherwise>
             </xsl:choose>
          </div>
@@ -109,6 +110,14 @@
                <xsl:apply-templates select="odpoved[position() mod 2 = 1]" mode="row">
                   <xsl:with-param name="vybodpoved" select="$vybodpoved" tunnel="yes"/>
                </xsl:apply-templates>
+            </xsl:when>
+            <xsl:when test="tabulka">
+               <div class="odpoved-siroka tabulka-obal">
+                  <xsl:apply-templates select="tabulka">
+                     <xsl:with-param name="rezim" select="'vysledok'"/>
+                     <xsl:with-param name="hodnoty" select="tokenize(string($vybodpoved), '\|')"/>
+                  </xsl:apply-templates>
+               </div>
             </xsl:when>
             <xsl:when test="@rating">
                <div>

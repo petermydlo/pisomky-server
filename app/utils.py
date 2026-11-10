@@ -10,6 +10,7 @@ import tempfile
 import textwrap
 import subprocess
 import datetime as dat
+from decimal import Decimal, ROUND_FLOOR, ROUND_HALF_UP
 import lxml.etree as ET
 from pathlib import Path
 from queue import Queue, Empty
@@ -1036,8 +1037,35 @@ def get_time_state(test_node: 'PyXdmNode', rodic_node: 'PyXdmNode') -> str:
       return 'after'
    return 'during'
 
+def format_body(body: Decimal) -> str:
+   """Body na vypis (zrkadli my:body-text v formatbodov.xsl): 2 desatinne miesta (.5 hore), bez zbytocnych nul,
+   desatinna bodka. Vypocty ostavaju nezaokruhlene."""
+   text = format(body.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP), 'f')
+   return text.rstrip('0').rstrip('.') if '.' in text else text
+
+def format_percent(percento: Decimal) -> str:
+   """Percenta na vypis (zrkadli my:percent-text): orezane (nie zaokruhlene) na 2 desatinne miesta, aby zobrazena
+   hodnota nikdy nebola nad hranicou znamky, ktoru vysledok nedosiahol."""
+   text = format(percento.quantize(Decimal('0.01'), rounding=ROUND_FLOOR), 'f')
+   return text.rstrip('0').rstrip('.') if '.' in text else text
+
+def body_tabulka(otazka: ET._Element, odpoved: str) -> Decimal:
+   """Body za tabulku (zrkadli my:bodytabulka v grading.xsl): @body krat podiel spravnych poli, bez zaokruhlenia.
+   Odpoved ziaka je 'hodnota|hodnota|...' v poradi poli v dokumente."""
+   spravne = [b.get('odpoved', '') for b in otazka.iterfind('.//tabulka//bunka[@odpoved]')]
+   if not spravne:
+      return Decimal(0)
+   zadane = odpoved.split('|')
+
+   def normalizuj(text: str) -> str:
+      return ' '.join(text.split()).lower()
+
+   zhody = sum(1 for i, spravna in enumerate(spravne) if i < len(zadane) and normalizuj(zadane[i]) != '' and normalizuj(zadane[i]) == normalizuj(spravna))
+   return Decimal(otazka.get('body', '0')) * zhody / len(spravne)
+
 def store_mcq_scores(kluc: str, cache: dict | None = None) -> None:
-   """Zapise @body pre MCQ otazky do answer XML, ak este nie su zapisane."""
+   """Zapise @body pre MCQ a tabulkove otazky do answer XML, ak este nie su zapisane (statistiky citaju
+   body len z odpovedi; hodnotenie tabuliek sa aj tak pocita znova v grading.xsl a score.xq)."""
    test_subor = find_test_file(kluc, cache)
    if not test_subor:
       return
@@ -1061,15 +1089,19 @@ def store_mcq_scores(kluc: str, cache: dict | None = None) -> None:
                continue
             odpovedove = otazka.findall('odpoved')
             spravna = ''.join(chr(ord('a') + i) for i, o in enumerate(odpovedove) if o.get('spravna') == '1')
-            if not spravna:
+            je_tabulka = otazka.find('tabulka') is not None
+            if not spravna and not je_tabulka:
                continue
             oid = otazka.get('id')
             answer_otazka = next(iter(answer_test.xpath('.//otazka[@id=$id]', id=oid)), None)
             if answer_otazka is None or answer_otazka.get('body') is not None:
                continue
-            student_answer = (answer_otazka.text or '').strip()
-            body = int(otazka.get('body', 0)) if student_answer == spravna else 0
-            answer_otazka.set('body', str(body))
+            if je_tabulka:
+               body = body_tabulka(otazka, answer_otazka.text or '')
+            else:
+               student_answer = (answer_otazka.text or '').strip()
+               body = Decimal(otazka.get('body', '0')) if student_answer == spravna else Decimal(0)
+            answer_otazka.set('body', format(body, 'f'))
             changed = True
          if changed:
             ET.indent(answer_tree, space='   ')
@@ -1107,9 +1139,9 @@ def get_score(proc: 'PySaxonProcessor', kluc: str, cache: dict | None = None) ->
          return None
       znamka_cislo = node.get('znamka', '')
       return {
-         'ziskane':  int(node.get('ziskane', 0)),
-         'maximum':  int(node.get('maximum', 0)),
-         'percento': int(node.get('percento', 0)),
+         'ziskane':  format_body(Decimal(node.get('ziskane', '0'))),
+         'maximum':  format_body(Decimal(node.get('maximum', '0'))),
+         'percento': format_percent(Decimal(node.get('percento', '0'))),
          'neuplne':  node.get('neuplne') == 'true',
          'znamka':   znamka_cislo or None,
       }

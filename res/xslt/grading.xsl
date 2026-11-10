@@ -5,6 +5,7 @@
    xmlns:my="http://www.spsjm.sk">
 
 <xsl:import href="scale.xsl"/>
+<xsl:import href="formatbodov.xsl"/>
 
 <xsl:key name="ttest" match="test" use="@id"/>
 
@@ -33,12 +34,12 @@
    <xsl:sequence select="key('ttest', $testnode/@id, my:vybtesty($testnode))"/>
 </xsl:function>
 
-<xsl:function name="my:sucetmaxbodov" as="xs:integer">
+<xsl:function name="my:sucetmaxbodov" as="xs:decimal">
    <xsl:param name="testnode" as="element()"/>
-   <xsl:sequence select="sum(for $q in $testnode/otazka[not(@bonus)][not(@rating)] return xs:integer($q/@body))"/>
+   <xsl:sequence select="sum(for $q in $testnode/otazka[not(@bonus)][not(@rating)] return xs:decimal($q/@body))"/>
 </xsl:function>
 
-<xsl:function name="my:sucetspravnychbodov" as="xs:integer">
+<xsl:function name="my:sucetspravnychbodov" as="xs:decimal">
    <xsl:param name="testnode" as="element()"/>
    <xsl:variable name="riestest" select="my:riestest($testnode)"/>
    <xsl:variable name="polespravnychbodovs">
@@ -46,10 +47,10 @@
          <xsl:with-param name="rtest" select="$riestest" tunnel="yes"/>
       </xsl:apply-templates>
    </xsl:variable>
-   <xsl:sequence select="sum(for $i in tokenize($polespravnychbodovs) return xs:integer($i))"/>
+   <xsl:sequence select="sum(for $i in tokenize($polespravnychbodovs) return xs:decimal($i))"/>
 </xsl:function>
 
-<xsl:function name="my:ziskanepercenta" as="xs:double">
+<xsl:function name="my:ziskanepercenta" as="xs:decimal">
    <xsl:param name="testnode" as="element()"/>
    <xsl:sequence select="if (my:sucetmaxbodov($testnode) > 0) then my:sucetspravnychbodov($testnode) div my:sucetmaxbodov($testnode) * 100 else 0"/>
 </xsl:function>
@@ -58,27 +59,41 @@
 
 <xsl:function name="my:otvorenaotazka" as="xs:boolean">
    <xsl:param name="otazka" as="element()"/>
-   <xsl:sequence select="empty($otazka/odpoved)"/>
+   <xsl:sequence select="empty($otazka/odpoved) and empty($otazka/tabulka)"/>
 </xsl:function>
 
-<xsl:function name="my:otazkaziskanebodypresne" as="xs:integer">
+<!-- Body za tabuľku: @body krát podiel správnych polí (nezaokrúhlené). Odpoveď žiaka je "hodnota|hodnota|...",
+      v poradí polí (bunka/@odpoved) v dokumente -->
+<xsl:function name="my:bodytabulka" as="xs:decimal">
+   <xsl:param name="otazka" as="element()"/>
+   <xsl:param name="riestest" as="element()?"/>
+   <xsl:variable name="spravne" select="$otazka/tabulka//bunka[@odpoved]/string(@odpoved)"/>
+   <xsl:variable name="zadane" select="tokenize(string($riestest/otazka[@id = $otazka/@id]), '\|')"/>
+   <xsl:variable name="zhody" select="count(for $i in 1 to count($spravne) return if (normalize-space(($zadane[$i], '')[1]) != '' and lower-case(normalize-space($zadane[$i])) = lower-case(normalize-space($spravne[$i]))) then 1 else ())"/>
+   <xsl:sequence select="if (count($spravne) = 0) then 0 else xs:decimal($otazka/@body) * $zhody div count($spravne)"/>
+</xsl:function>
+
+<xsl:function name="my:otazkaziskanebodypresne" as="xs:decimal">
    <xsl:param name="otazka" as="element()"/>
    <xsl:param name="riestest" as="element()?"/>
    <xsl:variable name="odpovedotazka" select="$riestest/otazka[@id = $otazka/@id]"/>
    <xsl:choose>
+      <xsl:when test="exists($otazka/tabulka)">
+         <xsl:sequence select="my:bodytabulka($otazka, $riestest)"/>
+      </xsl:when>
       <xsl:when test="my:otvorenaotazka($otazka)">
-         <xsl:sequence select="xs:integer(($odpovedotazka/@body, 0)[1])"/>
+         <xsl:sequence select="xs:decimal(($odpovedotazka/@body, 0)[1])"/>
       </xsl:when>
       <xsl:otherwise>
          <xsl:variable name="spravnaodpoved">
             <xsl:apply-templates select="$otazka/odpoved" mode="spravnebody"/>
          </xsl:variable>
-         <xsl:sequence select="if ($odpovedotazka/text() = $spravnaodpoved) then xs:integer($otazka/@body) else 0"/>
+         <xsl:sequence select="if ($odpovedotazka/text() = $spravnaodpoved) then xs:decimal($otazka/@body) else 0"/>
       </xsl:otherwise>
    </xsl:choose>
 </xsl:function>
 
-<xsl:function name="my:sucetziskanychbodovpresne" as="xs:integer">
+<xsl:function name="my:sucetziskanychbodovpresne" as="xs:decimal">
    <xsl:param name="testnode" as="element()"/>
    <xsl:param name="riestest" as="element()?"/>
    <xsl:sequence select="sum(for $o in $testnode/otazka[not(@rating)] return my:otazkaziskanebodypresne($o, $riestest))"/>
@@ -90,7 +105,7 @@
    <xsl:sequence select="some $o in $testnode/otazka[not(@rating)] satisfies (my:otvorenaotazka($o) and empty($riestest/otazka[@id = $o/@id]/@body))"/>
 </xsl:function>
 
-<xsl:function name="my:ziskanepercentapresne" as="xs:double">
+<xsl:function name="my:ziskanepercentapresne" as="xs:decimal">
    <xsl:param name="testnode" as="element()"/>
    <xsl:variable name="riestest" select="my:riestest($testnode)"/>
    <xsl:variable name="maximum" select="my:sucetmaxbodov($testnode)"/>
@@ -105,8 +120,11 @@
       <xsl:apply-templates select="odpoved" mode="spravnebody"/>
    </xsl:variable>
 
-   <xsl:if test="$ziakovaodpoved = $spravnaodpoved">
-      <xsl:sequence select="xs:integer(@body)"/>
+   <xsl:if test="exists(tabulka)">
+      <xsl:sequence select="my:bodytabulka(., $rtest)"/>
+   </xsl:if>
+   <xsl:if test="empty(tabulka) and $ziakovaodpoved = $spravnaodpoved">
+      <xsl:sequence select="xs:decimal(@body)"/>
    </xsl:if>
 </xsl:template>
 

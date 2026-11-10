@@ -194,8 +194,9 @@
    <xsl:if test="odpoved">
       <xsl:apply-templates select="odpoved[position() mod 2 = 1]" mode="row"/>
    </xsl:if>
+   <xsl:apply-templates select="tabulka"/>
    <xsl:apply-templates select="miesto" mode="pdf"/>
-   <xsl:if test="not(odpoved) and not(miesto)">
+   <xsl:if test="not(odpoved) and not(miesto) and not(tabulka)">
       <fo:table-row keep-with-previous.within-page="always">
          <fo:table-cell keep-together.within-page="always" number-columns-spanned="2">
             <fo:block margin-bottom="0.5cm"/>

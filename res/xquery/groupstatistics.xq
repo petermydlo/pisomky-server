@@ -46,7 +46,7 @@ let $zaznamy_mcq :=
          where exists($test_node/odpoved)
          let $spravna_pozicia := count($test_node/odpoved[@spravna='1']/preceding-sibling::odpoved) + 1
          let $spravne_pismeno := local:pismeno($spravna_pozicia)
-         let $body := xs:integer($test_node/@body)
+         let $body := xs:decimal($test_node/@body)
          return <zaznam id="{$otazka_id}" typ="mcq" spravne="{$ziakova/text() = $spravne_pismeno}" body="{$body}"/>
 
 (: zaznamy bodov pre otvorene otazky :)
@@ -76,9 +76,9 @@ let $otazky :=
          if (exists($zaz_mcq)) then
             let $spravne := count($zaz_mcq[@spravne='true'])
             let $nespravne := count($zaz_mcq[@spravne='false'])
-            let $body_hodnota := sum($zaz_mcq[@spravne='true']/xs:integer(@body))
-            let $maxbody_hodnota := sum($zaz_mcq/xs:integer(@body))
-            let $percento := if ($maxbody_hodnota > 0) then round($body_hodnota div $maxbody_hodnota * 100) else 0
+            let $body_hodnota := sum($zaz_mcq[@spravne='true']/xs:decimal(@body))
+            let $maxbody_hodnota := sum($zaz_mcq/xs:decimal(@body))
+            let $percento := if ($maxbody_hodnota > 0) then $body_hodnota div $maxbody_hodnota * 100 else 0
             return <otazka id="{$otazka_id}" nazov="{$q_otazka/@nazov}" kategoria="{$kategoria_id}"
                       spravne="{$spravne}"
                       nespravne="{$nespravne}"
@@ -88,11 +88,11 @@ let $otazky :=
                       {$q_otazka/znenie[1]}
                    </otazka>
          else if (exists($zaz_body)) then
-            let $suma_body := sum($zaz_body/xs:integer(@body))
+            let $suma_body := sum($zaz_body/xs:decimal(@body))
             let $pocet := count($zaz_body)
-            let $priemer_body := if ($pocet > 0) then round($suma_body div $pocet) else 0
-            let $priemer_max := $zaz_body[1]/xs:integer(@maxbody)
-            let $percento := if ($priemer_max > 0) then round($priemer_body div $priemer_max * 100) else 0
+            let $priemer_body := if ($pocet > 0) then $suma_body div $pocet else 0
+            let $priemer_max := $zaz_body[1]/xs:decimal(@maxbody)
+            let $percento := if ($priemer_max > 0) then $priemer_body div $priemer_max * 100 else 0
             return <otazka id="{$otazka_id}" nazov="{$q_otazka/@nazov}" kategoria="{$kategoria_id}"
                       body="{$priemer_body}"
                       maxbody="{$priemer_max}"
@@ -116,9 +116,9 @@ return <statistika predmet="{$predmet}" trieda="{$trieda}" skupina="{$skupina}" 
       return <kategoria id="{$kat_id}" nazov="{$q_kat/@nazov}"
                 percento="{
                    let $k := $otazky[@kategoria = $kat_id]
-                   let $b := sum($k/xs:integer(@body))
-                   let $m := sum($k/xs:integer(@maxbody))
-                   return if ($m > 0) then round($b div $m * 100) else 0
+                   let $b := sum($k/xs:decimal(@body))
+                   let $m := sum($k/xs:decimal(@maxbody))
+                   return if ($m > 0) then $b div $m * 100 else 0
                 }">
          {$otazky[@kategoria = $kat_id]}
       </kategoria>

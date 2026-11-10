@@ -166,7 +166,18 @@
          <xsl:with-param name="vybodpoved" select="$vybodpoved" tunnel="yes"/>
       </xsl:apply-templates>
    </xsl:if>
-   <xsl:if test="not(odpoved)">
+   <xsl:if test="tabulka">
+      <xsl:apply-templates select="tabulka">
+         <xsl:with-param name="rezim" select="'vysledok'"/>
+         <xsl:with-param name="hodnoty" select="tokenize(string($vybodpoved), '\|')"/>
+      </xsl:apply-templates>
+      <fo:table-row keep-with-previous.within-page="always">
+         <fo:table-cell keep-together.within-page="always" number-columns-spanned="2">
+            <fo:block margin-bottom="0.5cm">body: <xsl:value-of select="my:body-text(my:bodytabulka(., $rtest))"/></fo:block>
+         </fo:table-cell>
+      </fo:table-row>
+   </xsl:if>
+   <xsl:if test="not(odpoved) and not(tabulka)">
       <xsl:if test="$vybodpoved">
          <fo:table-row keep-with-previous.within-page="always" border="solid 1px black">
             <fo:table-cell keep-together.within-page="always" number-columns-spanned="2">
@@ -179,7 +190,7 @@
             <fo:table-row keep-with-previous.within-page="always">
                <fo:table-cell keep-together.within-page="always" number-columns-spanned="2">
                   <fo:block>
-                     body: <xsl:value-of select="$vybodpoved/@body"/>
+                     body: <xsl:value-of select="my:body-text($vybodpoved/@body)"/>
                   </fo:block>
                </fo:table-cell>
             </fo:table-row>

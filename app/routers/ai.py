@@ -388,6 +388,8 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       return JSONResponse({'error': 'Otázka nenájdená'}, status_code=404)
 
    xsltpath.set_context(xdm_item=otazka)
+   if xsltpath.evaluate_single('tabulka'):
+      return JSONResponse({'error': 'Pre túto otázku nie je nápoveda'}, status_code=400)
    znenie_text = xsltpath.evaluate_single('string(znenie)')
    spravna_el = xsltpath.evaluate_single('odpoved[@spravna="1"]')
    spravna_odpoved = spravna_el.string_value.strip() if spravna_el else None

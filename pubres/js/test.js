@@ -327,8 +327,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
    }
 
+   //tabulka: polia sa skladaju do jedneho skryteho pola otazky (hodnoty oddelene "|"), ktore sa odosiela ako ostatne odpovede
+   function zlozTabulku(bunka) {
+      const povolene = bunka.dataset.povolene;
+      if (povolene) bunka.value = Array.from(bunka.value).filter(z => povolene.includes(z)).join('');
+      bunka.value = bunka.value.replaceAll('|', '');
+      const tabulka = bunka.closest('table.tabulka');
+      const skryte = tabulka.parentElement.querySelector('input.tabulka-hodnota');
+      skryte.value = Array.from(tabulka.querySelectorAll('input.bunka-vstup')).map(el => el.value.trim()).join('|');
+      skryte.dispatchEvent(new Event('input', { bubbles: true }));
+   }
+
    const odpovede = document.getElementById('odpovede');
    if (odpovede) {
+      odpovede.addEventListener('input', (e) => {
+         if (e.target.matches('input.bunka-vstup')) zlozTabulku(e.target);
+      });
+      //oznacena hodnota sa po napisani prepise, nepripisuje sa k nej
+      odpovede.addEventListener('focusin', (e) => {
+         if (e.target.matches('input.bunka-vstup')) e.target.select();
+      });
       odpovede.addEventListener('change', (e) => {
          if (e.target.matches('input.odpoved')) scheduleAutosave();
       });

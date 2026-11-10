@@ -99,8 +99,8 @@
                </div>
             </div>
             <div id="vyhodnotenie" class="flex-container-head-part znamka-{$znamka}" data-min1="{$stupnica/@min1}" data-min2="{$stupnica/@min2}" data-min3="{$stupnica/@min3}" data-min4="{$stupnica/@min4}">
-               <div class="bold">Hodnotenie: <span id="pocetbodov"><xsl:value-of select="$sucetspravnychbodov"/></span>/<xsl:value-of select="$sucetmaxbodov"/>
-                  <xsl:text> (</xsl:text><span id="pocetpercent"><xsl:value-of select="floor($ziskanepercenta)"/></span>%)
+               <div class="bold">Hodnotenie: <span id="pocetbodov"><xsl:value-of select="my:body-text($sucetspravnychbodov)"/></span>/<xsl:value-of select="my:body-text($sucetmaxbodov)"/>
+                  <xsl:text> (</xsl:text><span id="pocetpercent"><xsl:value-of select="my:percent-text($ziskanepercenta)"/></span>%)
                </div>
                <div class="bold" >Známka: <span id="znamka"><xsl:value-of select="$znamka"/></span></div>
             </div>
@@ -146,10 +146,10 @@
          <xsl:value-of select="$rtest/otazka[@id = $idotazky]/@body"/>
       </xsl:variable>
       <xsl:variable name="body">
-         <xsl:if test="$hodnota castable as xs:integer">
+         <xsl:if test="$hodnota castable as xs:decimal">
             <xsl:value-of select="$hodnota"/>
          </xsl:if>
-         <xsl:if test="not($hodnota castable as xs:integer)">
+         <xsl:if test="not($hodnota castable as xs:decimal)">
             <xsl:text>0</xsl:text>
          </xsl:if>
       </xsl:variable>
@@ -158,10 +158,10 @@
       <xsl:variable name="je_rating_formular" select="exists(ancestor::testy//otazka[@rating])"/>
       <div class="flex-container-table-znenie {$farba}">
          <div class="prvy">
-            <xsl:if test="not(odpoved) and not($je_rating_formular)">
-               <div><input type="number" id="{$zaciatok}_{@id}" name="{$zaciatok}_{@id}" min="0" max="{@body}" value="{$body}"/></div>
+            <xsl:if test="not(odpoved) and not(tabulka) and not($je_rating_formular)">
+               <div><input type="number" id="{$zaciatok}_{@id}" name="{$zaciatok}_{@id}" min="0" max="{@body}" step="any" value="{$body}"/></div>
             </xsl:if>
-            <xsl:if test="odpoved or $je_rating_formular">
+            <xsl:if test="odpoved or tabulka or $je_rating_formular">
                <div class="radio col-up">
                   <input type="radio" name="h{@id}" value="bg-success-subtle" form="">✓</input>
                </div>
@@ -203,8 +203,17 @@
                </div>
             </div>
          </xsl:if>
-         <xsl:if test="not(odpoved) and not(@rating)">
+         <xsl:if test="not(odpoved) and not(@rating) and not(tabulka)">
             <div><input type="text" id="{@id}" name="{@id}" size="83" value="{$vybodpoved}" readonly="true"/></div>
+         </xsl:if>
+         <xsl:if test="tabulka">
+            <div class="odpoved-siroka tabulka-obal">
+               <xsl:apply-templates select="tabulka">
+                  <xsl:with-param name="rezim" select="'vysledok'"/>
+                  <xsl:with-param name="hodnoty" select="tokenize(string($vybodpoved), '\|')"/>
+               </xsl:apply-templates>
+               <div class="tabulka-body">Body: <xsl:value-of select="my:body-text(my:bodytabulka(., $rtest))"/>/<xsl:value-of select="my:body-text(@body)"/></div>
+            </div>
          </xsl:if>
       </div>
       <div class="flex-container-table-znenie">

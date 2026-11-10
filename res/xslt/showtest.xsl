@@ -165,7 +165,7 @@
                   <xsl:if test="not(@bonus)"><xsl:number count="otazka" format="01. "/></xsl:if>
                   <xsl:apply-templates select="znenie"/>
                </span>
-               <xsl:if test="not($je_rating_formular)">
+               <xsl:if test="not($je_rating_formular) and not(tabulka)">
                   <span class="ai-napoveda-btn{if ($napovedy_zostatok le 0) then ' hint-vycerpany' else ''}">
                      <xsl:attribute name="data-otazka-id">
                         <xsl:value-of select="@id"/>
@@ -185,6 +185,11 @@
       <xsl:if test="odpoved">
          <div class="flex-container-table-odpoved">
             <xsl:apply-templates select="odpoved[position() mod 2 = 1]" mode="row"/>
+         </div>
+      </xsl:if>
+      <xsl:if test="tabulka">
+         <div class="flex-container-table-odpoved">
+            <div class="odpoved-siroka tabulka-obal"><xsl:apply-templates select="tabulka"/></div>
          </div>
       </xsl:if>
    </div>

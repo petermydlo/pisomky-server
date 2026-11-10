@@ -72,8 +72,8 @@ return <statistika predmet="{$predmet}">
       let $spravne := count($zaznamy[@spravne='true'])
       let $nespravne := count($zaznamy[@spravne='false'])
       let $celkom := $spravne + $nespravne
-      let $body_hodnota := sum($zaznamy[@spravne='true']/@body)
-      let $maxbody_hodnota := sum($zaznamy/@body)
+      let $body_hodnota := sum($zaznamy[@spravne='true']/xs:decimal(@body))
+      let $maxbody_hodnota := sum($zaznamy/xs:decimal(@body))
       let $kategoria_id := ($questions//otazka[@id = $id]/../@id)[1]
       let $pocet_v_kat := count($questions//kategoria[@id = $kategoria_id]/otazka[not(@deprecated)])
       let $kat_el := ($questions//kategoria[@id = $kategoria_id])[1]
@@ -100,8 +100,8 @@ return <statistika predmet="{$predmet}">
    (: statistika pre otazky bez odpovedi :)
    for $id in distinct-values($odpovede_body/@id)
       let $zaznamy := $odpovede_body[@id = $id]
-      let $suma_body := sum($zaznamy/@body)
-      let $suma_max := sum($zaznamy/@maxbody)
+      let $suma_body := sum($zaznamy/xs:decimal(@body))
+      let $suma_max := sum($zaznamy/xs:decimal(@maxbody))
       let $kategoria_id := ($questions//otazka[@id = $id]/../@id)[1]
       let $pocet_v_kat := count($questions//kategoria[@id = $kategoria_id]/otazka[not(@deprecated)])
       let $kat_el := ($questions//kategoria[@id = $kategoria_id])[1]

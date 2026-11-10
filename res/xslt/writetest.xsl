@@ -175,7 +175,7 @@
                   <xsl:if test="not(@bonus)"><xsl:number count="otazka" format="01. "/></xsl:if>
                   <xsl:apply-templates select="znenie"/>
                </span>
-               <xsl:if test="not($je_rating_formular)">
+               <xsl:if test="not($je_rating_formular) and not(tabulka)">
                   <span class="otazka-ikony">
                      <xsl:if test="odpoved">
                         <xsl:variable name="vyb" select="normalize-space($rtest/otazka[@id = $idotazky])"/>
@@ -225,9 +225,20 @@
                </div>
             </div>
          </xsl:if>
-         <xsl:if test="not(odpoved) and not(@rating)">
+         <xsl:if test="not(odpoved) and not(@rating) and not(tabulka)">
             <xsl:variable name="vybodpoved" select="$rtest/otazka[@id = $idotazky]"/>
             <div><input type="text" class="odpoved" id="{@id}" name="{@id}" value="{$vybodpoved}"/></div>
+         </xsl:if>
+         <xsl:if test="tabulka">
+            <xsl:variable name="vybodpoved" select="string($rtest/otazka[@id = $idotazky])"/>
+            <div class="odpoved-siroka tabulka-obal">
+               <!-- hodnoty polí skladá test.js do jedného skrytého poľa otázky (oddelené |) -->
+               <input type="text" class="odpoved tabulka-hodnota skryte" id="{@id}" name="{@id}" value="{$vybodpoved}"/>
+               <xsl:apply-templates select="tabulka">
+                  <xsl:with-param name="rezim" select="'vstup'"/>
+                  <xsl:with-param name="hodnoty" select="tokenize($vybodpoved, '\|')"/>
+               </xsl:apply-templates>
+            </div>
          </xsl:if>
       </div>
    </div>

@@ -93,6 +93,6 @@ def test_ma_odkaz_domov(html):
 
 
 def test_celkove_hodnotenie_zahrna_otvorene_otazky(html):
-   # MCQ 2 + otvorena 3 = 5 z 12 (o4 nehodnotena); 5/12 = 41 %
+   # MCQ 2 + otvorena 3 = 5 z 12 (o4 nehodnotena); 5/12 = 41.66 % (orezane na 2 miesta)
    assert 'Hodnotenie: 5/12' in html
-   assert '(41%)' in html
+   assert '(41.66%)' in html

@@ -14,24 +14,25 @@
 </xsl:function>
 
 <xsl:function name="my:znamka" as="xs:string">
-   <xsl:param name="percenta" as="xs:double"/>
+   <xsl:param name="percenta" as="xs:decimal"/>
    <xsl:param name="stupnica" as="element(stupnica)"/>
    <xsl:sequence select="
-      if ($percenta ge xs:double($stupnica/@min1)) then '1'
-      else if ($percenta ge xs:double($stupnica/@min2)) then '2'
-      else if ($percenta ge xs:double($stupnica/@min3)) then '3'
-      else if ($percenta ge xs:double($stupnica/@min4)) then '4'
-      else if ($percenta ge xs:double($stupnica/@min5)) then '5'
+      if ($percenta ge xs:decimal($stupnica/@min1)) then '1'
+      else if ($percenta ge xs:decimal($stupnica/@min2)) then '2'
+      else if ($percenta ge xs:decimal($stupnica/@min3)) then '3'
+      else if ($percenta ge xs:decimal($stupnica/@min4)) then '4'
+      else if ($percenta ge xs:decimal($stupnica/@min5)) then '5'
       else '-'"/>
 </xsl:function>
 
 <!-- Text do hlavičky PDF: 100%-85%:1   84%-70%:2 ... -->
 <xsl:function name="my:stupnicatext" as="xs:string">
    <xsl:param name="stupnica" as="element(stupnica)"/>
-   <xsl:variable name="hranice" select="for $i in 1 to 5 return xs:integer($stupnica/@*[local-name() = 'min' || $i])"/>
+   <xsl:variable name="hranice" select="for $i in 1 to 5 return xs:decimal($stupnica/@*[local-name() = 'min' || $i])"/>
+   <xsl:variable name="krok" select="if (some $h in $hranice satisfies $h ne floor($h)) then 0.01 else 1"/>
    <xsl:sequence select="string-join(
       for $i in 1 to 5 return
-         concat(if ($i = 1) then 100 else $hranice[$i - 1] - 1, '%-', $hranice[$i], '%:', $i),
+         concat(if ($i = 1) then 100 else $hranice[$i - 1] - $krok, '%-', $hranice[$i], '%:', $i),
       '&#xA0;&#xA0;&#xA0;')"/>
 </xsl:function>
 

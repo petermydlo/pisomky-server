@@ -1,9 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
    const vyhodnotenie = document.getElementById('vyhodnotenie');
-   const min1 = parseInt(vyhodnotenie.dataset.min1, 10);
-   const min2 = parseInt(vyhodnotenie.dataset.min2, 10);
-   const min3 = parseInt(vyhodnotenie.dataset.min3, 10);
-   const min4 = parseInt(vyhodnotenie.dataset.min4, 10);
+   const min1 = parseFloat(vyhodnotenie.dataset.min1);
+   const min2 = parseFloat(vyhodnotenie.dataset.min2);
+   const min3 = parseFloat(vyhodnotenie.dataset.min3);
+   const min4 = parseFloat(vyhodnotenie.dataset.min4);
    const hlavicka = document.getElementById('hlavicka');
 
    document.addEventListener('change', (e) => {
@@ -15,16 +15,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target.matches("input[type='number'][id^='h_'], input[type='number'][id^='bh_']")) {
          let maxPoints = 0;
          document.querySelectorAll("input[type='number'][id^='h_']").forEach(el => {
-            maxPoints += parseInt(el.getAttribute('max'), 10);
+            maxPoints += parseFloat(el.getAttribute('max'));
          });
          let totalPoints = 0;
          document.querySelectorAll("input[type='number'][id^='h_'], input[type='number'][id^='bh_']").forEach(el => {
-            totalPoints += parseInt(el.value, 10);
+            totalPoints += parseFloat(el.value);
          });
          totalPoints = Math.max(Math.min(totalPoints, maxPoints), 0);
-         const percenta = totalPoints / maxPoints * 100;
-         document.getElementById('pocetbodov').textContent = totalPoints;
-         document.getElementById('pocetpercent').textContent = Math.floor(percenta);
+         const percenta = totalPoints / maxPoints * 100 + 1e-9;   //tolerancia plavajucej ciarky pri porovnani s hranicami
+         document.getElementById('pocetbodov').textContent = String(Math.round(totalPoints * 100) / 100);
+         document.getElementById('pocetpercent').textContent = String(Math.floor(percenta * 100) / 100);
          const znamka = document.getElementById('znamka');
          if (percenta >= min1) {
             znamka.textContent = '1';

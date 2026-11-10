@@ -127,7 +127,7 @@
                                  <div><xsl:value-of select="sort($vybtesty/odpovede/test, (), function($t) { xs:dateTime($t/@dat) })[last()]/@dat"/></div>
                                  <div>
                                     <xsl:if test="exists($priemer)">
-                                       <xsl:value-of select="concat(round($priemer), '%')"/>
+                                       <xsl:value-of select="concat(my:percent-text($priemer), '%')"/>
                                     </xsl:if>
                                  </div>
                                  <div>
@@ -243,12 +243,12 @@
       <xsl:if test="exists($riestest)">
          <xsl:variable name="maximum" select="my:sucetmaxbodov(.)"/>
          <xsl:variable name="ziskane" select="min((my:sucetziskanychbodovpresne(., $riestest), $maximum))"/>
-         <xsl:variable name="percento" select="if ($maximum > 0) then round($ziskane div $maximum * 100) else 0"/>
+         <xsl:variable name="percento" select="if ($maximum > 0) then my:percent-text($ziskane div $maximum * 100) else 0"/>
          <xsl:if test="my:testneuplny(., $riestest)">
             <xsl:attribute name="class">sive</xsl:attribute>
             <xsl:attribute name="title">Obsahuje neohodnotené otvorené otázky</xsl:attribute>
          </xsl:if>
-         <xsl:value-of select="concat($ziskane, '/', $maximum, ' (', $percento, '%)')"/>
+         <xsl:value-of select="concat(my:body-text($ziskane), '/', my:body-text($maximum), ' (', $percento, '%)')"/>
       </xsl:if>
    </div>
    <div class="neviditelny"></div>
