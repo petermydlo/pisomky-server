@@ -69,3 +69,20 @@ document.addEventListener('click', (e) => {
       bootstrap.Toast.getInstance(document.getElementById('liveToast'))?.hide();
    }, 1500);
 });
+
+//POST formulara na /admin/...; vrati JSON odpovede. Pri chybe hodi Error so spravou servera (detail), a ak odpoved nie je JSON
+//(napr. nginx 502 pocas restartu) alebo detail nie je retazec (422 z FastAPI), so spravou "Poziadavka zlyhala (HTTP stav)"
+function postForm(url, params) {
+   return fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams(params)
+   }).then(resp => {
+      if (!resp.ok) {
+         return resp.json().catch(() => ({})).then(d => {
+            throw new Error(typeof d.detail === 'string' ? d.detail : `Požiadavka zlyhala (HTTP ${resp.status})`);
+         });
+      }
+      return resp.json();
+   });
+}

@@ -1,14 +1,3 @@
-function postForm(url, params) {
-   return fetch(url, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: new URLSearchParams(params)
-   }).then(resp => {
-      if (!resp.ok) return resp.json().then(d => { throw new Error(d.detail || 'Požiadavka zlyhala'); });
-      return resp.json();
-   });
-}
-
 function getJson(url) {
    return fetch(url).then(resp => {
       if (!resp.ok) throw new Error('Požiadavka zlyhala');
