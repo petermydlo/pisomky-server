@@ -36,20 +36,26 @@ function confirmZmazanie(typ, id, nazov) {
 // --- kapitola ---
 
 function pridajKapitolu(predmet) {
-   const kapitolaId = prompt('ID novej kapitoly (napr. 05):');
-   if (!kapitolaId) return;
-   const nazov = prompt('Názov kapitoly (voliteľné):') || '';
-   postForm('/admin/process_chapter', {predmet, kapitola_id: kapitolaId, operacia: 'create', nazov})
-      .then(() => reloadZachovajKapitolu())
-      .catch(err => alert(err.message));
+   otvorDialog({
+      nadpis: `Nová kapitola (${predmet})`,
+      polia: [
+         {id: 'kapitola_id', popis: 'ID kapitoly', povinne: true, vzor: /^[A-Za-z0-9_.-]+$/, chyba: 'ID smie obsahovať len písmená, číslice, _, - a bodku.', pomocka: 'napr. 05 alebo 02.5'},
+         {id: 'nazov', popis: 'Názov (voliteľné)'},
+      ],
+      potvrdit: 'Vytvoriť',
+      ulozit: ({kapitola_id, nazov}) => postForm('/admin/process_chapter', {predmet, kapitola_id, operacia: 'create', nazov})
+         .then(() => reloadZachovajKapitolu()),
+   });
 }
 
-function upravKapitolu(predmet, kapitolaId) {
-   const nazov = prompt('Nový názov kapitoly:');
-   if (nazov === null) return;
-   postForm('/admin/process_chapter', {predmet, kapitola_id: kapitolaId, operacia: 'update', nazov})
-      .then(() => reloadZachovajKapitolu())
-      .catch(err => alert(err.message));
+function upravKapitolu(predmet, kapitolaId, nazov) {
+   otvorDialog({
+      nadpis: `Upraviť kapitolu ${kapitolaId}`,
+      polia: [{id: 'nazov', popis: 'Názov kapitoly', hodnota: nazov}],
+      potvrdit: 'Uložiť',
+      ulozit: ({nazov}) => postForm('/admin/process_chapter', {predmet, kapitola_id: kapitolaId, operacia: 'update', nazov})
+         .then(() => reloadZachovajKapitolu()),
+   });
 }
 
 function zmazKapitolu(predmet, kapitolaId) {
@@ -661,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
          e.stopPropagation();
          const predmet = kap.dataset.predmet;
          if (kap.matches('.addKapitolaIcon')) pridajKapitolu(predmet);
-         else if (kap.matches('.editKapitolaIcon')) upravKapitolu(predmet, kap.dataset.id);
+         else if (kap.matches('.editKapitolaIcon')) upravKapitolu(predmet, kap.dataset.id, kap.dataset.nazov);
          else if (kap.matches('.delKapitolaIcon') && !kap.classList.contains('disabled')) zmazKapitolu(predmet, kap.dataset.id);
          return;
       }

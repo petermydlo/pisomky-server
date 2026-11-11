@@ -75,7 +75,7 @@
                      <xsl:if test="$can_edit or $can_delete">
                         <span class="penIcon editActions editActions-kapitola">
                            <xsl:if test="$can_edit">
-                              <i class="bi bi-pencil editKapitolaIcon" data-predmet="{$predmet}" data-id="{$id_kap}" title="Upraviť kapitolu"/>
+                              <i class="bi bi-pencil editKapitolaIcon" data-predmet="{$predmet}" data-id="{$id_kap}" data-nazov="{/kapitola/@nazov}" title="Upraviť kapitolu"/>
                            </xsl:if>
                            <xsl:if test="$can_delete">
                               <xsl:choose>
@@ -209,6 +209,7 @@
          </div>
          <xsl:call-template name="cdn-js"/>
          <script src="/pubres/js/showquestions.js"><xsl:comment>MyJS</xsl:comment></script>
+         <script src="/pubres/js/dialog.js"><xsl:comment>MyJS</xsl:comment></script>
          <script src="/pubres/js/showquestions_edit.js"><xsl:comment>MyJS</xsl:comment></script>
       </body>
    </html>

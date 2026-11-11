@@ -15,17 +15,19 @@ document.addEventListener('DOMContentLoaded', () => {
    const addIcon = document.querySelector('.addPredmetIcon');
    if (addIcon) {
       addIcon.addEventListener('click', () => {
-         const predmet = prompt('Skratka nového predmetu (napr. SXT4):');
-         if (!predmet) return;
-         postForm('/admin/process_predmet', {predmet, operacia: 'create'})
-            .then(() => {
-               const option = document.createElement('option');
-               option.value = predmet;
-               option.textContent = predmet;
-               elPredmet.appendChild(option);
-               elPredmet.value = predmet;
-            })
-            .catch(err => alert(err.message));
+         otvorDialog({
+            nadpis: 'Nový predmet',
+            polia: [{id: 'predmet', popis: 'Skratka predmetu', povinne: true, vzor: /^[A-Z0-9]{2,10}$/, chyba: 'Skratka má mať 2 až 10 veľkých písmen alebo číslic.', pomocka: 'napr. SXT4', maxDlzka: 10}],
+            potvrdit: 'Vytvoriť',
+            ulozit: ({predmet}) => postForm('/admin/process_predmet', {predmet, operacia: 'create'})
+               .then(() => {
+                  const option = document.createElement('option');
+                  option.value = predmet;
+                  option.textContent = predmet;
+                  elPredmet.appendChild(option);
+                  elPredmet.value = predmet;
+               }),
+         });
       });
    }
 
