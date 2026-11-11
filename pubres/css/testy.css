@@ -817,7 +817,7 @@ div:hover > span.penIcon.editActions {
    background: #e9ecef;
 }
 
-.tabulka-mriezka td.hlavicka input.tabulka-bunka {
+.tabulka-mriezka td.hlavicka .tabulka-bunka {
    font-weight: bold;
 }
 
@@ -825,16 +825,22 @@ div:hover > span.penIcon.editActions {
    background: #d4edda;
 }
 
-.otazka-formular .tabulka-mriezka input.tabulka-bunka {
-   display: block;
-   width: 6rem;
-   margin: 0;
+/* bunka je contenteditable div: sirka sa prisposobi obsahu, dlhsi text sa zalomi */
+.tabulka-mriezka .tabulka-bunka {
+   min-width: 4.5rem;
+   max-width: 24rem;
+   min-height: 2.1rem;
    padding: 0.35rem 0.5rem;
-   border: 0;
-   border-radius: 0;
-   background: transparent;
    box-sizing: border-box;
    text-align: center;
+   white-space: normal;
+   overflow-wrap: anywhere;
+   cursor: text;
+}
+
+.tabulka-mriezka .tabulka-bunka:focus {
+   outline: none;
+   box-shadow: inset 0 0 0 2px rgba(var(--bs-info-rgb, 13, 202, 240), 0.6);
 }
 
 /* oznacenie pola na vyplnenie: maly prepinac v rohu bunky, viditelny pri nabehnuti, na fokuse a ked je pole oznacene */

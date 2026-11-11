@@ -61,6 +61,17 @@ function zobrazXmlTabulky(xml) {
    text.select();
 }
 
+//contenteditable="plaintext-only" vklada len cisty text; ak ho prehliadac nepozna (setter hodi chybu), pouzije sa "true" a text vlozi obsluha paste
+const PLAINTEXT_ONLY = (() => {
+   try {
+      const el = document.createElement('div');
+      el.contentEditable = 'plaintext-only';
+      return el.contentEditable === 'plaintext-only';
+   } catch (err) {
+      return false;
+   }
+})();
+
 const HTML_EDITORA_TABULKY = `
    <div class="tabulka-nastroje">
       <button type="button" class="tabulka-vloz-otvor">Vložiť zo schránky</button>
@@ -146,15 +157,16 @@ function pripojEditorTabulky(form, povodneXml) {
          if (r >= prvy) ovl.appendChild(tlacidlo('tabulka-riadok-zmaz', 'x-lg', 'Odstrániť riadok', r, stav.riadky.length - prvy <= 1));
          riadok.forEach((text, c) => {
             const td = tr.insertCell();
-            const vstup = document.createElement('input');
-            vstup.type = 'text';
-            vstup.className = 'tabulka-bunka';
-            vstup.value = text;
-            vstup.spellcheck = false;
-            vstup.dataset.r = String(r);
-            vstup.dataset.c = String(c);
-            vstup.setAttribute('aria-label', `Bunka, riadok ${r + 1}, stĺpec ${c + 1}`);
-            td.appendChild(vstup);
+            const bunka = document.createElement('div');
+            bunka.className = 'tabulka-bunka';
+            bunka.contentEditable = PLAINTEXT_ONLY ? 'plaintext-only' : 'true';
+            bunka.setAttribute('role', 'textbox');
+            bunka.setAttribute('aria-label', `Bunka, riadok ${r + 1}, stĺpec ${c + 1}`);
+            bunka.spellcheck = false;
+            bunka.textContent = text;
+            bunka.dataset.r = String(r);
+            bunka.dataset.c = String(c);
+            td.appendChild(bunka);
             if (r < prvy) {
                td.className = 'hlavicka';
                return;
@@ -191,10 +203,40 @@ function pripojEditorTabulky(form, povodneXml) {
       vykresli();
    }
 
+   //presunie kurzor do bunky (r, c) a oznaci jej obsah, aby sa dal hned prepisat; vrati false, ak taka bunka nie je
+   function prejdiNaBunku(r, c) {
+      const bunka = mriezka.querySelector(`.tabulka-bunka[data-r="${r}"][data-c="${c}"]`);
+      if (!bunka) return false;
+      bunka.focus();
+      window.getSelection().selectAllChildren(bunka);
+      return true;
+   }
+
    mriezka.addEventListener('input', (e) => {
       if (!e.target.matches('.tabulka-bunka')) return;
-      stav.riadky[Number(e.target.dataset.r)][Number(e.target.dataset.c)] = e.target.value;
+      stav.riadky[Number(e.target.dataset.r)][Number(e.target.dataset.c)] = e.target.textContent.replace(/[\r\n]+/g, ' ');
       poZmene();
+   });
+   //Enter a sipka dole = bunka pod, Shift+Enter a sipka hore = bunka nad (ako v tabulkovom procesore); bunka je jednoriadkova
+   mriezka.addEventListener('keydown', (e) => {
+      if (!e.target.matches('.tabulka-bunka') || e.isComposing) return;
+      const bezModifikatorov = !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey;
+      let smer = 0;
+      if (e.key === 'Enter') smer = e.shiftKey ? -1 : 1;
+      else if (e.key === 'ArrowDown' && bezModifikatorov) smer = 1;
+      else if (e.key === 'ArrowUp' && bezModifikatorov) smer = -1;
+      if (!smer) return;
+      e.preventDefault();
+      prejdiNaBunku(Number(e.target.dataset.r) + smer, Number(e.target.dataset.c));
+   });
+   mriezka.addEventListener('beforeinput', (e) => {
+      if (e.target.matches('.tabulka-bunka') && (e.inputType === 'insertParagraph' || e.inputType === 'insertLineBreak')) e.preventDefault();
+   });
+   //vlozeny text je vzdy cisty a jednoriadkovy (nove riadky a tabulatory sa nahradia medzerou)
+   mriezka.addEventListener('paste', (e) => {
+      if (!e.target.matches('.tabulka-bunka')) return;
+      e.preventDefault();
+      document.execCommand('insertText', false, e.clipboardData.getData('text/plain').replace(/\s*[\r\n\t]+\s*/g, ' ').trim());
    });
    mriezka.addEventListener('change', (e) => {
       if (!e.target.matches('.tabulka-pole')) return;
