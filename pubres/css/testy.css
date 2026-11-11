@@ -838,10 +838,8 @@ div:hover > span.penIcon.editActions {
 
 .tabulka-xml-info {
    color: gray;
-}
-
-.tabulka-xml-info:empty {
-   display: none;
+   margin-right: auto;
+   align-self: center;
 }
 
 .tabulka-vkladanie {

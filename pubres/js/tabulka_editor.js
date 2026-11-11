@@ -34,8 +34,8 @@ function zobrazXmlTabulky(xml) {
       <form>
          <h2>XML tabuľky</h2>
          <textarea class="tabulka-xml-text" rows="16" readonly spellcheck="false"></textarea>
-         <div class="tabulka-xml-info"></div>
          <div class="dialog-tlacidla">
+            <span class="tabulka-xml-info"></span>
             <button type="button" class="tabulka-xml-kopiruj">Kopírovať</button>
             <button type="submit">Zavrieť</button>
          </div>
@@ -52,7 +52,7 @@ function zobrazXmlTabulky(xml) {
          .then(() => { info.textContent = 'Skopírované do schránky.'; })
          .catch(() => {
             text.select();
-            info.textContent = 'Kopírovanie do schránky sa nepodarilo, text je označený, skopírujte ho cez Ctrl+C.';
+            info.textContent = 'Kopírovanie zlyhalo, text je označený (Ctrl+C).';
          });
    });
    dialog.addEventListener('close', () => dialog.remove());
