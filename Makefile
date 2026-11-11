@@ -5,7 +5,7 @@ VENV = .venv
 
 test:
 	$(VENV)/bin/pytest
-	node --test tests/js/
+	node --test tests/js/*.test.js
 
 # banka otazok, testy, odpovede, feedback a archivy oproti res/xsd/*.xsd (iba lokalne, res/xml/ nie je v gite)
 validate:

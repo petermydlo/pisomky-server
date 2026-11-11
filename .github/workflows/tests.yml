@@ -15,7 +15,7 @@ jobs:
           node-version: '22'
       - run: pip install -r requirements.txt
       - run: pytest
-      - run: node --test tests/js/
+      - run: node --test tests/js/*.test.js
       - run: ruff check app/
       - run: mypy app/
       - run: pyright app/ tests/
