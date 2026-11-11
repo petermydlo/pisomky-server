@@ -1025,10 +1025,10 @@ _SAFE_TRIEDA = re.compile(r'^[A-Za-z0-9_.,-]*$')
 
 def test_xml_path(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str:
    for val in (predmet, kapitola, fileid):
-      if not _SAFE_PARAM.match(val):
+      if not _SAFE_PARAM.fullmatch(val):
          raise ValueError(f'Neplatný parameter: {val!r}')
    for val in (trieda, skupina):
-      if not _SAFE_TRIEDA.match(val):
+      if not _SAFE_TRIEDA.fullmatch(val):
          raise ValueError(f'Neplatný parameter: {val!r}')
    return f'./res/xml/tests/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
 

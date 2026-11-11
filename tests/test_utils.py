@@ -449,6 +449,21 @@ def test_xml_path_bez_fileid():
    cesta = xml_path('MAT', '1A', '', 'kap1', '')
    assert cesta == './res/xml/tests/MAT/MAT_1A_kap1_.xml'
 
+@pytest.mark.parametrize('predmet, trieda, skupina, kapitola, fileid', [
+   ('../x', '1A', '', 'kap1', 'ab12'),
+   ('MAT', '1A', '', '../..', 'ab12'),
+   ('MAT', '1A', '', 'kap1', 'a/b'),
+   ('MAT', '/../x', '', 'kap1', 'ab12'),
+   ('MAT', '1A', 'sk/1', 'kap1', 'ab12'),
+   ('MAT\n', '1A', '', 'kap1', 'ab12'),
+   ('MAT', '1A\n', '', 'kap1', 'ab12'),
+   ('MAT', '1A', '', 'kap1\n', 'ab12'),
+   ('MAT', '1A', '', 'kap1', 'ab12\n'),
+])
+def test_xml_path_odmietne_neplatny_parameter(predmet, trieda, skupina, kapitola, fileid):
+   with pytest.raises(ValueError, match='Neplatný parameter'):
+      xml_path(predmet, trieda, skupina, kapitola, fileid)
+
 
 # --- modify_test_xml ---
 

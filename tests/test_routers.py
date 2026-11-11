@@ -8,10 +8,12 @@ import pytest
 import lxml.etree as ET
 from pathlib import Path
 from filelock import FileLock
+from fastapi import Response
 from fastapi.exceptions import HTTPException
+from saxonche import PySaxonProcessor
 
 from app.utils import modify_test_xml
-from app.routers.testrun import write_answers
+from app.routers.testrun import write_answers, saveanswers
 from app.routers.results import write_marks, write_odhalene
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
 from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
@@ -373,6 +375,54 @@ def test_regeneratetests_odmietne_ak_su_odpovede(tests_file, answers_file):
       asyncio.run(regeneratetests(request, PREDMET, TRIEDA, KAPITOLA, FILEID, SKUPINA))  # type: ignore[arg-type]
    assert exc.value.status_code == 409
    assert tests_file.read_text(encoding='utf-8') == povodny
+
+
+# --- saveanswers ---
+
+class _FormaStub:
+   def __init__(self, data):
+      self._data = data
+   async def __aenter__(self):
+      return self
+   async def __aexit__(self, *args):
+      return False
+   def items(self):
+      return self._data.items()
+
+def _saveanswers_request(proc, data):
+   state = SimpleNamespace(proc=proc, kluc_cache={}, logger=logging.getLogger('pisomky'))
+   return SimpleNamespace(app=SimpleNamespace(state=state), form=lambda: _FormaStub(data))
+
+def _subor(filename, obsah):
+   async def citaj():
+      return obsah
+   return SimpleNamespace(filename=filename, read=citaj)
+
+def test_saveanswers_cesty_su_z_testu_nie_z_formulara(tests_file, tmp_path):
+   podvrhnute = {'predmet': '../../../../utok', 'trieda': '/../../x', 'skupina': 'a', 'kapitola': '..', 'fileid': 'zz', 'q1': 'a'}
+   okolie_pred = set(os.listdir(tmp_path.parent))
+   with PySaxonProcessor(license=False) as proc:
+      asyncio.run(saveanswers(_saveanswers_request(proc, podvrhnute), Response(), KLUC, subory=[_subor('../../dir/evil.txt', b'obsah')]))  # type: ignore[arg-type]
+   odpovede = tmp_path / 'res/xml/answers' / PREDMET
+   stem = f'{PREDMET}_{TRIEDA}{SKUPINA}_{KAPITOLA}_{FILEID}'
+   xml = ET.parse(str(odpovede / f'{stem}.xml')).getroot()
+   assert [xml.get(a) for a in ('predmet', 'trieda', 'skupina', 'kapitola', 'fileid')] == [PREDMET, TRIEDA, SKUPINA, KAPITOLA, FILEID]
+   assert xml.xpath('test[@id="TEST01"]/otazka[@id="q1"]/text()') == ['a']  # type: ignore[union-attr]
+   assert (odpovede / f'{stem}_{KLUC}-evil.txt_subor').read_bytes() == b'obsah'
+   zapisane = {p.relative_to(tmp_path).parts[0] for p in tmp_path.rglob('*')}
+   assert zapisane == {'res'}  # nic mimo res/
+   assert set(os.listdir(tmp_path.parent)) == okolie_pred  # ani nad nim (predmet='../../../../utok' by vytvoril tmp_path/../utok)
+   assert not (tmp_path / 'res/xml/answers/zz').exists()
+   assert sorted(p.name for p in (tmp_path / 'res/xml/answers').iterdir()) == [PREDMET]
+
+def test_saveanswers_skonceny_test_je_403_a_nic_nezapise(tmp_path):
+   cesta = tmp_path / 'res/xml/tests' / PREDMET / f'{PREDMET}_{TRIEDA}{SKUPINA}_{KAPITOLA}_{FILEID}.xml'
+   cesta.write_text(TESTS_XML.replace('<testy ', '<testy stop="2020-01-01T08:00" '), encoding='utf-8')
+   with PySaxonProcessor(license=False) as proc:
+      with pytest.raises(HTTPException) as exc:
+         asyncio.run(saveanswers(_saveanswers_request(proc, {'q1': 'a'}), Response(), KLUC, subory=None))  # type: ignore[arg-type]
+   assert exc.value.status_code == 403
+   assert list((tmp_path / 'res/xml/answers' / PREDMET).iterdir()) == []
 
 
 # --- process_chapter ---

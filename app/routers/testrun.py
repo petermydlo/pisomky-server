@@ -3,7 +3,7 @@
 from datetime import datetime
 from pathlib import Path
 from app.mytypes import StringForm, StringPath, StringFormOptional, FileListOptional
-from app.utils import check_time, modify_test_xml, find_test_file, test_xml_path, get_testy_autor, update_category, update_question, store_mcq_scores
+from app.utils import find_test, get_test_metadata, modify_test_xml, find_test_file, test_xml_path, get_testy_autor, update_category, update_question, store_mcq_scores
 import lxml.etree as ET
 from fastapi.concurrency import run_in_threadpool
 from filelock import FileLock
@@ -14,10 +14,13 @@ from fastapi.exceptions import HTTPException
 router = APIRouter()
 
 @router.post('/saveanswers/{kluc}')
-async def saveanswers(request: Request, response: Response, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', subory: FileListOptional = None):
+async def saveanswers(request: Request, response: Response, kluc: StringPath, subory: FileListOptional = None):
    proc = request.app.state.proc
-   if not check_time(proc, kluc):
+   test_node = find_test(proc, kluc, cache=request.app.state.kluc_cache)
+   if test_node is None:
       raise HTTPException(status_code=403, detail='Test už skončil!')
+   #predmet, trieda, ... sa berú z testu podľa kľúča; hodnoty z formulára sa ignorujú (žiak ich nesmie voliť, idú do ciest k súborom)
+   predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, test_node)
    adresar = f'./res/xml/answers/{predmet}'
    Path(adresar).mkdir(parents=True, exist_ok=True)
    if subory is not None:
