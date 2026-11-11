@@ -92,10 +92,14 @@ async def showquestions(request: Request, predmet: StringForm, X_Remote_User: St
 @router.post('/admin/process_chapter', response_class=JSONResponse)
 async def process_chapter(request: Request, predmet: StringForm, kapitola_id: StringForm, operacia: StringForm, X_Remote_User: StringHeader, nazov: StringFormOptional = None):
    try:
+      over_id_kapitoly(predmet, kapitola_id)
+   except ValueError as e:
+      request.app.state.logger.warning(f'neplatný vstup kapitola: {e}')
+      raise HTTPException(status_code=400, detail=str(e))
+   try:
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
          raise HTTPException(status_code=400, detail=f'Neznáma operácia: {operacia}')
-      over_id_kapitoly(predmet, kapitola_id)
       check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet)
       if operacia == 'create':
          nova_id, ok = create_chapter(predmet, kapitola_id, nazov)

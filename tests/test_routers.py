@@ -2,6 +2,7 @@
 
 import os
 import asyncio
+import logging
 from types import SimpleNamespace
 import pytest
 import lxml.etree as ET
@@ -14,6 +15,7 @@ from app.routers.testrun import write_answers
 from app.routers.results import write_marks, write_odhalene
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
 from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
+from app.routers.questions import process_chapter
 
 PREDMET = 'MAT'
 TRIEDA = '1A'
@@ -371,6 +373,18 @@ def test_regeneratetests_odmietne_ak_su_odpovede(tests_file, answers_file):
       asyncio.run(regeneratetests(request, PREDMET, TRIEDA, KAPITOLA, FILEID, SKUPINA))  # type: ignore[arg-type]
    assert exc.value.status_code == 409
    assert tests_file.read_text(encoding='utf-8') == povodny
+
+
+# --- process_chapter ---
+
+def test_process_chapter_neplatne_id_je_400_a_len_varovanie(caplog):
+   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(logger=logging.getLogger('pisomky'))))
+   with caplog.at_level(logging.DEBUG, logger='pisomky'):
+      with pytest.raises(HTTPException) as exc:
+         asyncio.run(process_chapter(request, 'PIT3', '../x', 'create', 'nikto'))  # type: ignore[arg-type]
+   assert exc.value.status_code == 400
+   assert 'ID kapitoly' in exc.value.detail
+   assert [r.levelno for r in caplog.records] == [logging.WARNING]
 
 
 # --- write_odhalene ---
