@@ -13,6 +13,7 @@ from app.utils import (
    find_question,
    create_chapter,
    over_id_kapitoly,
+   over_predmet,
    update_chapter,
    delete_chapter,
    create_predmet,
@@ -243,6 +244,15 @@ def test_over_id_kapitoly_zly_predmet(predmet):
    with pytest.raises(ValueError, match='Skratka predmetu'):
       over_id_kapitoly(predmet, '01')
 
+@pytest.mark.parametrize('predmet', ['PIT3', 'AUT3', 'DEMO', 'AB'])
+def test_over_predmet_platny(predmet):
+   over_predmet(predmet)
+
+@pytest.mark.parametrize('predmet', ['', 'pit3', 'P', '../..', 'PIT3/x', '*', 'PIT3\n'])
+def test_over_predmet_zly(predmet):
+   with pytest.raises(ValueError, match='Skratka predmetu'):
+      over_predmet(predmet)
+
 
 # --- update_chapter ---
 
@@ -445,6 +455,10 @@ def test_xml_path_so_skupinou():
    cesta = xml_path('MAT', '1A', 'sk1', 'kap1', 'ab12')
    assert cesta == './res/xml/tests/MAT/MAT_1Ask1_kap1_ab12.xml'
 
+def test_xml_path_kapitola_s_bodkou():
+   cesta = xml_path('AUT3', '1A', '', '02.5', 'ab12')
+   assert cesta == './res/xml/tests/AUT3/AUT3_1A_02.5_ab12.xml'
+
 def test_xml_path_bez_fileid():
    cesta = xml_path('MAT', '1A', '', 'kap1', '')
    assert cesta == './res/xml/tests/MAT/MAT_1A_kap1_.xml'
@@ -453,6 +467,10 @@ def test_xml_path_bez_fileid():
    ('../x', '1A', '', 'kap1', 'ab12'),
    ('MAT', '1A', '', '../..', 'ab12'),
    ('MAT', '1A', '', 'kap1', 'a/b'),
+   ('MAT', '1A', '', 'kap/1', 'ab12'),
+   ('..', '1A', '', 'kap1', 'ab12'),
+   ('MAT.', '1A', '', 'kap1', 'ab12'),
+   ('MAT', '1A', '', 'kap1', 'a.b'),
    ('MAT', '/../x', '', 'kap1', 'ab12'),
    ('MAT', '1A', 'sk/1', 'kap1', 'ab12'),
    ('MAT\n', '1A', '', 'kap1', 'ab12'),

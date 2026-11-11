@@ -17,7 +17,11 @@ from app.routers.testrun import write_answers, saveanswers
 from app.routers.results import write_marks, write_odhalene
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
 from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
-from app.routers.questions import process_chapter
+from app.routers.questions import process_chapter, showquestions
+from app.routers.results import savemarks, groupstatistics
+from app.routers.importanswers import importmanual
+from app.routers.ai import feedbackreport
+from app.routers.tests import createtests
 
 PREDMET = 'MAT'
 TRIEDA = '1A'
@@ -435,6 +439,41 @@ def test_process_chapter_neplatne_id_je_400_a_len_varovanie(caplog):
    assert exc.value.status_code == 400
    assert 'ID kapitoly' in exc.value.detail
    assert [r.levelno for r in caplog.records] == [logging.WARNING]
+
+
+# --- trasy skladajuce cesty z parametrov: zle hodnoty sa odmietnu pred akymkolvek zapisom ---
+
+def _request_bez_proc():
+   return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(proc=None, logger=logging.getLogger('pisomky'))))
+
+@pytest.mark.parametrize('trasa', ['savemarks', 'importmanual', 'feedbackreport', 'groupstatistics', 'createtests'])
+@pytest.mark.parametrize('predmet, trieda', [('../../../../utok', TRIEDA), (PREDMET, '/../x'), (PREDMET + '\n', TRIEDA)])
+def test_trasy_odmietnu_neplatne_parametre_pred_zapisom(trasa, predmet, trieda, tmp_path):
+   request = _request_bez_proc()
+   volanie = {
+      'savemarks': lambda: savemarks(request, Response(), KLUC, predmet, trieda, KAPITOLA, FILEID, DAT),  # type: ignore[arg-type]
+      'importmanual': lambda: importmanual(request, KLUC, predmet, trieda, KAPITOLA, FILEID),  # type: ignore[arg-type]
+      'feedbackreport': lambda: feedbackreport(request, predmet, trieda, KAPITOLA, FILEID),  # type: ignore[arg-type]
+      'groupstatistics': lambda: groupstatistics(request, predmet, trieda, KAPITOLA, FILEID),  # type: ignore[arg-type]
+      'createtests': lambda: createtests(request, predmet, [trieda], KAPITOLA, 'ucitel'),  # type: ignore[arg-type]
+   }[trasa]
+   okolie_pred = set(os.listdir(tmp_path.parent))
+   strom_pred = sorted(tmp_path.rglob('*'))
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(volanie())
+   assert exc.value.status_code == 400
+   assert 'Neplatný parameter' in exc.value.detail
+   assert set(os.listdir(tmp_path.parent)) == okolie_pred
+   assert sorted(tmp_path.rglob('*')) == strom_pred
+
+@pytest.mark.parametrize('predmet', ['../../../../utok', 'pit3', 'MAT\n', '*'])
+def test_showquestions_odmietne_neplatny_predmet(predmet, tmp_path):
+   okolie_pred = set(os.listdir(tmp_path.parent))
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(showquestions(_request_bez_proc(), predmet, 'ucitel'))  # type: ignore[arg-type]
+   assert exc.value.status_code == 400
+   assert 'Skratka predmetu' in exc.value.detail
+   assert set(os.listdir(tmp_path.parent)) == okolie_pred
 
 
 # --- write_odhalene ---

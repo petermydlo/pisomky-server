@@ -11,7 +11,7 @@ from app.utils import (
    add_category, delete_category, update_category, restore_category, find_category,
    add_question, update_question, delete_question, restore_question, fork_question, find_question,
    zmenene_zamrznute_polia, normalizuj_vzor, over_tabulku, serializuj_tabulku,
-   delete_chapter, create_chapter, update_chapter, over_id_kapitoly,
+   delete_chapter, create_chapter, update_chapter, over_id_kapitoly, over_predmet,
    create_predmet, delete_predmet,
 )
 from app.permissions import check_permission, has_permission, predmet_from_cesta
@@ -65,6 +65,10 @@ async def process_predmet(request: Request, predmet: StringForm, operacia: Strin
 
 @router.post('/admin/showquestions', response_class=HTMLResponse)
 async def showquestions(request: Request, predmet: StringForm, X_Remote_User: StringHeader):
+   try:
+      over_predmet(predmet)
+   except ValueError as e:
+      raise HTTPException(status_code=400, detail=str(e))
    proc = request.app.state.proc
    tmp_path = None
    try:

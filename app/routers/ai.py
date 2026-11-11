@@ -15,7 +15,7 @@ from lxml import etree as ET
 import anyio
 import ollama
 from dotenv import load_dotenv
-from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, normalizuj_vzor, xquery_to_string, xslt_to_string
+from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, normalizuj_vzor, test_xml_path, xquery_to_string, xslt_to_string
 from app.mytypes import StringQuery, IntForm, StringForm
 from anyio.streams.memory import MemoryObjectSendStream
 from fastapi import APIRouter, Request
@@ -519,6 +519,10 @@ async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis
 
 @router.post('/admin/feedbackreport', response_class=HTMLResponse)
 async def feedbackreport(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
+   try:
+      test_xml_path(predmet, trieda, skupina, kapitola, fileid)
+   except ValueError as e:
+      raise HTTPException(status_code=400, detail=str(e))
    proc = request.app.state.proc
    try:
       params = {

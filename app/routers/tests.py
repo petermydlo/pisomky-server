@@ -27,6 +27,10 @@ async def selectcreate(request: Request):
 @router.post('/admin/createtests', response_class=RedirectResponse)
 async def createtests(request: Request, predmet: StringForm, trieda: StringListForm, kapitola: StringForm, X_Remote_User: StringHeader, skupina: StringForm = '', start: StringForm = '', stop: StringForm = '', anonymne: BoolForm = False, identita: BoolForm = False, stupnica: StringForm = 'default'):
    try:
+      test_xml_path(predmet, ','.join(trieda), '' if skupina == '-' else skupina, kapitola, '')  #pred mkdir a skladanim ciest
+   except ValueError as e:
+      raise HTTPException(status_code=400, detail=str(e))
+   try:
       proc = request.app.state.proc
       if stupnica not in [el.get('id') for el in ET.parse('./res/xml/lists/scales.xml').getroot()]:
          raise HTTPException(status_code=400, detail='neznáma stupnica: ' + stupnica)

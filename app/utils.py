@@ -321,11 +321,15 @@ def update_chapter(kapitola_id: str, predmet: str, nazov: str | None, cache: dic
 _SAFE_PREDMET = re.compile(r'^[A-Z0-9]{2,10}$')
 _SAFE_KAPITOLA = re.compile(r'^[A-Za-z0-9_.-]+$')
 
+def over_predmet(predmet: str) -> None:
+   """Skontroluje skratku predmetu pred skladanim ciest (fullmatch, lebo `$` by prepustilo koncovy novy riadok). Pri chybe vyhodi ValueError."""
+   if not _SAFE_PREDMET.fullmatch(predmet):
+      raise ValueError('Skratka predmetu má mať 2 až 10 veľkých písmen alebo číslic.')
+
 def over_id_kapitoly(predmet: str, kapitola_id: str) -> None:
    """Skontroluje skratku predmetu a ID kapitoly, ktore sa skladaju do cesty k suboru (res/xml/questions/...).
    Pri chybe vyhodi ValueError so spravou pre ucitela (fullmatch, lebo `$` by prepustilo koncovy novy riadok). ID smie obsahovat bodku (existuje kapitola 02.5)."""
-   if not _SAFE_PREDMET.fullmatch(predmet):
-      raise ValueError('Skratka predmetu má mať 2 až 10 veľkých písmen alebo číslic.')
+   over_predmet(predmet)
    if not _SAFE_KAPITOLA.fullmatch(kapitola_id):
       raise ValueError('ID kapitoly smie obsahovať len písmená, číslice, _, - a bodku.')
 
@@ -1022,11 +1026,15 @@ def fork_question(otazka_id: str, nova_data: dict, cache: dict | None = None) ->
 # --- Testy a cas ---
 _SAFE_PARAM = re.compile(r'^[A-Za-z0-9_-]*$')
 _SAFE_TRIEDA = re.compile(r'^[A-Za-z0-9_.,-]*$')
+#kapitola je len cast nazvu suboru, takze bodka je v poriadku (kapitola 02.5); predmet je v ceste samostatny adresar, tam by '..' vybehlo vyssie
+_SAFE_KAPITOLA_PARAM = re.compile(r'^[A-Za-z0-9_.-]*$')
 
 def test_xml_path(predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> str:
-   for val in (predmet, kapitola, fileid):
+   for val in (predmet, fileid):
       if not _SAFE_PARAM.fullmatch(val):
          raise ValueError(f'Neplatný parameter: {val!r}')
+   if not _SAFE_KAPITOLA_PARAM.fullmatch(kapitola):
+      raise ValueError(f'Neplatný parameter: {kapitola!r}')
    for val in (trieda, skupina):
       if not _SAFE_TRIEDA.fullmatch(val):
          raise ValueError(f'Neplatný parameter: {val!r}')

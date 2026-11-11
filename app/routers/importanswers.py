@@ -11,7 +11,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.concurrency import run_in_threadpool
 from app.mytypes import StringForm, StringPath
-from app.utils import find_test_file, get_testy_autor
+from app.utils import find_test_file, get_testy_autor, test_xml_path
 
 load_dotenv()
 
@@ -92,6 +92,10 @@ async def importanswers_page(request: Request):
 
 @router.post('/admin/ai/importmanual/{kluc}')
 async def importmanual(request: Request, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
+   try:
+      test_xml_path(predmet, trieda, skupina, kapitola, fileid)
+   except ValueError as e:
+      raise HTTPException(status_code=400, detail=str(e))
    adresar = f'./res/xml/answers/{predmet}'
    Path(adresar).mkdir(parents=True, exist_ok=True)
    cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')

@@ -31,6 +31,10 @@ async def showresult(request: Request, kluc: StringPath):
 
 @router.post('/admin/savemarks/{kluc}')
 async def savemarks(request: Request, response: Response, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, dat: StringForm, skupina: StringForm = ''):
+   try:
+      test_xml_path(predmet, trieda, skupina, kapitola, fileid)
+   except ValueError as e:
+      raise HTTPException(status_code=400, detail=str(e))
    adresar = f'./res/xml/answers/{predmet}'
    cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
    async with request.form() as form:
@@ -120,6 +124,10 @@ def write_odhalene(lock: FileLock, cesta: Path, odhalit: bool, skoncene: set[str
 
 @router.post('/admin/groupstatistics', response_class=HTMLResponse)
 async def groupstatistics(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', X_Remote_User: StringHeader = ''):
+   try:
+      test_xml_path(predmet, trieda, skupina, kapitola, fileid)
+   except ValueError as e:
+      raise HTTPException(status_code=400, detail=str(e))
    proc = request.app.state.proc
    try:
       params = {
