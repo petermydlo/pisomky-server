@@ -148,7 +148,8 @@
                               </div>
                               <xsl:if test="$ma-test">
                                  <div class="collapse {generate-id()}">
-                                    <div class="grid">
+                                    <div class="grid grid-testy">
+                                       <div class="neviditelny"/>
                                        <div class="neviditelny"/>
                                        <div class="bold bg-info bg-opacity-25 odhalit-bunka odhalit-hlavicka"><i class="bi bi-eye"/><input type="checkbox" class="form-check-input odhalit-vsetky" title="Odhaliť žiakom správne odpovede"/></div>
                                        <div class="bold bg-info bg-opacity-25">Kód</div>
@@ -222,6 +223,7 @@
    <xsl:variable name="rodpoved" select="$vybtesty/odpovede/test[@id = $rid]"/>
    <xsl:variable name="odhalene" select="$rodpoved/@odhalene = '1'"/>
    <xsl:variable name="mozno-odhalit" select="exists($rodpoved) and my:skoncil(.)"/>
+   <div class="neviditelny"></div>
    <div class="neviditelny"></div>
    <div class="odhalit-bunka">
       <input type="checkbox" class="form-check-input odhalit-test" value="{@id}">

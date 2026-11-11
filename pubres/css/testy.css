@@ -303,6 +303,10 @@ body.admin-overview {
    margin-top: 1px;
 }
 
+.grid.grid-testy {
+   grid-template-columns: 8% 5% 5% 14% 13% 13% 13% 13% 16%;
+}
+
 .grid > div {
    outline: 1px solid black;
    padding: 0.25rem;
