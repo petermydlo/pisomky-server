@@ -319,12 +319,21 @@ def update_chapter(kapitola_id: str, predmet: str, nazov: str | None, cache: dic
    return True
 
 _SAFE_PREDMET = re.compile(r'^[A-Z0-9]{2,10}$')
+_SAFE_KAPITOLA = re.compile(r'^[A-Za-z0-9_.-]+$')
+
+def over_id_kapitoly(predmet: str, kapitola_id: str) -> None:
+   """Skontroluje skratku predmetu a ID kapitoly, ktore sa skladaju do cesty k suboru (res/xml/questions/...).
+   Pri chybe vyhodi ValueError so spravou pre ucitela (fullmatch, lebo `$` by prepustilo koncovy novy riadok). ID smie obsahovat bodku (existuje kapitola 02.5)."""
+   if not _SAFE_PREDMET.fullmatch(predmet):
+      raise ValueError('Skratka predmetu má mať 2 až 10 veľkých písmen alebo číslic.')
+   if not _SAFE_KAPITOLA.fullmatch(kapitola_id):
+      raise ValueError('ID kapitoly smie obsahovať len písmená, číslice, _, - a bodku.')
 
 def create_predmet(predmet: str) -> bool:
    """Vytvori novy adresar pre predmet v res/xml/questions/.
    Vracia True ak uspech, False ak zly format skratky alebo uz existuje.
    """
-   if not _SAFE_PREDMET.match(predmet):
+   if not _SAFE_PREDMET.fullmatch(predmet):
       return False
    cesta = Path(f'./res/xml/questions/{predmet}')
    if cesta.exists():
@@ -344,7 +353,7 @@ def delete_predmet(predmet: str) -> tuple[bool, str | None]:
    Odmietne, ak je akakolvek otazka predmetu pouzita v niektorom tests subore.
    Vracia (True, None) ak uspech, (False, dovod) ak zlyhalo.
    """
-   if not _SAFE_PREDMET.match(predmet):
+   if not _SAFE_PREDMET.fullmatch(predmet):
       return False, 'Neplatný formát skratky predmetu'
    cesta = Path(f'./res/xml/questions/{predmet}')
    if not cesta.is_dir():

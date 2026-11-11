@@ -11,7 +11,7 @@ from app.utils import (
    add_category, delete_category, update_category, restore_category, find_category,
    add_question, update_question, delete_question, restore_question, fork_question, find_question,
    zmenene_zamrznute_polia, normalizuj_vzor, over_tabulku, serializuj_tabulku,
-   delete_chapter, create_chapter, update_chapter,
+   delete_chapter, create_chapter, update_chapter, over_id_kapitoly,
    create_predmet, delete_predmet,
 )
 from app.permissions import check_permission, has_permission, predmet_from_cesta
@@ -95,6 +95,7 @@ async def process_chapter(request: Request, predmet: StringForm, kapitola_id: St
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
          raise HTTPException(status_code=400, detail=f'Neznáma operácia: {operacia}')
+      over_id_kapitoly(predmet, kapitola_id)
       check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet)
       if operacia == 'create':
          nova_id, ok = create_chapter(predmet, kapitola_id, nazov)

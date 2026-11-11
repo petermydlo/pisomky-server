@@ -12,6 +12,7 @@ from app.utils import (
    find_category,
    find_question,
    create_chapter,
+   over_id_kapitoly,
    update_chapter,
    delete_chapter,
    create_predmet,
@@ -228,6 +229,20 @@ def test_create_chapter_duplicit(tmp_path):
    assert ok is False
    assert kid is None
 
+@pytest.mark.parametrize('predmet, kapitola_id', [('PIT3', '01'), ('AUT3', '02.5'), ('SXT4', 'kap_1-a'), ('DEMO', 'A')])
+def test_over_id_kapitoly_platne(predmet, kapitola_id):
+   over_id_kapitoly(predmet, kapitola_id)
+
+@pytest.mark.parametrize('kapitola_id', ['', '../x', 'a/b', 'a\\b', 'a b', 'č', '01\n'])
+def test_over_id_kapitoly_zle_id(kapitola_id):
+   with pytest.raises(ValueError, match='ID kapitoly'):
+      over_id_kapitoly('PIT3', kapitola_id)
+
+@pytest.mark.parametrize('predmet', ['', 'pit3', 'P', '../..', 'PIT3/x', '*', 'ABCDEFGHIJK', 'PIT3\n'])
+def test_over_id_kapitoly_zly_predmet(predmet):
+   with pytest.raises(ValueError, match='Skratka predmetu'):
+      over_id_kapitoly(predmet, '01')
+
 
 # --- update_chapter ---
 
@@ -270,6 +285,7 @@ def test_create_predmet_zly_format():
    assert create_predmet('nov4') is False  # male pismena
    assert create_predmet('../etc') is False
    assert create_predmet('X') is False  # prilis kratke
+   assert create_predmet('NOV4\n') is False  # koncovy novy riadok
 
 
 # --- delete_predmet ---
@@ -294,6 +310,8 @@ def test_delete_predmet_neexistuje():
 
 def test_delete_predmet_zly_format():
    ok, dovod = delete_predmet('../etc')
+   assert ok is False
+   ok, _ = delete_predmet('NOV4\n')
    assert ok is False
 
 
