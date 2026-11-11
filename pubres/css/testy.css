@@ -751,6 +751,97 @@ div:hover > span.penIcon.editActions {
    font-family: monospace;
 }
 
+.tabulka-vkladanie {
+   width: min(80vw, 60rem);
+   max-height: 90vh;
+   border: 1px solid silver;
+   border-radius: 0.25rem;
+   padding: 1rem;
+}
+
+.tabulka-vkladanie[open] {
+   display: flex;
+   flex-direction: column;
+   gap: 0.5rem;
+}
+
+.tabulka-vkladanie::backdrop {
+   background: rgb(0 0 0 / 0.4);
+}
+
+.tabulka-vloz-text {
+   font-family: monospace;
+}
+
+.tabulka-vloz-nastavenia {
+   display: flex;
+   flex-wrap: wrap;
+   align-items: center;
+   gap: 1rem;
+}
+
+.tabulka-vloz-nastavenia label {
+   display: flex;
+   align-items: center;
+   gap: 0.25rem;
+   white-space: nowrap;
+}
+
+.otazka-formular .tabulka-vloz-povolene {
+   width: 8rem;
+   font-family: monospace;
+}
+
+.tabulka-vloz-nahlad {
+   overflow-x: auto;
+}
+
+.tabulka-vloz-nahlad table {
+   border-collapse: collapse;
+}
+
+.tabulka-vloz-nahlad td,
+.tabulka-vloz-nahlad th {
+   border: 1px solid silver;
+   padding: 0.25rem 0.6rem;
+   text-align: center;
+}
+
+.tabulka-vloz-nahlad td.hlavicka {
+   font-weight: bold;
+   background: whitesmoke;
+}
+
+.tabulka-vloz-nahlad td.bunka {
+   cursor: pointer;
+}
+
+.tabulka-vloz-nahlad td.bunka:hover {
+   background: aliceblue;
+}
+
+.tabulka-vloz-nahlad td.vystup {
+   background: #d4edda;
+}
+
+.tabulka-vloz-nahlad td.prazdna {
+   background: gainsboro;
+}
+
+.tabulka-vloz-tlacidla {
+   display: flex;
+   justify-content: flex-end;
+   gap: 0.5rem;
+}
+
+.tabulka-vloz-chyba {
+   color: firebrick;
+}
+
+.tabulka-vloz-chyba:empty {
+   display: none;
+}
+
 .odpoved-riadok {
    position: relative;
    border: 1px solid silver;

@@ -244,6 +244,208 @@ function zostavTabulku(form) {
    return form.querySelector('.otazka-ma-tabulku').checked ? form.querySelector('.otazka-tabulka').value : '';
 }
 
+//Vkladanie tabulky zo schranky: TSV (tabulkovy procesor) alebo Markdown -> pole riadkov (pole retazcov), vsetky rovnako dlhe
+function parsujCsv(text, oddelovac) {
+   const riadky = [];
+   let riadok = [];
+   let bunka = '';
+   let vUvodzovkach = false;
+   for (let i = 0; i < text.length; i++) {
+      const z = text[i];
+      if (vUvodzovkach) {
+         if (z === '"' && text[i + 1] === '"') {
+            bunka += '"';
+            i++;
+         } else if (z === '"') {
+            vUvodzovkach = false;
+         } else {
+            bunka += z;
+         }
+      } else if (z === '"' && bunka === '') {
+         vUvodzovkach = true;
+      } else if (z === oddelovac) {
+         riadok.push(bunka);
+         bunka = '';
+      } else if (z === '\n') {
+         riadok.push(bunka);
+         riadky.push(riadok);
+         riadok = [];
+         bunka = '';
+      } else if (z !== '\r') {
+         bunka += z;
+      }
+   }
+   if (bunka !== '' || riadok.length) {
+      riadok.push(bunka);
+      riadky.push(riadok);
+   }
+   return riadky;
+}
+
+function parsujMarkdown(text) {
+   return text.split('\n').map(r => r.trim()).filter(r => r !== '').map(r => {
+      const vnutro = r.replace(/^\|/, '').replace(/\|$/, '');
+      return vnutro.split(/(?<!\\)\|/).map(b => b.trim().replace(/\\\|/g, '|'));
+   }).filter(bunky => !bunky.every(b => /^:?-+:?$/.test(b)));
+}
+
+//oddelovac: '' = automaticky (tabulator, potom Markdown '|', potom ';', potom ','), inak jeden znak (tabulator, ';' alebo ',')
+function parsujSchranku(text, oddelovac = '') {
+   if (oddelovac === '') {
+      oddelovac = ['\t', '|', ';', ','].find(z => text.includes(z)) || '\t';
+   }
+   const riadky = oddelovac === '|' ? parsujMarkdown(text) : parsujCsv(text, oddelovac);
+   const siroka = Math.max(0, ...riadky.map(r => r.length));
+   return riadky.map(r => Array.from({length: siroka}, (_, i) => (r[i] || '').trim()));
+}
+
+function escapujXml(text) {
+   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+//vystup: Set retazcov "riadok,stlpec" (indexy do pola riadkov) s bunkami, ktore su polom na vyplnenie
+function zostavXmlTabulky(riadky, maHlavicku, vystup, povolene) {
+   const casti = [`<tabulka povolene="${escapujXml(povolene)}">`];
+   riadky.forEach((r, i) => {
+      const element = maHlavicku && i === 0 ? 'hlavicka' : 'riadok';
+      casti.push(`   <${element}>`);
+      r.forEach((text, c) => casti.push(vystup.has(`${i},${c}`)
+         ? `      <bunka odpoved="${escapujXml(text)}"/>`
+         : `      <bunka>${escapujXml(text)}</bunka>`));
+      casti.push(`   </${element}>`);
+   });
+   casti.push('</tabulka>');
+   return casti.join('\n');
+}
+
+function pripojVkladanieTabulky(form) {
+   const panel = form.querySelector('.tabulka-vkladanie');
+   const vstup = panel.querySelector('.tabulka-vloz-text');
+   const hlavickaCheck = panel.querySelector('.tabulka-vloz-hlavicka');
+   const povolenePole = panel.querySelector('.tabulka-vloz-povolene');
+   const oddelovacPole = panel.querySelector('.tabulka-vloz-oddelovac');
+   const nahlad = panel.querySelector('.tabulka-vloz-nahlad');
+   const chyba = panel.querySelector('.tabulka-vloz-chyba');
+   let riadky = [];
+   let vystup = new Set();
+   let povoleneRucne = false;
+
+   const prvyTelo = () => hlavickaCheck.checked ? 1 : 0;
+   const dalsiaPovolene = () => {
+      if (povoleneRucne) return;
+      const znaky = [];
+      riadky.forEach((r, i) => r.forEach((text, c) => {
+         if (vystup.has(`${i},${c}`)) Array.from(text).forEach(z => { if (!znaky.includes(z)) znaky.push(z); });
+      }));
+      povolenePole.value = znaky.join('');
+   };
+
+   function vykresli() {
+      nahlad.textContent = '';
+      if (!riadky.length) return;
+      const tabulka = document.createElement('table');
+      const stlpce = riadky[0].length;
+      const tlacidla = tabulka.createTHead().insertRow();
+      for (let c = 0; c < stlpce; c++) {
+         const th = document.createElement('th');
+         const tlacidlo = document.createElement('button');
+         tlacidlo.type = 'button';
+         tlacidlo.className = 'tabulka-vloz-stlpec';
+         tlacidlo.dataset.c = String(c);
+         tlacidlo.title = 'Označiť/zrušiť celý stĺpec ako polia na vyplnenie';
+         tlacidlo.textContent = 'stĺpec';
+         th.appendChild(tlacidlo);
+         tlacidla.appendChild(th);
+      }
+      const telo = tabulka.createTBody();
+      riadky.forEach((r, i) => {
+         const tr = telo.insertRow();
+         r.forEach((text, c) => {
+            const td = tr.insertCell();
+            td.textContent = text;
+            if (i < prvyTelo()) {
+               td.className = 'hlavicka';
+            } else if (text === '') {
+               td.className = 'prazdna';
+            } else {
+               td.className = vystup.has(`${i},${c}`) ? 'bunka vystup' : 'bunka';
+               td.dataset.r = String(i);
+               td.dataset.c = String(c);
+            }
+         });
+      });
+      nahlad.appendChild(tabulka);
+   }
+
+   function nacitaj() {
+      riadky = parsujSchranku(vstup.value, oddelovacPole.value);
+      vystup = new Set();
+      povoleneRucne = false;
+      chyba.textContent = '';
+      dalsiaPovolene();
+      vykresli();
+   }
+
+   vstup.addEventListener('input', nacitaj);
+   oddelovacPole.addEventListener('change', nacitaj);
+   hlavickaCheck.addEventListener('change', () => {
+      riadky.forEach((_, i) => i < prvyTelo() && riadky[i].forEach((__, c) => vystup.delete(`${i},${c}`)));
+      dalsiaPovolene();
+      vykresli();
+   });
+   povolenePole.addEventListener('input', () => {
+      povoleneRucne = povolenePole.value !== '';
+      if (!povoleneRucne) dalsiaPovolene();
+   });
+   nahlad.addEventListener('click', (e) => {
+      const cielova = e.target.closest('.tabulka-vloz-stlpec, td.bunka');
+      if (!cielova) return;
+      const c = Number(cielova.dataset.c);
+      if (cielova.matches('td.bunka')) {
+         const kluc = `${cielova.dataset.r},${c}`;
+         if (!vystup.delete(kluc)) vystup.add(kluc);
+      } else {
+         const kluce = riadky.map((r, i) => [i, r[c]]).filter(([i, text]) => i >= prvyTelo() && text !== '').map(([i]) => `${i},${c}`);
+         const vsetky = kluce.length > 0 && kluce.every(k => vystup.has(k));
+         kluce.forEach(k => vsetky ? vystup.delete(k) : vystup.add(k));
+      }
+      chyba.textContent = '';
+      dalsiaPovolene();
+      vykresli();
+   });
+
+   form.querySelector('.otazka-tabulka-vloz').addEventListener('click', () => {
+      panel.showModal();
+      vstup.focus();
+   });
+   panel.querySelector('.tabulka-vloz-zrus').addEventListener('click', () => panel.close());
+   panel.querySelector('.tabulka-vloz-vloz').addEventListener('click', () => {
+      if (!riadky.length) {
+         chyba.textContent = 'Najprv vložte tabuľku zo schránky.';
+         return;
+      }
+      if (!vystup.size) {
+         chyba.textContent = 'Označte aspoň jednu bunku alebo stĺpec ako pole na vyplnenie.';
+         return;
+      }
+      const povolene = povolenePole.value;
+      const nepovolena = Array.from(vystup).map(k => riadky[Number(k.split(',')[0])][Number(k.split(',')[1])])
+         .find(text => povolene && Array.from(text).some(z => !povolene.includes(z)));
+      if (nepovolena !== undefined) {
+         chyba.textContent = `Odpoveď "${nepovolena}" obsahuje znak, ktorý nie je medzi povolenými (${povolene}).`;
+         return;
+      }
+      const textarea = form.querySelector('.otazka-tabulka');
+      const prazdna = textarea.value.trim() === '' || textarea.value === SABLONA_TABULKY;
+      if (!prazdna && !confirm('Prepísať súčasné XML tabuľky vloženou tabuľkou?')) return;
+      textarea.value = zostavXmlTabulky(riadky, hlavickaCheck.checked, vystup, povolene);
+      const maTabulku = form.querySelector('.otazka-ma-tabulku');
+      maTabulku.checked = true;
+      maTabulku.dispatchEvent(new Event('change'));
+      panel.close();
+   });
+}
+
 function vytvorFormularOtazky(data, jeMcq) {
    const form = document.createElement('form');
    form.className = 'otazka-formular';
@@ -269,6 +471,28 @@ function vytvorFormularOtazky(data, jeMcq) {
       <label><input type="checkbox" class="otazka-ma-tabulku"/> má tabuľku</label>
       <fieldset class="otazka-tabulka-fieldset">
          <legend>Tabuľka (XML)</legend>
+         <button type="button" class="otazka-tabulka-vloz">Vložiť zo schránky</button>
+         <dialog class="tabulka-vkladanie">
+            <div class="tabulka-vloz-nastavenia">
+               <label><input type="checkbox" class="tabulka-vloz-hlavicka" checked/> prvý riadok je hlavička</label>
+               <label>Oddeľovač
+                  <select class="tabulka-vloz-oddelovac">
+                     <option value="">automaticky</option>
+                     <option value="&#9;">tabulátor</option>
+                     <option value=";">bodkočiarka ;</option>
+                     <option value=",">čiarka ,</option>
+                  </select>
+               </label>
+               <label>Povolené znaky <input type="text" class="tabulka-vloz-povolene" spellcheck="false"/></label>
+            </div>
+            <textarea class="tabulka-vloz-text" rows="5" spellcheck="false" placeholder="Sem vložte (Ctrl+V) tabuľku skopírovanú z tabuľkového procesora alebo Markdown"></textarea>
+            <div class="tabulka-vloz-nahlad"></div>
+            <div class="tabulka-vloz-chyba"></div>
+            <div class="tabulka-vloz-tlacidla">
+               <button type="button" class="tabulka-vloz-zrus">Zrušiť</button>
+               <button type="button" class="tabulka-vloz-vloz">Vložiť</button>
+            </div>
+         </dialog>
          <textarea class="otazka-tabulka" rows="12" spellcheck="false"></textarea>
       </fieldset>
       <fieldset class="otazka-odpovede-fieldset">
@@ -333,6 +557,7 @@ function vytvorFormularOtazky(data, jeMcq) {
       aktualizujVetvu();
    });
    aktualizujVetvu();
+   pripojVkladanieTabulky(form);
 
    return form;
 }
