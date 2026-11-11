@@ -102,6 +102,8 @@
                            <xsl:variable name="vybtesty"    select="my:vybtesty(current-group()[1])"/>
                            <xsl:variable name="ohodnotene"  select="$testy-el/test[exists(my:riestest(.))]"/>
                            <xsl:variable name="priemer"     select="if (exists($ohodnotene)) then avg(for $t in $ohodnotene return my:ziskanepercentapresne($t)) else ()"/>
+                           <xsl:variable name="priemer-max" select="if (exists($ohodnotene)) then avg(for $t in $ohodnotene return my:sucetmaxbodov($t)) else ()"/>
+                           <xsl:variable name="priemer-body" select="if (exists($ohodnotene)) then avg(for $t in $ohodnotene return min((my:sucetziskanychbodovpresne($t, my:riestest($t)), my:sucetmaxbodov($t)))) else ()"/>
                            <div class="skupina" data-fileid="{@fileid}">
                               <div class="grid" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
                                  <div class="subory-ikony">
@@ -128,7 +130,7 @@
                                  <div><xsl:value-of select="sort($vybtesty/odpovede/test, (), function($t) { xs:dateTime($t/@dat) })[last()]/@dat"/></div>
                                  <div>
                                     <xsl:if test="exists($priemer)">
-                                       <xsl:value-of select="concat(my:percent-text($priemer), '%')"/>
+                                       <xsl:value-of select="concat(my:body-text($priemer-body), '/', my:body-text($priemer-max), ' (', my:percent-text($priemer), '%)')"/>
                                     </xsl:if>
                                  </div>
                                  <div>
