@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
       event.stopPropagation();
       event.preventDefault();
       const d = skupinaData(btn);
-      if (!confirm(`Naozaj chcete regenerovať otázky pre ${d.predmet}:${d.trieda}${d.skupina}:${d.kapitola}?`)) return;
+      if (!await potvrdDialog({nadpis: 'Regenerovať otázky', text: `Naozaj chcete regenerovať otázky pre ${d.predmet}:${d.trieda}${d.skupina}:${d.kapitola}?`, potvrdit: 'Regenerovať', nebezpecne: true})) return;
       try {
          const resp = await fetch('/admin/regeneratetests', {
             method: 'POST',
@@ -388,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
          return;
       }
       const d = skupinaData(btn);
-      if (!confirm(`Predgenerovať AI nápovede pre ${d.predmet}:${d.trieda}${d.skupina}:${d.kapitola}?\nGenerovanie trvá niekoľko minút a beží na pozadí; kým žiaci čakajú na nápovedu, pozastaví sa.`)) return;
+      if (!await potvrdDialog({nadpis: 'Predgenerovať AI nápovede', text: `Predgenerovať AI nápovede pre ${d.predmet}:${d.trieda}${d.skupina}:${d.kapitola}?\nGenerovanie trvá niekoľko minút a beží na pozadí; kým žiaci čakajú na nápovedu, pozastaví sa.`, potvrdit: 'Predgenerovať'})) return;
       try {
          const resp = await fetch('/admin/napovedy/pregeneruj', {
             method: 'POST',

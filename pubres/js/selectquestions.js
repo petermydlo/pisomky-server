@@ -40,13 +40,15 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Nemáte oprávnenie na vymazanie predmetu ${predmet}.`);
             return;
          }
-         if (!confirm(`Naozaj vymazať CELÝ predmet ${predmet}? Otázky budú pred vymazaním zálohované.`)) return;
-         postForm('/admin/process_predmet', {predmet, operacia: 'delete'})
-            .then(() => {
-               const option = elPredmet.querySelector(`option[value="${CSS.escape(predmet)}"]`);
-               if (option) option.remove();
-            })
-            .catch(err => alert(err.message));
+         potvrdDialog({nadpis: 'Vymazať predmet', text: `Naozaj vymazať CELÝ predmet ${predmet}? Otázky budú pred vymazaním zálohované.`, potvrdit: 'Vymazať', nebezpecne: true}).then(potvrdene => {
+            if (!potvrdene) return;
+            postForm('/admin/process_predmet', {predmet, operacia: 'delete'})
+               .then(() => {
+                  const option = elPredmet.querySelector(`option[value="${CSS.escape(predmet)}"]`);
+                  if (option) option.remove();
+               })
+               .catch(err => alert(err.message));
+         });
       });
    }
 });

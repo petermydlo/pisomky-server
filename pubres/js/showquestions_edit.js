@@ -29,7 +29,7 @@ function confirmZmazanie(typ, id, nazov) {
       const text = data.used
          ? `${nazov} je použitá v teste — bude len archivovaná, pokračovať?`
          : `Naozaj zmazať ${nazov}?`;
-      return confirm(text);
+      return potvrdDialog({nadpis: 'Zmazať', text, potvrdit: data.used ? 'Archivovať' : 'Zmazať', nebezpecne: true});
    });
 }
 
@@ -59,10 +59,12 @@ function upravKapitolu(predmet, kapitolaId, nazov) {
 }
 
 function zmazKapitolu(predmet, kapitolaId) {
-   if (!confirm(`Naozaj zmazať kapitolu ${kapitolaId}?`)) return;
-   postForm('/admin/process_chapter', {predmet, kapitola_id: kapitolaId, operacia: 'delete'})
-      .then(() => reloadZachovajKapitolu())
-      .catch(err => alert(err.message));
+   potvrdDialog({nadpis: 'Zmazať kapitolu', text: `Naozaj zmazať kapitolu ${kapitolaId}?`, potvrdit: 'Zmazať', nebezpecne: true}).then(potvrdene => {
+      if (!potvrdene) return;
+      postForm('/admin/process_chapter', {predmet, kapitola_id: kapitolaId, operacia: 'delete'})
+         .then(() => reloadZachovajKapitolu())
+         .catch(err => alert(err.message));
+   });
 }
 
 // --- kategória ---
@@ -443,12 +445,18 @@ function pripojVkladanieTabulky(form) {
       }
       const textarea = form.querySelector('.otazka-tabulka');
       const prazdna = textarea.value.trim() === '' || textarea.value === SABLONA_TABULKY;
-      if (!prazdna && !confirm('Prepísať súčasné XML tabuľky vloženou tabuľkou?')) return;
-      textarea.value = zostavXmlTabulky(riadky, hlavickaCheck.checked, vystup, povolene);
-      const maTabulku = form.querySelector('.otazka-ma-tabulku');
-      maTabulku.checked = true;
-      maTabulku.dispatchEvent(new Event('change'));
-      panel.close();
+      const vloz = () => {
+         textarea.value = zostavXmlTabulky(riadky, hlavickaCheck.checked, vystup, povolene);
+         const maTabulku = form.querySelector('.otazka-ma-tabulku');
+         maTabulku.checked = true;
+         maTabulku.dispatchEvent(new Event('change'));
+         panel.close();
+      };
+      if (prazdna) {
+         vloz();
+      } else {
+         potvrdDialog({nadpis: 'Prepísať tabuľku', text: 'Prepísať súčasné XML tabuľky vloženou tabuľkou?', potvrdit: 'Prepísať'}).then(potvrdene => potvrdene && vloz());
+      }
    });
 }
 

@@ -1167,6 +1167,18 @@ table.tabulka input.bunka-siroka {
    color: gray;
 }
 
+.dialog-text {
+   margin: 0;
+   white-space: pre-line;
+}
+
+.dialog-okno button.dialog-nebezpecne {
+   background: firebrick;
+   border: 1px solid firebrick;
+   border-radius: 0.2rem;
+   color: white;
+}
+
 .dialog-chyba {
    color: firebrick;
 }

@@ -76,3 +76,47 @@ function otvorDialog({nadpis, polia, potvrdit, ulozit}) {
    dialog.showModal();
    vstupy[0].select();
 }
+
+//Modalne potvrdenie (nahrada confirm()); vrati Promise<boolean>: true len po stlaceni potvrdzovacieho tlacidla, Esc a Zrusit davaju false
+//nebezpecne: potvrdzovacie tlacidlo je cervene a predvoleny fokus je na Zrusit (Enter nic nezmaze)
+function potvrdDialog({nadpis, text, potvrdit = 'Potvrdiť', nebezpecne = false}) {
+   return new Promise(resolve => {
+      const dialog = document.createElement('dialog');
+      dialog.className = 'dialog-okno';
+      const form = document.createElement('form');
+      dialog.appendChild(form);
+
+      const hlavicka = document.createElement('h2');
+      hlavicka.textContent = nadpis;
+      const odstavec = document.createElement('p');
+      odstavec.className = 'dialog-text';
+      odstavec.textContent = text;
+      form.append(hlavicka, odstavec);
+
+      const tlacidla = document.createElement('div');
+      tlacidla.className = 'dialog-tlacidla';
+      const zrus = document.createElement('button');
+      zrus.type = 'button';
+      zrus.textContent = 'Zrušiť';
+      const ok = document.createElement('button');
+      ok.type = 'submit';
+      ok.textContent = potvrdit;
+      if (nebezpecne) ok.className = 'dialog-nebezpecne';
+      tlacidla.append(zrus, ok);
+      form.appendChild(tlacidla);
+
+      form.addEventListener('submit', (e) => {
+         e.preventDefault();
+         dialog.close('ano');
+      });
+      zrus.addEventListener('click', () => dialog.close());
+      dialog.addEventListener('close', () => {
+         resolve(dialog.returnValue === 'ano');
+         dialog.remove();
+      });
+
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      (nebezpecne ? zrus : ok).focus();
+   });
+}
