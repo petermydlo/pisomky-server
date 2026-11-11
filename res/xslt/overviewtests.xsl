@@ -105,6 +105,7 @@
                            <div class="skupina" data-fileid="{@fileid}">
                               <div class="grid" role="button" data-bs-toggle="collapse" data-bs-target=".{generate-id()}">
                                  <div class="subory-ikony">
+                                    <xsl:if test="exists($vybtesty/odpovede/test[@odhalene = '1'])"><i class="bi bi-eye text-success" title="Správne odpovede odhalené aspoň pri jednom teste"/></xsl:if>
                                     <xsl:if test="$ma-feedback"><i class="bi bi-chat-right-text text-purple" title="Feedback"/></xsl:if>
                                     <xsl:if test="$ma-answers"><i class="bi bi-pencil text-warning" title="Odpovede"/></xsl:if>
                                     <xsl:if test="$ma-test"><i class="bi bi-journal-text text-blue" title="Test"/></xsl:if>

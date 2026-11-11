@@ -414,6 +414,22 @@ document.addEventListener('DOMContentLoaded', () => {
       hlavicka.indeterminate = zaskrtnute > 0 && zaskrtnute < boxy.length;
    }
 
+   //ikona oka v stlpci Trieda: je tam, ak je odhalený aspoň jeden test riadka
+   function aktualizujOko(kontajner) {
+      const ikony = kontajner.closest('.skupina')?.querySelector('.subory-ikony');
+      if (!ikony) return;
+      const maOdhalene = !!kontajner.querySelector('.odhalit-test:checked');
+      let oko = ikony.querySelector('.bi-eye');
+      if (maOdhalene && !oko) {
+         oko = document.createElement('i');
+         oko.className = 'bi bi-eye text-success';
+         oko.title = 'Správne odpovede odhalené aspoň pri jednom teste';
+         ikony.prepend(oko);
+      } else if (!maOdhalene && oko) {
+         oko.remove();
+      }
+   }
+
    document.addEventListener('change', async (event) => {
       const box = event.target.closest('.odhalit-test, .odhalit-vsetky');
       if (!box) return;
@@ -440,6 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
          zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
       }
       aktualizujHlavicku(kontajner);
+      aktualizujOko(kontajner);
    });
 
    document.querySelectorAll('.odhalit-vsetky').forEach(h => aktualizujHlavicku(h.closest('.collapse')));
