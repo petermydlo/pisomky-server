@@ -178,10 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
    document.getElementById('home').addEventListener('click', async (e) => {
       e.preventDefault();
       const params = new URLSearchParams(window.location.search);
-      let hlaska = 'POZOR! Chystáte sa ukončiť písomku!\nChcete pokračovať?';
+      let hlaska = 'Po ukončení už písomku nebudete môcť znova otvoriť.';
       if (params.has('edit'))
-         hlaska = 'POZOR! Všetky neodoslané zmeny v písomke budú zahodené!\nChcete pokračovať?';
-      if (!confirm(hlaska)) return;
+         hlaska = 'Neodoslané zmeny sa zahodia a písomku už nebudete môcť znova otvoriť.';
+      if (!await potvrdDialog({nadpis: 'Ukončiť písomku?', text: hlaska, potvrdit: 'Ukončiť písomku', zrusit: 'Späť k písomke', nebezpecne: true})) return;
       const kluc = hlavicka.getAttribute('kluc');
       const data = new URLSearchParams({
          predmet:  hlavicka.getAttribute('predmet'),

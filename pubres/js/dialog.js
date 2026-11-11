@@ -79,7 +79,7 @@ function otvorDialog({nadpis, polia, potvrdit, ulozit}) {
 
 //Modalne potvrdenie (nahrada confirm()); vrati Promise<boolean>: true len po stlaceni potvrdzovacieho tlacidla, Esc a Zrusit davaju false
 //nebezpecne: potvrdzovacie tlacidlo je cervene a predvoleny fokus je na Zrusit (Enter nic nezmaze)
-function potvrdDialog({nadpis, text, potvrdit = 'Potvrdiť', nebezpecne = false}) {
+function potvrdDialog({nadpis, text, potvrdit = 'Potvrdiť', zrusit = 'Zrušiť', nebezpecne = false}) {
    return new Promise(resolve => {
       const dialog = document.createElement('dialog');
       dialog.className = 'dialog-okno';
@@ -97,7 +97,7 @@ function potvrdDialog({nadpis, text, potvrdit = 'Potvrdiť', nebezpecne = false}
       tlacidla.className = 'dialog-tlacidla';
       const zrus = document.createElement('button');
       zrus.type = 'button';
-      zrus.textContent = 'Zrušiť';
+      zrus.textContent = zrusit;
       const ok = document.createElement('button');
       ok.type = 'submit';
       ok.textContent = potvrdit;
