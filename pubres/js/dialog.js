@@ -120,3 +120,39 @@ function potvrdDialog({nadpis, text, potvrdit = 'Potvrdiť', zrusit = 'Zrušiť'
       (nebezpecne ? zrus : ok).focus();
    });
 }
+
+//Modalne oznamenie s jednym tlacidlom (nahrada alert()); vrati Promise, ktory sa splni po zatvoreni
+function oznamDialog({nadpis = 'Chyba', text}) {
+   return new Promise(resolve => {
+      const dialog = document.createElement('dialog');
+      dialog.className = 'dialog-okno';
+      const form = document.createElement('form');
+      dialog.appendChild(form);
+
+      const hlavicka = document.createElement('h2');
+      hlavicka.textContent = nadpis;
+      const odstavec = document.createElement('p');
+      odstavec.className = 'dialog-text';
+      odstavec.textContent = text;
+      const tlacidla = document.createElement('div');
+      tlacidla.className = 'dialog-tlacidla';
+      const ok = document.createElement('button');
+      ok.type = 'submit';
+      ok.textContent = 'Zavrieť';
+      tlacidla.appendChild(ok);
+      form.append(hlavicka, odstavec, tlacidla);
+
+      form.addEventListener('submit', (e) => {
+         e.preventDefault();
+         dialog.close();
+      });
+      dialog.addEventListener('close', () => {
+         dialog.remove();
+         resolve();
+      });
+
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      ok.focus();
+   });
+}

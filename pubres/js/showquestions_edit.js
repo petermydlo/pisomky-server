@@ -5,6 +5,18 @@ function getJson(url) {
    });
 }
 
+//Odosle formular (POST) a pri chybe ukaze spravu priamo vo formulari, ktory ostane otvoreny
+function odosliFormular(form, url, params) {
+   const chyba = form.querySelector('.dialog-chyba');
+   chyba.textContent = '';
+   return postForm(url, params)
+      .then(() => reloadZachovajKapitolu())
+      .catch(err => {
+         chyba.textContent = err.message;
+         chyba.scrollIntoView({block: 'nearest'});
+      });
+}
+
 function reloadZachovajKapitolu() {
    const aktivna = document.querySelector('.tab-pane.active');
    if (aktivna) {
@@ -52,7 +64,7 @@ function zmazKapitolu(predmet, kapitolaId) {
       if (!potvrdene) return;
       postForm('/admin/process_chapter', {predmet, kapitola_id: kapitolaId, operacia: 'delete'})
          .then(() => reloadZachovajKapitolu())
-         .catch(err => alert(err.message));
+         .catch(err => oznamDialog({text: err.message}));
    });
 }
 
@@ -73,6 +85,7 @@ function vytvorFormularKategorie(data) {
          <label><input type="checkbox" class="kat-bonus"/> bonusová</label>
          <label class="deprecated-checkbox"><input type="checkbox" class="kat-deprecated"/> deprecated</label>
       </div>
+      <div class="dialog-chyba"></div>
       <button type="button" class="kat-uloz">Uložiť</button>
       <button type="button" class="kat-zrus">Zrušiť</button>
    `;
@@ -88,7 +101,7 @@ function vytvorFormularKategorie(data) {
 function pridajKategoriu(predmet) {
    const aktivnaKapitola = document.querySelector('.tab-pane.active');
    if (!aktivnaKapitola) {
-      alert('Najprv vyber kapitolu.');
+      oznamDialog({text: 'Najprv vyber kapitolu.'});
       return;
    }
    const kapitolaId = aktivnaKapitola.id;
@@ -100,7 +113,7 @@ function pridajKategoriu(predmet) {
    form.querySelector('.kat-uloz').addEventListener('click', () => {
       const pocet = form.querySelector('.kat-pocet').value;
       if (!pocet) {
-         alert('Počet otázok na výber je povinný.');
+         form.querySelector('.dialog-chyba').textContent = 'Počet otázok na výber je povinný.';
          return;
       }
       const params = {
@@ -112,9 +125,7 @@ function pridajKategoriu(predmet) {
          nazov: form.querySelector('.kat-nazov').value,
          deprecated: form.querySelector('.kat-deprecated').checked ? '1' : '',
       };
-      postForm('/admin/process_category', params)
-         .then(() => reloadZachovajKapitolu())
-         .catch(err => alert(err.message));
+      odosliFormular(form, '/admin/process_category', params);
    });
 }
 
@@ -137,11 +148,9 @@ function upravKategoriu(predmet, kategoriaId) {
             nazov: form.querySelector('.kat-nazov').value,
             deprecated: form.querySelector('.kat-deprecated').checked ? '1' : '',
          };
-         postForm('/admin/process_category', params)
-            .then(() => reloadZachovajKapitolu())
-            .catch(err => alert(err.message));
+         odosliFormular(form, '/admin/process_category', params);
       });
-   }).catch(err => alert(err.message));
+   }).catch(err => oznamDialog({text: err.message}));
 }
 
 function zmazKategoriu(predmet, kategoriaId, nazov) {
@@ -149,14 +158,14 @@ function zmazKategoriu(predmet, kategoriaId, nazov) {
       if (!potvrdene) return;
       postForm('/admin/process_category', {predmet, kategoria_id: kategoriaId, operacia: 'delete'})
          .then(() => reloadZachovajKapitolu())
-         .catch(err => alert(err.message));
+         .catch(err => oznamDialog({text: err.message}));
    });
 }
 
 function obnovKategoriu(predmet, kategoriaId) {
    postForm('/admin/process_category', {predmet, kategoria_id: kategoriaId, operacia: 'restore'})
       .then(() => reloadZachovajKapitolu())
-      .catch(err => alert(err.message));
+      .catch(err => oznamDialog({text: err.message}));
 }
 
 // --- otázka: dynamický formulár ---
@@ -439,6 +448,7 @@ function vytvorFormularOtazky(data, jeMcq) {
             <input type="text" class="otazka-klucove-slova"/>
          </label>
       </div>
+      <div class="dialog-chyba"></div>
       <button type="button" class="otazka-uloz">Uložiť</button>
       <button type="button" class="otazka-zrus">Zrušiť</button>
    `;
@@ -518,11 +528,9 @@ function otvorFormularOtazky(otazkaId) {
             vzory: JSON.stringify(mcq ? [] : zostavVzory(form)),
             klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),
          };
-         postForm('/admin/process_question', params)
-            .then(() => reloadZachovajKapitolu())
-            .catch(err => alert(err.message));
+         odosliFormular(form, '/admin/process_question', params);
       });
-   }).catch(err => alert(err.message));
+   }).catch(err => oznamDialog({text: err.message}));
 }
 
 function pridajOtazku(kategoriaId) {
@@ -552,9 +560,7 @@ function pridajOtazku(kategoriaId) {
          vzory: JSON.stringify(mcq ? [] : zostavVzory(form)),
          klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),
       };
-      postForm('/admin/process_question', params)
-         .then(() => reloadZachovajKapitolu())
-         .catch(err => alert(err.message));
+      odosliFormular(form, '/admin/process_question', params);
    });
 }
 
@@ -563,14 +569,14 @@ function zmazOtazku(otazkaId, znenie) {
       if (!potvrdene) return;
       postForm('/admin/process_question', {otazka_id: otazkaId, operacia: 'delete'})
          .then(() => reloadZachovajKapitolu())
-         .catch(err => alert(err.message));
+         .catch(err => oznamDialog({text: err.message}));
    });
 }
 
 function obnovOtazku(otazkaId) {
    postForm('/admin/process_question', {otazka_id: otazkaId, operacia: 'restore'})
       .then(() => reloadZachovajKapitolu())
-      .catch(err => alert(err.message));
+      .catch(err => oznamDialog({text: err.message}));
 }
 
 function aktivujKapitoluPodlaHash() {

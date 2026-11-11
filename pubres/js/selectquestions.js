@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
          const predmet = elPredmet.value;
          const deletep = (elPredmet.dataset.deletep || '').split(/\s+/);
          if (!deletep.includes(predmet)) {
-            alert(`Nemáte oprávnenie na vymazanie predmetu ${predmet}.`);
+            oznamDialog({text: `Nemáte oprávnenie na vymazanie predmetu ${predmet}.`});
             return;
          }
          potvrdDialog({nadpis: 'Vymazať predmet', text: `Naozaj vymazať CELÝ predmet ${predmet}? Otázky budú pred vymazaním zálohované.`, potvrdit: 'Vymazať', nebezpecne: true}).then(potvrdene => {
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   const option = elPredmet.querySelector(`option[value="${CSS.escape(predmet)}"]`);
                   if (option) option.remove();
                })
-               .catch(err => alert(err.message));
+               .catch(err => oznamDialog({text: err.message}));
          });
       });
    }
