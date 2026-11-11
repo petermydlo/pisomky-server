@@ -753,8 +753,7 @@ div:hover > span.penIcon.editActions {
    width: auto;
 }
 
-.tabulka-nastroje,
-.tabulka-nastavenia {
+.tabulka-nastroje {
    display: flex;
    flex-wrap: wrap;
    align-items: center;
@@ -762,15 +761,21 @@ div:hover > span.penIcon.editActions {
    margin-block: 0.25rem;
 }
 
-.tabulka-nastavenia label {
+.tabulka-nastroje button {
+   margin: 0;
+}
+
+.tabulka-nastroje label {
    display: flex;
    align-items: center;
    gap: 0.25rem;
+   margin: 0;
    white-space: nowrap;
 }
 
 .otazka-formular .tabulka-povolene {
    width: 8rem;
+   margin-top: 0;
    font-family: monospace;
 }
 
@@ -784,7 +789,7 @@ div:hover > span.penIcon.editActions {
 
 .tabulka-mriezka {
    overflow-x: auto;
-   margin-block: 0.25rem;
+   margin-block: 0.5rem;
 }
 
 .tabulka-mriezka table {
@@ -793,14 +798,23 @@ div:hover > span.penIcon.editActions {
 
 .tabulka-mriezka td,
 .tabulka-mriezka th {
-   border: 1px solid silver;
-   padding: 0.15rem;
+   position: relative;
+   padding: 0;
+   border: 1px solid #dee2e6;
    text-align: center;
    white-space: nowrap;
 }
 
+/* bunky ovladania (rad ikon nad stlpcami a stlpec ikon pri riadkoch) nemaju ram ani pozadie */
+.tabulka-mriezka thead td,
+.tabulka-mriezka thead th,
+.tabulka-mriezka tbody td:first-child {
+   border: 0;
+   background: none;
+}
+
 .tabulka-mriezka td.hlavicka {
-   background: whitesmoke;
+   background: #e9ecef;
 }
 
 .tabulka-mriezka td.hlavicka input.tabulka-bunka {
@@ -812,19 +826,62 @@ div:hover > span.penIcon.editActions {
 }
 
 .otazka-formular .tabulka-mriezka input.tabulka-bunka {
-   width: 5rem;
+   display: block;
+   width: 6rem;
+   margin: 0;
+   padding: 0.35rem 0.5rem;
+   border: 0;
+   border-radius: 0;
+   background: transparent;
    box-sizing: border-box;
    text-align: center;
 }
 
+/* oznacenie pola na vyplnenie: maly prepinac v rohu bunky, viditelny pri nabehnuti, na fokuse a ked je pole oznacene */
 .tabulka-mriezka input.tabulka-pole {
-   margin-left: 0.25rem;
-   vertical-align: middle;
+   position: absolute;
+   top: 3px;
+   right: 3px;
+   width: 0.8rem;
+   height: 0.8rem;
+   margin: 0;
+   opacity: 0;
 }
 
+.tabulka-mriezka td:hover input.tabulka-pole,
+.tabulka-mriezka td:focus-within input.tabulka-pole,
+.tabulka-mriezka input.tabulka-pole:checked {
+   opacity: 1;
+}
+
+/* ikony na ovladanie riadkov a stlpcov: tlmene, vyrazne az pri nabehnuti na stlpec alebo riadok */
 .tabulka-mriezka button {
    margin: 0;
-   padding: 0 0.4rem;
+   padding: 0.1rem 0.35rem;
+   border: 0;
+   background: transparent;
+   color: #6c757d;
+   font-size: 0.9rem;
+   line-height: 1;
+   opacity: 0.45;
+}
+
+.tabulka-mriezka button .bi {
+   font-size: inherit;
+}
+
+.tabulka-mriezka th:hover button,
+.tabulka-mriezka tbody tr:hover > td:first-child button {
+   opacity: 1;
+}
+
+.tabulka-mriezka button:hover:not(:disabled) {
+   background: #e9ecef;
+   color: #000;
+}
+
+.tabulka-mriezka button:disabled {
+   opacity: 0.15;
 }
 
 .dialog-okno.dialog-siroky {

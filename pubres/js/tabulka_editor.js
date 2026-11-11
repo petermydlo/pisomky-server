@@ -66,7 +66,7 @@ const HTML_EDITORA_TABULKY = `
       <button type="button" class="tabulka-vloz-otvor">Vložiť zo schránky</button>
       <button type="button" class="tabulka-xml-otvor">Zobraz XML tabuľky</button>
    </div>
-   <div class="tabulka-nastavenia">
+   <div class="tabulka-nastroje">
       <label><input type="checkbox" class="tabulka-hlavicka"/> prvý riadok je hlavička</label>
       <label>Povolené znaky <input type="text" class="tabulka-povolene" spellcheck="false"/></label>
    </div>
@@ -109,14 +109,18 @@ function pripojEditorTabulky(form, povodneXml) {
    let stav = novyStavTabulky();
    let povoleneRucne = false;   //kym ucitel nezapise povolene znaky, predvyplnaju sa z odpovedi
 
-   function tlacidlo(trieda, text, titulok, index, zakazane) {
+   //ikonove tlacidlo (Bootstrap Icons) na ovladanie stlpca alebo riadka; i = index stlpca/riadka
+   function tlacidlo(trieda, ikona, titulok, index, zakazane) {
       const el = document.createElement('button');
       el.type = 'button';
       el.className = trieda;
-      el.textContent = text;
       el.title = titulok;
+      el.setAttribute('aria-label', titulok);
       el.dataset.i = String(index);
       el.disabled = !!zakazane;
+      const i = document.createElement('i');
+      i.className = `bi bi-${ikona}`;
+      el.appendChild(i);
       return el;
    }
 
@@ -130,8 +134,8 @@ function pripojEditorTabulky(form, povodneXml) {
       for (let c = 0; c < stlpcov; c++) {
          const th = document.createElement('th');
          th.append(
-            tlacidlo('tabulka-stlpec-pole', 'pole', 'Označiť alebo zrušiť celý stĺpec ako polia na vyplnenie', c),
-            tlacidlo('tabulka-stlpec-zmaz', '×', 'Odstrániť stĺpec', c, stlpcov <= 1),
+            tlacidlo('tabulka-stlpec-pole', 'check2-square', 'Označiť alebo zrušiť celý stĺpec ako polia na vyplnenie', c),
+            tlacidlo('tabulka-stlpec-zmaz', 'x-lg', 'Odstrániť stĺpec', c, stlpcov <= 1),
          );
          ovladanie.appendChild(th);
       }
@@ -139,7 +143,7 @@ function pripojEditorTabulky(form, povodneXml) {
       stav.riadky.forEach((riadok, r) => {
          const tr = telo.insertRow();
          const ovl = tr.insertCell();
-         if (r >= prvy) ovl.appendChild(tlacidlo('tabulka-riadok-zmaz', '×', 'Odstrániť riadok', r, stav.riadky.length - prvy <= 1));
+         if (r >= prvy) ovl.appendChild(tlacidlo('tabulka-riadok-zmaz', 'x-lg', 'Odstrániť riadok', r, stav.riadky.length - prvy <= 1));
          riadok.forEach((text, c) => {
             const td = tr.insertCell();
             const vstup = document.createElement('input');
