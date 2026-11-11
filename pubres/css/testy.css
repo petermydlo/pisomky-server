@@ -747,6 +747,12 @@ div:hover > span.penIcon.editActions {
    padding-inline: 0.25rem;
 }
 
+/* Bootstrap dava legende float a sirku 100 %, flex panel hned za nou by sa stlacil na pravy okraj so sirkou 0 */
+.otazka-tabulka-fieldset legend {
+   float: none;
+   width: auto;
+}
+
 .tabulka-nastroje,
 .tabulka-nastavenia {
    display: flex;
