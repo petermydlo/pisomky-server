@@ -71,3 +71,92 @@ function zostavXmlTabulky(riadky, maHlavicku, vystup, povolene) {
    casti.push('</tabulka>');
    return casti.join('\n');
 }
+
+//--- Stav editora tabulky (mriezka vo formulari otazky); bez DOM, testuje sa v tests/js/ ---
+//stav: {riadky: pole poli retazcov, vystup: Set "riadok,stlpec" poli na vyplnenie, maHlavicku: bool, povolene: retazec}
+
+//predvolena tabulka: hlavicka a dva riadky, tri stlpce
+function novyStavTabulky(riadkov = 3, stlpcov = 3) {
+   return {riadky: Array.from({length: riadkov}, () => Array(stlpcov).fill('')), vystup: new Set(), maHlavicku: true, povolene: ''};
+}
+
+//stav z vlozenej tabulky (parsujSchranku); po hlavicke musi ostat aspon jeden riadok tela
+function stavZRiadkov(riadky, maHlavicku) {
+   const stav = {riadky: riadky.map(r => r.slice()), vystup: new Set(), maHlavicku, povolene: ''};
+   if (!stav.riadky.length) return novyStavTabulky();
+   if (stav.riadky.length < prvyRiadokTela(stav) + 1) pridajRiadokTabulky(stav);
+   return stav;
+}
+
+function prvyRiadokTela(stav) {
+   return stav.maHlavicku ? 1 : 0;
+}
+
+function pridajRiadokTabulky(stav) {
+   stav.riadky.push(Array(stav.riadky[0].length).fill(''));
+}
+
+function pridajStlpecTabulky(stav) {
+   stav.riadky.forEach(r => r.push(''));
+}
+
+//zahodi indexy poli v odstranenom riadku/stlpci a posunie vyssie; os: 0 = riadok, 1 = stlpec
+function posunVystup(stav, os, index) {
+   stav.vystup = new Set(Array.from(stav.vystup).map(k => k.split(',').map(Number)).filter(p => p[os] !== index)
+      .map(p => { if (p[os] > index) p[os]--; return p.join(','); }));
+}
+
+//hlavicka sa neodstranuje (riadi ju prepinac) a musi ostat aspon jeden riadok tela; vrati true, ak sa riadok odstranil
+function odstranRiadokTabulky(stav, r) {
+   if (r < prvyRiadokTela(stav) || stav.riadky.length - prvyRiadokTela(stav) <= 1) return false;
+   stav.riadky.splice(r, 1);
+   posunVystup(stav, 0, r);
+   return true;
+}
+
+//musi ostat aspon jeden stlpec
+function odstranStlpecTabulky(stav, c) {
+   if (stav.riadky[0].length <= 1) return false;
+   stav.riadky.forEach(r => r.splice(c, 1));
+   posunVystup(stav, 1, c);
+   return true;
+}
+
+//bunka hlavicky nemoze byt polom na vyplnenie
+function prepniBunkuTabulky(stav, r, c) {
+   if (r < prvyRiadokTela(stav)) return false;
+   const kluc = `${r},${c}`;
+   if (!stav.vystup.delete(kluc)) stav.vystup.add(kluc);
+   return true;
+}
+
+//cely stlpec tela: ak su uz vsetky bunky polami, zrusi ich, inak ich nastavi vsetky
+function prepniStlpecTabulky(stav, c) {
+   const kluce = stav.riadky.map((_, r) => r).filter(r => r >= prvyRiadokTela(stav)).map(r => `${r},${c}`);
+   const vsetky = kluce.every(k => stav.vystup.has(k));
+   kluce.forEach(k => vsetky ? stav.vystup.delete(k) : stav.vystup.add(k));
+}
+
+function nastavHlavickuTabulky(stav, maHlavicku) {
+   stav.maHlavicku = maHlavicku;
+   if (maHlavicku) stav.riadky[0].forEach((_, c) => stav.vystup.delete(`0,${c}`));
+   if (stav.riadky.length < prvyRiadokTela(stav) + 1) pridajRiadokTabulky(stav);
+}
+
+//znaky z textov poli na vyplnenie, kazdy raz, v poradi vyskytu (predvyplnenie povolenych znakov)
+function povoleneZVystupu(stav) {
+   const znaky = [];
+   stav.riadky.forEach((r, i) => r.forEach((text, c) => {
+      if (stav.vystup.has(`${i},${c}`)) Array.from(text).forEach(z => { if (!znaky.includes(z)) znaky.push(z); });
+   }));
+   return znaky.join('');
+}
+
+//ziadne pole a vsetky bunky prazdne (prepisanie takej tabulky sa nepotvrdzuje)
+function stavJePrazdny(stav) {
+   return stav.vystup.size === 0 && stav.riadky.every(r => r.every(text => text.trim() === ''));
+}
+
+function xmlTabulky(stav) {
+   return zostavXmlTabulky(stav.riadky, stav.maHlavicku, stav.vystup, stav.povolene);
+}

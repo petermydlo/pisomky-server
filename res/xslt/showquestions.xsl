@@ -212,6 +212,7 @@
          <script src="/pubres/js/utils.js"><xsl:comment>MyUtils</xsl:comment></script>
          <script src="/pubres/js/dialog.js"><xsl:comment>MyJS</xsl:comment></script>
          <script src="/pubres/js/tabulka.js"><xsl:comment>MyJS</xsl:comment></script>
+         <script src="/pubres/js/tabulka_editor.js"><xsl:comment>MyJS</xsl:comment></script>
          <script src="/pubres/js/showquestions_edit.js"><xsl:comment>MyJS</xsl:comment></script>
       </body>
    </html>

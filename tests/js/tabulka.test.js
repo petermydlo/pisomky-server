@@ -8,7 +8,9 @@ const vm = require('node:vm');
 
 const ctx = vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../../pubres/js/tabulka.js'), 'utf8'), ctx);
-const {parsujCsv, parsujMarkdown, parsujSchranku, escapujXml, zostavXmlTabulky} = ctx;
+const {parsujCsv, parsujMarkdown, parsujSchranku, escapujXml, zostavXmlTabulky,
+   novyStavTabulky, stavZRiadkov, pridajRiadokTabulky, pridajStlpecTabulky, odstranRiadokTabulky, odstranStlpecTabulky,
+   prepniBunkuTabulky, prepniStlpecTabulky, nastavHlavickuTabulky, povoleneZVystupu, stavJePrazdny, xmlTabulky} = ctx;
 
 //pole z vm kontextu ma iny prototyp Array, deepStrictEqual by ho odmietol
 const rovne = (skutocne, ocakavane) => assert.deepEqual(JSON.parse(JSON.stringify(skutocne)), ocakavane);
@@ -137,4 +139,161 @@ test('hodnoty aj povolene znaky sa escapuju v XML', () => {
    assert.ok(xml.includes('<bunka>a&lt;b</bunka>'));
    assert.ok(xml.includes('<bunka>&quot;q&quot;</bunka>'));
    assert.ok(xml.includes('<bunka odpoved="&amp;"/>'));
+});
+
+
+//--- stav editora tabulky ---
+
+const kluce = (stav) => [...stav.vystup].sort();
+
+//hlavicka + 2 riadky tela, 3 stlpce: a b c / 1 2 3 / 4 5 6
+function vzorovyStav(maHlavicku = true) {
+   return {riadky: [['a', 'b', 'c'], ['1', '2', '3'], ['4', '5', '6']], vystup: new Set(), maHlavicku, povolene: ''};
+}
+
+test('predvolena tabulka: hlavicka a dva riadky tela, tri stlpce, prazdna', () => {
+   const stav = novyStavTabulky();
+   assert.equal(stav.riadky.length, 3);
+   assert.ok(stav.riadky.every(r => r.length === 3 && r.every(t => t === '')));
+   assert.equal(stav.maHlavicku, true);
+   assert.equal(stav.vystup.size, 0);
+   assert.ok(stavJePrazdny(stav));
+});
+
+test('stavJePrazdny: text alebo pole znamena, ze tabulka nie je prazdna', () => {
+   const stav = novyStavTabulky();
+   stav.riadky[1][1] = ' x ';
+   assert.ok(!stavJePrazdny(stav));
+   const stav2 = novyStavTabulky();
+   stav2.vystup.add('1,1');
+   assert.ok(!stavJePrazdny(stav2));
+});
+
+test('pridanie riadku a stlpca doplni prazdne bunky v kazdom riadku', () => {
+   const stav = vzorovyStav();
+   pridajRiadokTabulky(stav);
+   pridajStlpecTabulky(stav);
+   rovne(stav.riadky, [['a', 'b', 'c', ''], ['1', '2', '3', ''], ['4', '5', '6', ''], ['', '', '', '']]);
+});
+
+test('odstranenie riadku posunie oznacene polia pod nim a zahodi polia v nom', () => {
+   const stav = vzorovyStav();
+   pridajRiadokTabulky(stav);               //riadky 0..3
+   ['1,0', '2,1', '3,2'].forEach(k => stav.vystup.add(k));
+   assert.equal(odstranRiadokTabulky(stav, 2), true);
+   rovne(stav.riadky, [['a', 'b', 'c'], ['1', '2', '3'], ['', '', '']]);
+   assert.deepEqual(kluce(stav), ['1,0', '2,2']);
+});
+
+test('hlavicka sa odstranit neda a musi ostat aspon jeden riadok tela', () => {
+   const stav = vzorovyStav();
+   assert.equal(odstranRiadokTabulky(stav, 0), false);
+   assert.equal(odstranRiadokTabulky(stav, 2), true);
+   assert.equal(odstranRiadokTabulky(stav, 1), false);
+   assert.equal(stav.riadky.length, 2);
+});
+
+test('bez hlavicky sa da odstranit aj prvy riadok, ale ostane aspon jeden', () => {
+   const stav = vzorovyStav(false);
+   assert.equal(odstranRiadokTabulky(stav, 0), true);
+   assert.equal(odstranRiadokTabulky(stav, 0), true);
+   assert.equal(odstranRiadokTabulky(stav, 0), false);
+   rovne(stav.riadky, [['4', '5', '6']]);
+});
+
+test('odstranenie stlpca posunie oznacene polia vpravo od neho', () => {
+   const stav = vzorovyStav();
+   ['1,0', '1,1', '2,2'].forEach(k => stav.vystup.add(k));
+   assert.equal(odstranStlpecTabulky(stav, 1), true);
+   rovne(stav.riadky, [['a', 'c'], ['1', '3'], ['4', '6']]);
+   assert.deepEqual(kluce(stav), ['1,0', '2,1']);
+});
+
+test('posledny stlpec sa odstranit neda', () => {
+   const stav = {riadky: [['a'], ['1']], vystup: new Set(), maHlavicku: true, povolene: ''};
+   assert.equal(odstranStlpecTabulky(stav, 0), false);
+   assert.equal(stav.riadky[0].length, 1);
+});
+
+test('prepnutie bunky: tam a spat, hlavicka sa prepnut neda', () => {
+   const stav = vzorovyStav();
+   assert.equal(prepniBunkuTabulky(stav, 1, 1), true);
+   assert.deepEqual(kluce(stav), ['1,1']);
+   assert.equal(prepniBunkuTabulky(stav, 1, 1), true);
+   assert.deepEqual(kluce(stav), []);
+   assert.equal(prepniBunkuTabulky(stav, 0, 1), false);
+   assert.deepEqual(kluce(stav), []);
+});
+
+test('prepnutie stlpca: najprv oznaci vsetky bunky tela, potom ich zrusi; hlavicku preskoci', () => {
+   const stav = vzorovyStav();
+   prepniStlpecTabulky(stav, 2);
+   assert.deepEqual(kluce(stav), ['1,2', '2,2']);
+   prepniStlpecTabulky(stav, 2);
+   assert.deepEqual(kluce(stav), []);
+});
+
+test('prepnutie stlpca, v ktorom je oznacena len cast, ho oznaci cely', () => {
+   const stav = vzorovyStav();
+   stav.vystup.add('1,2');
+   prepniStlpecTabulky(stav, 2);
+   assert.deepEqual(kluce(stav), ['1,2', '2,2']);
+});
+
+test('bez hlavicky sa prepnutim stlpca oznaci aj prvy riadok', () => {
+   const stav = vzorovyStav(false);
+   prepniStlpecTabulky(stav, 0);
+   assert.deepEqual(kluce(stav), ['0,0', '1,0', '2,0']);
+});
+
+test('zapnutie hlavicky zrusi polia v prvom riadku', () => {
+   const stav = vzorovyStav(false);
+   ['0,0', '0,1', '1,1'].forEach(k => stav.vystup.add(k));
+   nastavHlavickuTabulky(stav, true);
+   assert.equal(stav.maHlavicku, true);
+   assert.deepEqual(kluce(stav), ['1,1']);
+});
+
+test('zapnutie hlavicky pri jedinom riadku prida riadok tela', () => {
+   const stav = {riadky: [['a', 'b']], vystup: new Set(), maHlavicku: false, povolene: ''};
+   nastavHlavickuTabulky(stav, true);
+   rovne(stav.riadky, [['a', 'b'], ['', '']]);
+});
+
+test('povolene znaky z poli: kazdy znak raz, v poradi vyskytu', () => {
+   const stav = {riadky: [['x', 'y'], ['10', '01'], ['a', 'b']], vystup: new Set(['1,0', '1,1']), maHlavicku: true, povolene: ''};
+   assert.equal(povoleneZVystupu(stav), '10');
+   stav.vystup.add('2,0');
+   assert.equal(povoleneZVystupu(stav), '10a');
+   assert.equal(povoleneZVystupu({riadky: [['a']], vystup: new Set(), maHlavicku: false, povolene: ''}), '');
+});
+
+test('stavZRiadkov: kopia, bez poli; po hlavicke vzdy aspon jeden riadok tela', () => {
+   const vstup = [['a', 'b']];
+   const stav = stavZRiadkov(vstup, true);
+   rovne(stav.riadky, [['a', 'b'], ['', '']]);
+   assert.deepEqual(vstup, [['a', 'b']]);       //vstup sa nezmenil
+   assert.equal(stav.vystup.size, 0);
+   assert.equal(stav.povolene, '');
+   rovne(stavZRiadkov([['a', 'b']], false).riadky, [['a', 'b']]);
+});
+
+test('stavZRiadkov z prazdneho vstupu da predvolenu tabulku', () => {
+   assert.equal(stavZRiadkov([], true).riadky.length, 3);
+});
+
+test('xmlTabulky zostavi XML zo stavu vratane poli a povolenych znakov', () => {
+   const stav = {riadky: [['A', 'Y'], ['0', '1']], vystup: new Set(['1,1']), maHlavicku: true, povolene: '01'};
+   assert.equal(xmlTabulky(stav), [
+      '<tabulka povolene="01">',
+      '   <hlavicka>',
+      '      <bunka>A</bunka>',
+      '      <bunka>Y</bunka>',
+      '   </hlavicka>',
+      '   <riadok>',
+      '      <bunka>0</bunka>',
+      '      <bunka odpoved="1"/>',
+      '   </riadok>',
+      '</tabulka>',
+   ].join('\n'));
 });

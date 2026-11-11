@@ -236,152 +236,9 @@ function zostavCeloplosneNapovede(form) {
    return Array.from(form.querySelectorAll('.otazka-napovedy .napoveda-text')).map(t => t.value).filter(t => t.trim() !== '');
 }
 
-const SABLONA_TABULKY = `<tabulka povolene="">
-   <hlavicka>
-      <bunka></bunka>
-   </hlavicka>
-   <riadok>
-      <bunka></bunka>
-   </riadok>
-</tabulka>`;
-
-//XML tabulky, alebo prazdny retazec (odstrani tabulku z otazky); text v textarei ostava aj po odskrtnuti checkboxu
+//XML tabulky, alebo prazdny retazec (odstrani tabulku z otazky); tabulka v editore ostava aj po odskrtnuti checkboxu
 function zostavTabulku(form) {
    return form.querySelector('.otazka-ma-tabulku').checked ? form.querySelector('.otazka-tabulka').value : '';
-}
-
-function pripojVkladanieTabulky(form) {
-   const panel = form.querySelector('.tabulka-vkladanie');
-   const vstup = panel.querySelector('.tabulka-vloz-text');
-   const hlavickaCheck = panel.querySelector('.tabulka-vloz-hlavicka');
-   const povolenePole = panel.querySelector('.tabulka-vloz-povolene');
-   const oddelovacPole = panel.querySelector('.tabulka-vloz-oddelovac');
-   const nahlad = panel.querySelector('.tabulka-vloz-nahlad');
-   const chyba = panel.querySelector('.tabulka-vloz-chyba');
-   let riadky = [];
-   let vystup = new Set();
-   let povoleneRucne = false;
-
-   const prvyTelo = () => hlavickaCheck.checked ? 1 : 0;
-   const dalsiaPovolene = () => {
-      if (povoleneRucne) return;
-      const znaky = [];
-      riadky.forEach((r, i) => r.forEach((text, c) => {
-         if (vystup.has(`${i},${c}`)) Array.from(text).forEach(z => { if (!znaky.includes(z)) znaky.push(z); });
-      }));
-      povolenePole.value = znaky.join('');
-   };
-
-   function vykresli() {
-      nahlad.textContent = '';
-      if (!riadky.length) return;
-      const tabulka = document.createElement('table');
-      const stlpce = riadky[0].length;
-      const tlacidla = tabulka.createTHead().insertRow();
-      for (let c = 0; c < stlpce; c++) {
-         const th = document.createElement('th');
-         const tlacidlo = document.createElement('button');
-         tlacidlo.type = 'button';
-         tlacidlo.className = 'tabulka-vloz-stlpec';
-         tlacidlo.dataset.c = String(c);
-         tlacidlo.title = 'Označiť/zrušiť celý stĺpec ako polia na vyplnenie';
-         tlacidlo.textContent = 'stĺpec';
-         th.appendChild(tlacidlo);
-         tlacidla.appendChild(th);
-      }
-      const telo = tabulka.createTBody();
-      riadky.forEach((r, i) => {
-         const tr = telo.insertRow();
-         r.forEach((text, c) => {
-            const td = tr.insertCell();
-            td.textContent = text;
-            if (i < prvyTelo()) {
-               td.className = 'hlavicka';
-            } else if (text === '') {
-               td.className = 'prazdna';
-            } else {
-               td.className = vystup.has(`${i},${c}`) ? 'bunka vystup' : 'bunka';
-               td.dataset.r = String(i);
-               td.dataset.c = String(c);
-            }
-         });
-      });
-      nahlad.appendChild(tabulka);
-   }
-
-   function nacitaj() {
-      riadky = parsujSchranku(vstup.value, oddelovacPole.value);
-      vystup = new Set();
-      povoleneRucne = false;
-      chyba.textContent = '';
-      dalsiaPovolene();
-      vykresli();
-   }
-
-   vstup.addEventListener('input', nacitaj);
-   oddelovacPole.addEventListener('change', nacitaj);
-   hlavickaCheck.addEventListener('change', () => {
-      riadky.forEach((_, i) => i < prvyTelo() && riadky[i].forEach((__, c) => vystup.delete(`${i},${c}`)));
-      dalsiaPovolene();
-      vykresli();
-   });
-   povolenePole.addEventListener('input', () => {
-      povoleneRucne = povolenePole.value !== '';
-      if (!povoleneRucne) dalsiaPovolene();
-   });
-   nahlad.addEventListener('click', (e) => {
-      const cielova = e.target.closest('.tabulka-vloz-stlpec, td.bunka');
-      if (!cielova) return;
-      const c = Number(cielova.dataset.c);
-      if (cielova.matches('td.bunka')) {
-         const kluc = `${cielova.dataset.r},${c}`;
-         if (!vystup.delete(kluc)) vystup.add(kluc);
-      } else {
-         const kluce = riadky.map((r, i) => [i, r[c]]).filter(([i, text]) => i >= prvyTelo() && text !== '').map(([i]) => `${i},${c}`);
-         const vsetky = kluce.length > 0 && kluce.every(k => vystup.has(k));
-         kluce.forEach(k => vsetky ? vystup.delete(k) : vystup.add(k));
-      }
-      chyba.textContent = '';
-      dalsiaPovolene();
-      vykresli();
-   });
-
-   form.querySelector('.otazka-tabulka-vloz').addEventListener('click', () => {
-      panel.showModal();
-      vstup.focus();
-   });
-   panel.querySelector('.tabulka-vloz-zrus').addEventListener('click', () => panel.close());
-   panel.querySelector('.tabulka-vloz-vloz').addEventListener('click', () => {
-      if (!riadky.length) {
-         chyba.textContent = 'Najprv vložte tabuľku zo schránky.';
-         return;
-      }
-      if (!vystup.size) {
-         chyba.textContent = 'Označte aspoň jednu bunku alebo stĺpec ako pole na vyplnenie.';
-         return;
-      }
-      const povolene = povolenePole.value;
-      const nepovolena = Array.from(vystup).map(k => riadky[Number(k.split(',')[0])][Number(k.split(',')[1])])
-         .find(text => povolene && Array.from(text).some(z => !povolene.includes(z)));
-      if (nepovolena !== undefined) {
-         chyba.textContent = `Odpoveď "${nepovolena}" obsahuje znak, ktorý nie je medzi povolenými (${povolene}).`;
-         return;
-      }
-      const textarea = form.querySelector('.otazka-tabulka');
-      const prazdna = textarea.value.trim() === '' || textarea.value === SABLONA_TABULKY;
-      const vloz = () => {
-         textarea.value = zostavXmlTabulky(riadky, hlavickaCheck.checked, vystup, povolene);
-         const maTabulku = form.querySelector('.otazka-ma-tabulku');
-         maTabulku.checked = true;
-         maTabulku.dispatchEvent(new Event('change'));
-         panel.close();
-      };
-      if (prazdna) {
-         vloz();
-      } else {
-         potvrdDialog({nadpis: 'Prepísať tabuľku', text: 'Prepísať súčasné XML tabuľky vloženou tabuľkou?', potvrdit: 'Prepísať'}).then(potvrdene => potvrdene && vloz());
-      }
-   });
 }
 
 function vytvorFormularOtazky(data, jeMcq) {
@@ -408,30 +265,9 @@ function vytvorFormularOtazky(data, jeMcq) {
       <label><input type="checkbox" class="otazka-ma-odpovede"/> má odpovede (MCQ)</label>
       <label><input type="checkbox" class="otazka-ma-tabulku"/> má tabuľku</label>
       <fieldset class="otazka-tabulka-fieldset">
-         <legend>Tabuľka (XML)</legend>
-         <button type="button" class="otazka-tabulka-vloz">Vložiť zo schránky</button>
-         <dialog class="tabulka-vkladanie">
-            <div class="tabulka-vloz-nastavenia">
-               <label><input type="checkbox" class="tabulka-vloz-hlavicka" checked/> prvý riadok je hlavička</label>
-               <label>Oddeľovač
-                  <select class="tabulka-vloz-oddelovac">
-                     <option value="">automaticky</option>
-                     <option value="&#9;">tabulátor</option>
-                     <option value=";">bodkočiarka ;</option>
-                     <option value=",">čiarka ,</option>
-                  </select>
-               </label>
-               <label>Povolené znaky <input type="text" class="tabulka-vloz-povolene" spellcheck="false"/></label>
-            </div>
-            <textarea class="tabulka-vloz-text" rows="5" spellcheck="false" placeholder="Sem vložte (Ctrl+V) tabuľku skopírovanú z tabuľkového procesora alebo Markdown"></textarea>
-            <div class="tabulka-vloz-nahlad"></div>
-            <div class="tabulka-vloz-chyba"></div>
-            <div class="tabulka-vloz-tlacidla">
-               <button type="button" class="tabulka-vloz-zrus">Zrušiť</button>
-               <button type="button" class="tabulka-vloz-vloz">Vložiť</button>
-            </div>
-         </dialog>
-         <textarea class="otazka-tabulka" rows="12" spellcheck="false"></textarea>
+         <legend>Tabuľka</legend>
+         <input type="hidden" class="otazka-tabulka"/>
+         <div class="tabulka-editor"></div>
       </fieldset>
       <fieldset class="otazka-odpovede-fieldset">
          <legend>Odpovede</legend>
@@ -458,7 +294,6 @@ function vytvorFormularOtazky(data, jeMcq) {
    const jeTabulka = !!data.tabulka;
    form.querySelector('.otazka-ma-odpovede').checked = !!jeMcq && !jeTabulka;
    form.querySelector('.otazka-ma-tabulku').checked = jeTabulka;
-   form.querySelector('.otazka-tabulka').value = data.tabulka || SABLONA_TABULKY;
    form.querySelector('.otazka-klucove-slova').value = (data.klucove_slova || []).join(', ');
    form.querySelector('.otazka-body').value = data.body || '';
    form.querySelector('.otazka-static').checked = data.static === '1';
@@ -496,7 +331,7 @@ function vytvorFormularOtazky(data, jeMcq) {
       aktualizujVetvu();
    });
    aktualizujVetvu();
-   pripojVkladanieTabulky(form);
+   pripojEditorTabulky(form, data.tabulka || '');
 
    return form;
 }

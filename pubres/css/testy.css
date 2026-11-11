@@ -747,8 +747,95 @@ div:hover > span.penIcon.editActions {
    padding-inline: 0.25rem;
 }
 
-.otazka-tabulka {
+.tabulka-nastroje,
+.tabulka-nastavenia {
+   display: flex;
+   flex-wrap: wrap;
+   align-items: center;
+   gap: 0.5rem 1rem;
+   margin-block: 0.25rem;
+}
+
+.tabulka-nastavenia label {
+   display: flex;
+   align-items: center;
+   gap: 0.25rem;
+   white-space: nowrap;
+}
+
+.otazka-formular .tabulka-povolene {
+   width: 8rem;
    font-family: monospace;
+}
+
+.tabulka-chyba {
+   color: firebrick;
+}
+
+.tabulka-chyba:empty {
+   display: none;
+}
+
+.tabulka-mriezka {
+   overflow-x: auto;
+   margin-block: 0.25rem;
+}
+
+.tabulka-mriezka table {
+   border-collapse: collapse;
+}
+
+.tabulka-mriezka td,
+.tabulka-mriezka th {
+   border: 1px solid silver;
+   padding: 0.15rem;
+   text-align: center;
+   white-space: nowrap;
+}
+
+.tabulka-mriezka td.hlavicka {
+   background: whitesmoke;
+}
+
+.tabulka-mriezka td.hlavicka input.tabulka-bunka {
+   font-weight: bold;
+}
+
+.tabulka-mriezka td.pole {
+   background: #d4edda;
+}
+
+.otazka-formular .tabulka-mriezka input.tabulka-bunka {
+   width: 5rem;
+   box-sizing: border-box;
+   text-align: center;
+}
+
+.tabulka-mriezka input.tabulka-pole {
+   margin-left: 0.25rem;
+   vertical-align: middle;
+}
+
+.tabulka-mriezka button {
+   margin: 0;
+   padding: 0 0.4rem;
+}
+
+.dialog-okno.dialog-siroky {
+   width: min(90vw, 50rem);
+}
+
+.tabulka-xml-text {
+   width: 100%;
+   font-family: monospace;
+}
+
+.tabulka-xml-info {
+   color: gray;
+}
+
+.tabulka-xml-info:empty {
+   display: none;
 }
 
 .tabulka-vkladanie {
@@ -787,11 +874,6 @@ div:hover > span.penIcon.editActions {
    white-space: nowrap;
 }
 
-.otazka-formular .tabulka-vloz-povolene {
-   width: 8rem;
-   font-family: monospace;
-}
-
 .tabulka-vloz-nahlad {
    overflow-x: auto;
 }
@@ -810,22 +892,6 @@ div:hover > span.penIcon.editActions {
 .tabulka-vloz-nahlad td.hlavicka {
    font-weight: bold;
    background: whitesmoke;
-}
-
-.tabulka-vloz-nahlad td.bunka {
-   cursor: pointer;
-}
-
-.tabulka-vloz-nahlad td.bunka:hover {
-   background: aliceblue;
-}
-
-.tabulka-vloz-nahlad td.vystup {
-   background: #d4edda;
-}
-
-.tabulka-vloz-nahlad td.prazdna {
-   background: gainsboro;
 }
 
 .tabulka-vloz-tlacidla {
