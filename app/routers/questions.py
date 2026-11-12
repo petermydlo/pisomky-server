@@ -134,13 +134,13 @@ async def process_category(request: Request, predmet: StringForm, operacia: Stri
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
          raise HTTPException(status_code=400, detail=f'Neznáma operácia: {operacia}')
-      check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet)
       body = body or None
       static = static or None
       bonus = bonus or None
       nazov = nazov or None
       deprecated = deprecated or None
       if operacia == 'create':
+         check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet)
          if not kapitola_id:
             raise HTTPException(status_code=400, detail='kapitola_id je povinné pre vytvor')
          data = {k: v for k, v in {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated}.items() if v is not None}
@@ -150,6 +150,11 @@ async def process_category(request: Request, predmet: StringForm, operacia: Stri
          return JSONResponse(content={'id': nova_id}, status_code=200)
       if not kategoria_id:
          raise HTTPException(status_code=400, detail='kategoria_id je povinné pre túto operáciu')
+      #predmet z formulara by si ucitel mohol zvolit; opravnenie sa kontroluje voci predmetu, v ktorom kategoria naozaj lezi
+      _, kat_cesta = find_category(kategoria_id)
+      if kat_cesta is None:
+         raise HTTPException(status_code=400, detail='Kategória nenájdená')
+      check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet_from_cesta(kat_cesta))
       if operacia == 'update':
          update_data: dict[str, str | None] = {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated}
          ok = update_category(kategoria_id, update_data)

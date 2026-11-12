@@ -672,3 +672,50 @@ def test_zmenene_zamrznute_polia_len_vzor_bez_zmeny_frozen(questions_file):
    assert otazka is not None
    data = {'vzory': ['nový vzor']}
    assert zmenene_zamrznute_polia(otazka, data) is False
+
+
+# --- xslt_to_pdf ---
+
+def _pdf_stylesheet(tmp_path):
+   xsl = tmp_path / 'minimal.xsl'
+   xsl.write_text('<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><x/></xsl:template></xsl:stylesheet>', encoding='utf-8')
+   zdroj = tmp_path / 'zdroj.xml'
+   zdroj.write_text('<a/>', encoding='utf-8')
+   return str(xsl), str(zdroj)
+
+def test_xslt_to_pdf_fop_dostane_timeout_a_fo_sa_zmaze(tmp_path, monkeypatch):
+   import os
+   import tempfile
+   import subprocess
+   from saxonche import PySaxonProcessor
+   from app import utils
+   tmp = tmp_path / 'tmp'
+   tmp.mkdir()
+   monkeypatch.setattr(tempfile, 'tempdir', str(tmp))
+   volania = []
+   monkeypatch.setattr(utils.subprocess, 'run', lambda prikaz, **kw: volania.append(kw))
+   xsl, zdroj = _pdf_stylesheet(tmp_path)
+   with PySaxonProcessor(license=False) as proc:
+      pdf = utils.xslt_to_pdf(proc, xsl, source_file=zdroj)
+   assert volania[0]['timeout'] == utils.FOP_TIMEOUT
+   assert [p.suffix for p in tmp.iterdir()] == ['.pdf'] and os.path.exists(pdf.name)
+
+@pytest.mark.parametrize('chyba', ['CalledProcessError', 'TimeoutExpired'])
+def test_xslt_to_pdf_pri_chybe_fop_nezostanu_docasne_subory(tmp_path, monkeypatch, chyba):
+   import tempfile
+   import subprocess
+   from saxonche import PySaxonProcessor
+   from app import utils
+   tmp = tmp_path / 'tmp'
+   tmp.mkdir()
+   monkeypatch.setattr(tempfile, 'tempdir', str(tmp))
+
+   def zlyhaj(prikaz, **kw):
+      raise subprocess.CalledProcessError(1, prikaz) if chyba == 'CalledProcessError' else subprocess.TimeoutExpired(prikaz, 1)
+
+   monkeypatch.setattr(utils.subprocess, 'run', zlyhaj)
+   xsl, zdroj = _pdf_stylesheet(tmp_path)
+   with PySaxonProcessor(license=False) as proc:
+      with pytest.raises(subprocess.SubprocessError):
+         utils.xslt_to_pdf(proc, xsl, source_file=zdroj)
+   assert list(tmp.iterdir()) == []

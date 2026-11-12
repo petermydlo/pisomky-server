@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from app.mytypes import StringForm, StringFormOptional, StringPath, StringHeader
 from app.utils import find_test, xslt_to_string, xquery_to_string, test_xml_path, get_time_state
@@ -48,7 +49,22 @@ async def savemarks(request: Request, response: Response, kluc: StringPath, pred
    response.status_code = 201
    return
 
+def over_body(hodnota: str) -> str | None:
+   """Normalizuje body zadane ucitelom na zapis do @body (xs:decimal, nezaporne, desatinna bodka); prazdne
+   pole = neohodnotene (None). Pri neplatnej hodnote vyhodi ValueError, lebo zly retazec by rozbil vypocty celej sady."""
+   text = hodnota.strip().replace(',', '.')
+   if not text:
+      return None
+   try:
+      cislo = Decimal(text)
+   except InvalidOperation:
+      raise ValueError(f'neplatné body: {hodnota!r}')
+   if not cislo.is_finite() or cislo < 0:
+      raise ValueError(f'neplatné body: {hodnota!r}')
+   return format(abs(cislo), 'f')
+
 def write_marks(lock: FileLock, cesta: Path, form_data: dict, kluc: str, dat: str) -> None:
+   body_podla_kluca = {k: over_body(v) for k, v in form_data.items() if k.split('_', 1)[0] in ('h', 'bh')}  #pred zamknutim a zapisom
    with lock:
       try:
          xmlParser = ET.XMLParser(remove_blank_text=True)
@@ -62,8 +78,15 @@ def write_marks(lock: FileLock, cesta: Path, form_data: dict, kluc: str, dat: st
             otazkaxml = next(iter(testxml.xpath('.//otazka[@id=$id]', id=idotazky)), None)
             if otazkaxml is None:
                otazkaxml = ET.SubElement(testxml, 'otazka', attrib={'id': idotazky})
-            param = 'body' if typ in ('h', 'bh') else 'koment'
-            otazkaxml.set(param, value)
+            if typ in ('h', 'bh'):
+               body = body_podla_kluca[key]
+               if body is None:
+                  if 'body' in otazkaxml.attrib:
+                     del otazkaxml.attrib['body']
+               else:
+                  otazkaxml.set('body', body)
+            else:
+               otazkaxml.set('koment', value)
          ET.indent(tree, space='   ')
          tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
       except Exception as e:

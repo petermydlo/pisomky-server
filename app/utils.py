@@ -67,6 +67,9 @@ def _set_params(proc: 'PySaxonProcessor', executable: 'PyXsltExecutable', params
       else:
          executable.set_parameter(k, proc.make_string_value(v))
 
+#najdlhsie povolene trvanie jedneho spustenia FOP (s)
+FOP_TIMEOUT = 120
+
 def xslt_to_pdf(proc: 'PySaxonProcessor', stylesheet: str, source_file: str | None = None, xdm_node: 'PyXdmNode | None' = None, params: dict | None = None, xslt_pools: dict | None = None) -> 'tempfile._TemporaryFileWrapper':
    """Transformuje xml zdroj s xslt sablonou na pdf subor."""
    if xslt_pools is not None:
@@ -93,8 +96,13 @@ def xslt_to_pdf(proc: 'PySaxonProcessor', stylesheet: str, source_file: str | No
       elif xdm_node:
          executable.transform_to_file(xdm_node=xdm_node, output_file=fofile.name)
    pdffile = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-   subprocess.run(['fop', '-nocs', '-c', './res/config.xml', '-fo', fofile.name, '-pdf', pdffile.name], check=True)
-   os.remove(fofile.name)
+   try:
+      subprocess.run(['fop', '-nocs', '-c', './res/config.xml', '-fo', fofile.name, '-pdf', pdffile.name], check=True, timeout=FOP_TIMEOUT)
+   except BaseException:
+      os.remove(pdffile.name)
+      raise
+   finally:
+      os.remove(fofile.name)
    return pdffile
 
 def xslt_to_string(proc: 'PySaxonProcessor', stylesheet_file: str, source_file: str | None = None, xdm_node: 'PyXdmNode | None' = None, params: dict | None = None, xslt_pools: dict | None = None) -> str:

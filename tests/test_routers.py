@@ -13,11 +13,12 @@ from fastapi.exceptions import HTTPException
 from saxonche import PySaxonProcessor
 
 from app.utils import modify_test_xml
-from app.routers.testrun import write_answers, saveanswers
-from app.routers.results import write_marks, write_odhalene
+from datetime import datetime
+from app.routers.testrun import write_answers, saveanswers, nastav_stop, stoptime, set_paused, ocisti_odpovede, MAX_DLZKA_ODPOVEDE
+from app.routers.results import write_marks, write_odhalene, over_body
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
 from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
-from app.routers.questions import process_chapter, showquestions
+from app.routers.questions import process_chapter, showquestions, process_category
 from app.routers.results import savemarks, groupstatistics
 from app.routers.importanswers import importmanual
 from app.routers.ai import feedbackreport
@@ -159,6 +160,31 @@ def test_write_marks_neexistujuca_otazka_vytvori_element(answers_file):
    assert q9.get('body') == '3'
 
 
+def test_write_marks_desatinna_ciarka_sa_zapise_s_bodkou(answers_file):
+   write_marks(FileLock(f'{answers_file}.lock'), answers_file, {'h_q1': '5,5', 'bh_q2': ' 2.25 '}, KLUC, DAT)
+   tree = ET.parse(str(answers_file))
+   assert tree.xpath(f'//test[@id="{KLUC}"]/otazka[@id="q1"]/@body') == ['5.5']  # type: ignore[union-attr]
+   assert tree.xpath(f'//test[@id="{KLUC}"]/otazka[@id="q2"]/@body') == ['2.25']  # type: ignore[union-attr]
+
+def test_write_marks_prazdne_body_odstrania_atribut(answers_file):
+   write_marks(FileLock(f'{answers_file}.lock'), answers_file, {'h_q1': '3'}, KLUC, DAT)
+   write_marks(FileLock(f'{answers_file}.lock'), answers_file, {'h_q1': ''}, KLUC, DAT)
+   assert ET.parse(str(answers_file)).xpath(f'//test[@id="{KLUC}"]/otazka[@id="q1"]/@body') == []  # type: ignore[union-attr]
+
+@pytest.mark.parametrize('hodnota', ['abc', '-1', 'NaN', 'Infinity', '1;2', '5 b'])
+def test_write_marks_neplatne_body_nic_nezapisu(answers_file, hodnota):
+   povodny = answers_file.read_text(encoding='utf-8')
+   with pytest.raises(ValueError):
+      write_marks(FileLock(f'{answers_file}.lock'), answers_file, {'h_q1': '1', 'h_q2': hodnota}, KLUC, DAT)
+   assert answers_file.read_text(encoding='utf-8') == povodny
+
+def test_over_body_normalizuje():
+   assert over_body('7') == '7'
+   assert over_body('1e2') == '100'
+   assert over_body('-0') == '0'
+   assert over_body('  ') is None
+
+
 # --- changetime logika ---
 
 def _changetime_modify(tree, kluc, start, stop):
@@ -211,26 +237,49 @@ def test_changetime_test_nenajdeny(tests_file):
    assert exc.value.status_code == 404
 
 
-# --- stoptime logika ---
+# --- stoptime ---
 
-def _stoptime_modify(tree, kluc, stop):
-   """Replika _modify closury z stoptime.py na priame testovanie."""
-   tests = [t for t in tree.findall('.//test') if t.get('id') == kluc]
-   if not tests:
-      raise HTTPException(status_code=404, detail='Test nenájdený')
-   tests[0].set('stop', stop)
-
-
-def test_stoptime_nastavi_stop(tests_file):
-   modify_test_xml(str(tests_file), lambda t: _stoptime_modify(t, KLUC, '2026-01-01T10:00'))
-   test = ET.parse(str(tests_file)).find(f'.//test[@id="{KLUC}"]')
+def _stop_testu(cesta):
+   test = ET.parse(str(cesta)).find(f'.//test[@id="{KLUC}"]')
    assert test is not None
-   assert test.get('stop') == '2026-01-01T10:00'
+   return test.get('stop')
 
-def test_stoptime_nenajdeny(tests_file):
+def _stoptime_strom(tests_file, nahrada=None):
+   if nahrada:
+      tests_file.write_text(TESTS_XML.replace(*nahrada), encoding='utf-8')
+   return ET.parse(str(tests_file))
+
+def test_nastav_stop_pouzije_serverovy_cas(tests_file):
+   strom = _stoptime_strom(tests_file)
+   nastav_stop(strom, KLUC, datetime(2026, 1, 1, 10, 7, 41))
+   assert strom.find(f'.//test[@id="{KLUC}"]').get('stop') == '2026-01-01T10:07'  # type: ignore[union-attr]
+
+def test_nastav_stop_skracuje_buduci_koniec(tests_file):
+   strom = _stoptime_strom(tests_file, (f'<test id="{KLUC}">', f'<test id="{KLUC}" stop="2026-01-01T11:00">'))
+   nastav_stop(strom, KLUC, datetime(2026, 1, 1, 10, 7))
+   assert strom.find(f'.//test[@id="{KLUC}"]').get('stop') == '2026-01-01T10:07'  # type: ignore[union-attr]
+
+def test_nastav_stop_nepredlzi_skonceny_test(tests_file):
+   strom = _stoptime_strom(tests_file, (f'<test id="{KLUC}">', f'<test id="{KLUC}" stop="2026-01-01T09:00">'))
+   nastav_stop(strom, KLUC, datetime(2026, 1, 1, 10, 7))
+   assert strom.find(f'.//test[@id="{KLUC}"]').get('stop') == '2026-01-01T09:00'  # type: ignore[union-attr]
+
+def test_nastav_stop_nepredlzi_koniec_sady(tests_file):
+   strom = _stoptime_strom(tests_file, ('<testy ', '<testy stop="2026-01-01T09:00" '))
+   nastav_stop(strom, KLUC, datetime(2026, 1, 1, 10, 7))
+   assert strom.find(f'.//test[@id="{KLUC}"]').get('stop') is None  # type: ignore[union-attr]
+
+def test_nastav_stop_nenajdeny(tests_file):
    with pytest.raises(HTTPException) as exc:
-      modify_test_xml(str(tests_file), lambda t: _stoptime_modify(t, 'NEEXISTUJE', '2026-01-01T10:00'))
+      nastav_stop(_stoptime_strom(tests_file), 'NEEXISTUJE', datetime(2026, 1, 1, 10, 7))
    assert exc.value.status_code == 404
+
+def test_stoptime_trasa_zapise_serverovy_cas_nie_cas_z_formulara(tests_file):
+   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(kluc_cache={})))
+   pred = datetime.now().replace(second=0, microsecond=0)
+   asyncio.run(stoptime(request, KLUC))  # type: ignore[arg-type]
+   zapisany = datetime.fromisoformat(_stop_testu(tests_file) or '')
+   assert pred <= zapisany <= datetime.now()
 
 
 # --- deletetests logika ---
@@ -429,6 +478,26 @@ def test_saveanswers_skonceny_test_je_403_a_nic_nezapise(tmp_path):
    assert list((tmp_path / 'res/xml/answers' / PREDMET).iterdir()) == []
 
 
+def test_ocisti_odpovede_necha_len_otazky_testu():
+   assert ocisti_odpovede({'q1': 'a', 'cudzie': 'x', 'predmet': 'y', 'subory': 'z'}, {'q1', 'q2'}) == {'q1': 'a'}
+
+def test_ocisti_odpovede_odstrani_neplatne_xml_znaky_a_necha_diakritiku_aj_emoji():
+   assert ocisti_odpovede({'q1': 'a\x00b\x0bc\x1fd\ufffee\tš\n😀'}, {'q1'}) == {'q1': 'abcde\tš\n😀'}
+
+def test_ocisti_odpovede_orezie_dlhu_odpoved():
+   assert len(ocisti_odpovede({'q1': 'x' * (MAX_DLZKA_ODPOVEDE + 5)}, {'q1'})['q1']) == MAX_DLZKA_ODPOVEDE
+
+def test_ocisti_odpovede_ignoruje_subor_pod_klucom_otazky():
+   assert ocisti_odpovede({'q1': _subor('a.txt', b'x')}, {'q1'}) == {}
+
+def test_saveanswers_zapise_len_otazky_testu_a_znak_nezhodi_ulozenie(tests_file, tmp_path):
+   udaje = {'q1': 'a\x0bb', 'cudzia_otazka': 'x', 'q9': 'y'}
+   with PySaxonProcessor(license=False) as proc:
+      asyncio.run(saveanswers(_saveanswers_request(proc, udaje), Response(), KLUC, subory=None))  # type: ignore[arg-type]
+   xml = ET.parse(str(tmp_path / 'res/xml/answers' / PREDMET / f'{PREDMET}_{TRIEDA}{SKUPINA}_{KAPITOLA}_{FILEID}.xml')).getroot()
+   assert [(o.get('id'), o.text) for o in xml.findall('test/otazka')] == [('q1', 'ab')]
+
+
 # --- process_chapter ---
 
 def test_process_chapter_neplatne_id_je_400_a_len_varovanie(caplog):
@@ -533,3 +602,66 @@ def test_write_odhalene_skrytie_nepotrebuje_skoncene(tmp_path):
    zmenene = write_odhalene(FileLock(f'{cesta}.lock'), cesta, False, set())
    assert zmenene == ['T2']
    assert _odhalene(cesta, 'T2') is None
+
+
+# --- oprávnenia na kategórie a pozastavenie ---
+
+KAT_XML = """\
+<?xml version='1.0' encoding='utf-8'?>
+<kapitola predmet="{predmet}" id="01">
+   <kategoria id="{kat}" pocet="1">
+      <otazka id="{otazka}"><znenie>x</znenie></otazka>
+   </kategoria>
+</kapitola>
+"""
+
+@pytest.fixture
+def banka(tmp_path):
+   """Dva predmety (AUT3, MAT) a .perm: ucitel 'petrik' smie upravovat len AUT3."""
+   for predmet, kat, otazka in (('AUT3', 'katA', 'otA'), ('MAT', 'katM', 'otM')):
+      adresar = tmp_path / 'res/xml/questions' / predmet
+      adresar.mkdir(parents=True, exist_ok=True)
+      (adresar / f'{predmet}_01.xml').write_text(KAT_XML.format(predmet=predmet, kat=kat, otazka=otazka), encoding='utf-8')
+   (tmp_path / '.perm').write_text('petrik: create:AUT3 edit:AUT3 delete:AUT3\n', encoding='utf-8')
+   return tmp_path
+
+def _banka_request():
+   return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(perm_cache={}, logger=logging.getLogger('pisomky'))))
+
+def _kategoria_xml(banka, predmet):
+   return (banka / f'res/xml/questions/{predmet}/{predmet}_01.xml').read_text(encoding='utf-8')
+
+@pytest.mark.parametrize('operacia', ['update', 'delete', 'restore'])
+def test_process_category_opravnenie_podla_predmetu_kategorie_nie_formulara(banka, operacia):
+   povodny = _kategoria_xml(banka, 'MAT')
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(process_category(_banka_request(), predmet='AUT3', operacia=operacia, X_Remote_User='petrik', kategoria_id='katM', pocet='5'))  # type: ignore[arg-type]
+   assert exc.value.status_code == 403
+   assert _kategoria_xml(banka, 'MAT') == povodny
+
+def test_process_category_vlastny_predmet_prejde(banka):
+   asyncio.run(process_category(_banka_request(), predmet='AUT3', operacia='update', X_Remote_User='petrik', kategoria_id='katA', pocet='5'))  # type: ignore[arg-type]
+   assert 'pocet="5"' in _kategoria_xml(banka, 'AUT3')
+
+def test_process_category_neexistujuca_kategoria_je_400(banka):
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(process_category(_banka_request(), predmet='AUT3', operacia='update', X_Remote_User='petrik', kategoria_id='nie'))  # type: ignore[arg-type]
+   assert exc.value.status_code == 400
+
+@pytest.mark.parametrize('typ, id_', [('kategoria', 'katM'), ('otazka', 'otM')])
+def test_setpaused_bez_opravnenia_je_403_a_nic_nezmeni(banka, typ, id_):
+   povodny = _kategoria_xml(banka, 'MAT')
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(set_paused(_banka_request(), id=id_, typ=typ, paused='1', X_Remote_User='petrik'))  # type: ignore[arg-type]
+   assert exc.value.status_code == 403
+   assert _kategoria_xml(banka, 'MAT') == povodny
+
+@pytest.mark.parametrize('typ, id_', [('kategoria', 'katA'), ('otazka', 'otA')])
+def test_setpaused_s_opravnenim_pozastavi(banka, typ, id_):
+   asyncio.run(set_paused(_banka_request(), id=id_, typ=typ, paused='1', X_Remote_User='petrik'))  # type: ignore[arg-type]
+   assert 'paused="1"' in _kategoria_xml(banka, 'AUT3')
+
+def test_setpaused_neexistujuce_je_404(banka):
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(set_paused(_banka_request(), id='nie', typ='otazka', paused='1', X_Remote_User='petrik'))  # type: ignore[arg-type]
+   assert exc.value.status_code == 404

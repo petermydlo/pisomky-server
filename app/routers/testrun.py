@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import re
 from datetime import datetime
 from pathlib import Path
-from app.mytypes import StringForm, StringPath, StringFormOptional, FileListOptional
-from app.utils import find_test, get_test_metadata, modify_test_xml, find_test_file, test_xml_path, get_testy_autor, update_category, update_question, store_mcq_scores
+from app.mytypes import StringForm, StringPath, StringFormOptional, StringHeader, FileListOptional
+from app.utils import find_test, get_test_metadata, modify_test_xml, find_test_file, test_xml_path, get_testy_autor, update_category, update_question, store_mcq_scores, find_category, find_question
+from app.permissions import check_permission, predmet_from_cesta
 import lxml.etree as ET
 from fastapi.concurrency import run_in_threadpool
 from filelock import FileLock
@@ -12,6 +14,16 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.exceptions import HTTPException
 
 router = APIRouter()
+
+#odpoved ziaka je text jednej otazky; dlhsia (omylom vlozeny cely subor) sa orezie, aby neprerastal XML
+MAX_DLZKA_ODPOVEDE = 20000
+#znaky, ktore XML 1.0 nepripusta (napr. \x00, \x0b pri vlozeni z PDF); jediny taky znak by inak zhodil ulozenie vsetkych odpovedi
+_NEPLATNE_XML_ZNAKY = re.compile('[^\t\n\r\x20-\ud7ff\ue000-\ufffd\U00010000-\U0010ffff]')
+
+def ocisti_odpovede(form_data: dict, povolene_id: set[str]) -> dict[str, str]:
+   """Z formulara ziaka necha len odpovede na otazky jeho testu (kluc = @id otazky), bez neplatnych XML znakov a
+   najviac MAX_DLZKA_ODPOVEDE dlhe; ine polia sa zahodia, ziak nesmie zapisovat do suboru lubovolne elementy."""
+   return {k: _NEPLATNE_XML_ZNAKY.sub('', v)[:MAX_DLZKA_ODPOVEDE] for k, v in form_data.items() if k in povolene_id and isinstance(v, str)}
 
 @router.post('/saveanswers/{kluc}')
 async def saveanswers(request: Request, response: Response, kluc: StringPath, subory: FileListOptional = None):
@@ -34,8 +46,11 @@ async def saveanswers(request: Request, response: Response, kluc: StringPath, su
             request.app.state.logger.error(f'chyba subory: {e}')
             raise HTTPException(status_code=400, detail='chyba subory: ' + str(e))
    cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
+   xp = proc.new_xpath_processor()
+   xp.set_context(xdm_item=test_node)
+   id_otazok = {o.get_attribute_value('id') for o in (xp.evaluate('otazka') or [])}
    async with request.form() as form:
-      form_data = {k: v for k, v in form.items() if k not in {'predmet', 'trieda', 'skupina', 'kapitola', 'fileid', 'subory'}}
+      form_data = ocisti_odpovede(dict(form.items()), id_otazok)
    lock = FileLock(f'{cesta}.lock')
    try:
       await run_in_threadpool(write_answers, lock, cesta, form_data, adresar, predmet, trieda, skupina, kapitola, fileid, kluc)
@@ -79,13 +94,28 @@ def write_answers(lock: FileLock, cesta: Path, form_data: dict, adresar: str, pr
       except Exception as e:
          raise Exception('chyba odpovede: ' + str(e))
 
+def _cas(hodnota: str | None) -> datetime | None:
+   try:
+      return datetime.fromisoformat((hodnota or '').strip())
+   except ValueError:
+      return None
+
+def nastav_stop(tree, kluc: str, teraz: datetime) -> None:
+   """Ukonci test 'kluc' serverovym casom 'teraz'. Koniec sa nikdy nepredlzi: ak test uz skoncil
+   (stop testu alebo sady je v minulosti), ostane tak; cas z formulara sa nepouziva, ziak ho nesmie volit."""
+   tests = [t for t in tree.findall('.//test') if t.get('id') == kluc]
+   if not tests:
+      raise HTTPException(status_code=404, detail='Test nenájdený')
+   test = tests[0]
+   stop = _cas(test.get('stop')) or _cas(tree.getroot().get('stop'))
+   if stop is not None and stop <= teraz:
+      return
+   test.set('stop', teraz.strftime('%Y-%m-%dT%H:%M'))
+
 @router.post('/stoptime/{kluc}', response_class=HTMLResponse)
-async def stoptime(request: Request, kluc: StringPath, stop: StringForm):
+async def stoptime(request: Request, kluc: StringPath):
    def _modify(tree):
-      tests = [t for t in tree.findall('.//test') if t.get('id') == kluc]
-      if not tests:
-         raise HTTPException(status_code=404, detail='Test nenájdený')
-      tests[0].set('stop', stop)
+      nastav_stop(tree, kluc, datetime.now())
 
    try:
       cesta = find_test_file(kluc, request.app.state.kluc_cache)
@@ -100,15 +130,20 @@ async def stoptime(request: Request, kluc: StringPath, stop: StringForm):
       raise HTTPException(status_code=400, detail='chyba stoptime: ' + str(e))
 
 @router.post('/admin/setpaused', response_class=JSONResponse)
-async def set_paused(request: Request, id: StringForm, typ: StringForm, paused: StringForm):
+async def set_paused(request: Request, id: StringForm, typ: StringForm, paused: StringForm, X_Remote_User: StringHeader):
    try:
       hodnota = '1' if paused == '1' else None
       if typ == 'kategoria':
-         ok = update_category(id, {'paused': hodnota})
+         _, cesta = find_category(id)
       elif typ == 'otazka':
-         ok = update_question(id, {'paused': hodnota})
+         _, cesta = find_question(id)
       else:
          raise HTTPException(status_code=400, detail=f'Neznámy typ: {typ}')
+      if cesta is None:
+         raise HTTPException(status_code=404, detail='Nenájdené')
+      #pozastavenie meni banku otazok, rovnako ako uprava (akcia 'edit')
+      check_permission(request.app.state.perm_cache, X_Remote_User, 'edit', predmet_from_cesta(cesta))
+      ok = update_category(id, {'paused': hodnota}) if typ == 'kategoria' else update_question(id, {'paused': hodnota})
       if not ok:
          raise HTTPException(status_code=404, detail='Nenájdené')
       return JSONResponse(content={'ok': True}, status_code=200)
