@@ -1103,6 +1103,15 @@ def get_testy_autor(predmet: str, trieda: str, skupina: str, kapitola: str, file
    except Exception:
       return ''
 
+def zaloz_subor_odpovedi(cesta: str | Path, predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str) -> None:
+   """Vytvori prazdny subor odpovedi sady testov; hodnoty atributov serializuje lxml, takze ich escapuje
+   (autor je meno ucitela z hlavicky a nemoze rozbit XML)."""
+   atributy = {
+      '{http://www.w3.org/XML/1998/namespace}lang': 'sk', 'predmet': predmet, 'trieda': trieda, 'skupina': skupina,
+      'kapitola': kapitola, 'fileid': fileid, 'autor': get_testy_autor(predmet, trieda, skupina, kapitola, fileid),
+   }
+   ET.ElementTree(ET.Element('odpovede', atributy)).write(str(cesta), encoding='utf-8', xml_declaration=True)
+
 def modify_test_xml(cesta: str, callback: 'Callable[[ET._ElementTree], None]') -> None:
    """Upravi xml subor testov podla callbacku."""
    xmlParser = ET.XMLParser(remove_blank_text=True)
@@ -1155,7 +1164,7 @@ def find_test(proc: 'PySaxonProcessor', kluc: str, admin: bool = False, cache: d
                if node is None:
                   continue
             except Exception as e:
-               print('chyba parsexml: ' + str(e))
+               logging.getLogger('pisomky').warning(f'chyba parsexml {filename}: {e}')
                continue
             xsltpath.set_context(xdm_item=node)
             found = next((t for t in (xsltpath.evaluate('/testy/test') or []) if t.get_attribute_value('id') == kluc), None)

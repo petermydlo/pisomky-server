@@ -517,7 +517,7 @@ async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis
       return {'ok': True}
    except Exception as e:
       request.app.state.logger.error(f'chyba feedback: {e}')
-      return {'ok': False, 'error': str(e)}
+      return {'ok': False, 'error': 'Hodnotenie sa nepodarilo uložiť.'}
 
 @router.post('/admin/feedbackreport', response_class=HTMLResponse)
 async def feedbackreport(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):

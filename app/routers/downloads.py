@@ -32,17 +32,21 @@ async def downloadresult(request: Request, background_tasks: BackgroundTasks, kl
 def _generuj_qr_kody(cesta: str) -> str:
    tree = ET.parse(cesta)
    qrdir = tempfile.mkdtemp()
-   for test_id in tree.xpath('//test/@id'):  # type: ignore[union-attr]
-      qr = qrcode.QRCode(
-         error_correction=qrcode.ERROR_CORRECT_L,
-         box_size=3,
-         border=1,
-         image_factory=qrcode.image.svg.SvgPathImage,
-      )
-      qr.add_data(test_id)
-      qr.make(fit=True)
-      img = qr.make_image()
-      img.save(f'{qrdir}/{test_id}.svg')  # type: ignore[str-bytes-safe]
+   try:
+      for test_id in tree.xpath('//test/@id'):  # type: ignore[union-attr]
+         qr = qrcode.QRCode(
+            error_correction=qrcode.ERROR_CORRECT_L,
+            box_size=3,
+            border=1,
+            image_factory=qrcode.image.svg.SvgPathImage,
+         )
+         qr.add_data(test_id)
+         qr.make(fit=True)
+         img = qr.make_image()
+         img.save(f'{qrdir}/{test_id}.svg')  # type: ignore[str-bytes-safe]
+   except BaseException:
+      shutil.rmtree(qrdir, ignore_errors=True)  #volajuci adresar nepozna, nikto ho inak neupracie
+      raise
    return qrdir
 
 @router.post('/admin/downloadtests', response_class=FileResponse)
@@ -54,8 +58,12 @@ async def downloadtests(request: Request, background_tasks: BackgroundTasks, pre
       nazov = f'{predmet}_{trieda}{skupina}_{kapitola}{"_" + fileid if fileid else ""}_tests.pdf'
       proc = request.app.state.proc
       qrdir = await run_in_threadpool(_generuj_qr_kody, cesta)
+      try:
+         pdffile = await run_in_threadpool(xslt_to_pdf, proc, stylesheet='./res/xslt/downloadtests.xsl', source_file=cesta, params={'qrdir': f'file://{qrdir}'}, xslt_pools=request.app.state.xslt_pools)
+      except BaseException:
+         shutil.rmtree(qrdir, ignore_errors=True)  #background_tasks sa pri vyhodenej vynimke nespustia
+         raise
       background_tasks.add_task(shutil.rmtree, qrdir, ignore_errors=True)
-      pdffile = await run_in_threadpool(xslt_to_pdf, proc, stylesheet='./res/xslt/downloadtests.xsl', source_file=cesta, params={'qrdir': f'file://{qrdir}'}, xslt_pools=request.app.state.xslt_pools)
       background_tasks.add_task(os.remove, pdffile.name)
       return FileResponse(path=pdffile.name, headers={'Content-Disposition': f'attachment; filename="{nazov}"'}, media_type='application/pdf', filename=nazov)
    except Exception as e:

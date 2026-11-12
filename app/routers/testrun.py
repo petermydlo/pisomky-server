@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from app.mytypes import StringForm, StringPath, StringFormOptional, StringHeader, FileListOptional
-from app.utils import find_test, get_test_metadata, modify_test_xml, find_test_file, test_xml_path, get_testy_autor, update_category, update_question, store_mcq_scores, find_category, find_question
+from app.utils import find_test, get_test_metadata, modify_test_xml, find_test_file, test_xml_path, update_category, update_question, store_mcq_scores, find_category, find_question, zaloz_subor_odpovedi
 from app.permissions import check_permission, predmet_from_cesta
 import lxml.etree as ET
 from fastapi.concurrency import run_in_threadpool
@@ -44,7 +44,7 @@ async def saveanswers(request: Request, response: Response, kluc: StringPath, su
                f.write(obsah)
          except Exception as e:
             request.app.state.logger.error(f'chyba subory: {e}')
-            raise HTTPException(status_code=400, detail='chyba subory: ' + str(e))
+            raise HTTPException(status_code=400, detail='Súbor sa nepodarilo uložiť.')
    cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
    xp = proc.new_xpath_processor()
    xp.set_context(xdm_item=test_node)
@@ -56,39 +56,32 @@ async def saveanswers(request: Request, response: Response, kluc: StringPath, su
       await run_in_threadpool(write_answers, lock, cesta, form_data, adresar, predmet, trieda, skupina, kapitola, fileid, kluc)
    except Exception as e:
       request.app.state.logger.error(f'chyba odpovede: {e}')
-      raise HTTPException(status_code=400, detail='chyba odpovede: ' + str(e))
+      raise HTTPException(status_code=400, detail='Odpovede sa nepodarilo uložiť.')
    response.status_code = 201
    return
 
 def write_answers(lock: FileLock, cesta: Path, form_data: dict, adresar: str, predmet: str, trieda: str, skupina: str, kapitola: str, fileid: str, kluc: str) -> None:
    with lock:
       if not(cesta.is_file()):
-         autor = get_testy_autor(predmet, trieda, skupina, kapitola, fileid)
-         with open(cesta, 'w') as sub:
-            sub.write('<?xml version="1.1" encoding="UTF-8"?>\n')
-            sub.write(f'<odpovede xml:lang="sk" predmet="{predmet}" trieda="{trieda}" skupina="{skupina}" kapitola="{kapitola}" fileid="{fileid}" autor="{autor}">')
-            sub.write('</odpovede>')
+         zaloz_subor_odpovedi(cesta, predmet, trieda, skupina, kapitola, fileid)
       try:
          xmlParser = ET.XMLParser(remove_blank_text=True)
          tree = ET.parse(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml', xmlParser)
          root = tree.getroot()
          dat = datetime.now().isoformat(timespec='seconds')
-         existujuci = next(iter(root.xpath('test[@id=$id]', id=kluc)), None)  # type: ignore[arg-type]
-         ma_odpovede = bool(form_data)
-         if existujuci is not None:
-            if not ma_odpovede:
-               existujuci.set('dat', dat)
-            else:
-               root.remove(existujuci)
-               testxml = ET.SubElement(root, 'test', attrib={'id': kluc, 'dat': dat})
-               for key, value in form_data.items():
-                  otazkaxml = ET.SubElement(testxml, 'otazka', attrib={'id': key})
-                  otazkaxml.text = value
-         else:
-            testxml = ET.SubElement(root, 'test', attrib={'id': kluc, 'dat': dat})
-            for key, value in form_data.items():
+         testxml = next(iter(root.xpath('test[@id=$id]', id=kluc)), None)  # type: ignore[arg-type]
+         if testxml is None:
+            testxml = ET.SubElement(root, 'test', attrib={'id': kluc})
+         testxml.set('dat', dat)
+         for key, value in form_data.items():
+            otazkaxml = next(iter(testxml.xpath('otazka[@id=$id]', id=key)), None)  # type: ignore[arg-type]
+            if otazkaxml is None:
                otazkaxml = ET.SubElement(testxml, 'otazka', attrib={'id': key})
-               otazkaxml.text = value
+            elif (otazkaxml.text or '') != value:
+               #zmenena odpoved: stare body/komentar ucitela sa tykali povodnej odpovede
+               for atribut in [a for a in otazkaxml.attrib if a != 'id']:
+                  del otazkaxml.attrib[atribut]
+            otazkaxml.text = value
          ET.indent(tree, space='   ')
          tree.write(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml', encoding='utf-8', xml_declaration=True, pretty_print=True)
       except Exception as e:
@@ -127,7 +120,8 @@ async def stoptime(request: Request, kluc: StringPath):
    except HTTPException:
       raise
    except Exception as e:
-      raise HTTPException(status_code=400, detail='chyba stoptime: ' + str(e))
+      request.app.state.logger.error(f'chyba stoptime: {e}')
+      raise HTTPException(status_code=400, detail='Test sa nepodarilo ukončiť.')
 
 @router.post('/admin/setpaused', response_class=JSONResponse)
 async def set_paused(request: Request, id: StringForm, typ: StringForm, paused: StringForm, X_Remote_User: StringHeader):

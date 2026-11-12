@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import logging
+
 import pytest
 import lxml.etree as ET
 
@@ -822,3 +824,15 @@ def test_delete_chapter_cita_tests_len_raz_nie_pre_kazdu_otazku(questions_file, 
    monkeypatch.setattr(utils.ET, 'parse', lambda zdroj, *a, **k: cesty.append(str(zdroj)) or povodny(zdroj, *a, **k))
    assert delete_chapter('kap1', PREDMET) is True
    assert len([c for c in cesty if '/tests/' in c]) == 3  # kapitola ma 2 otazky, ale kazdy tests subor sa precita raz
+
+
+# --- find_test: nenacitatelny subor sa zaloguje ---
+
+def test_find_test_nenacitatelny_subor_sa_zaloguje_cez_logger_nie_print(tests_file, tmp_path, caplog, capsys):
+   from saxonche import PySaxonProcessor
+   from app.utils import find_test
+   (tmp_path / 'res/xml/tests' / PREDMET / 'rozbite.xml').write_text('<testy><test', encoding='utf-8')
+   with PySaxonProcessor(license=False) as proc, caplog.at_level(logging.WARNING, logger='pisomky'):
+      assert find_test(proc, 'NIE', True, {}) is None
+   assert 'chyba parsexml' in caplog.text and 'rozbite.xml' in caplog.text
+   assert 'chyba parsexml' not in capsys.readouterr().out

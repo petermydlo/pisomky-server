@@ -12,6 +12,8 @@
          <div class="alert alert-danger">Zadaný zlý kľúč, skúste znovu!</div>
          {%- elif "missingTest" == detail %}
          <div class="alert alert-danger">Test nenájdený, skúste znovu!</div>
+         {%- elif "error" == detail %}
+         <div class="alert alert-danger">Písomku sa teraz nepodarilo načítať. Skúste stránku obnoviť, ak sa to opakuje, povedzte to učiteľovi.</div>
          {%- elif "beforeTime" == detail %}
          <div class="alert alert-info">Čas na spustenie testu ešte nenastal.</div>
          {%- elif "pending" == detail %}

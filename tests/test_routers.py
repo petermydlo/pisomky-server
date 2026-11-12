@@ -18,7 +18,7 @@ from app.routers.testrun import write_answers, saveanswers, nastav_stop, nastav_
 from app.routers.results import write_marks, write_odhalene, over_body
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
 from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
-from app.routers.questions import process_chapter, showquestions, process_category
+from app.routers.questions import process_chapter, showquestions, process_category, process_predmet
 from app.routers.results import savemarks, groupstatistics
 from app.routers.importanswers import importmanual
 from app.routers.ai import feedbackreport
@@ -713,3 +713,271 @@ def test_importmanual_neplatna_cesta_je_400_a_nic_nevytvori(tests_file, tmp_path
       _importmanual({'q1': 'a'}, predmet='../x')
    assert exc.value.status_code == 400
    assert not _odpovede_cesta(tmp_path).exists()
+
+
+# --- write_answers: zapis na mieste ---
+
+def _otazka(tmp_path_or_file, id_):
+   test = ET.parse(str(tmp_path_or_file)).find(f'.//test[@id="{KLUC}"]')
+   assert test is not None
+   return test.find(f'otazka[@id="{id_}"]')
+
+def _write_answers(cesta, data, kluc=KLUC):
+   adresar = f'./res/xml/answers/{PREDMET}'
+   write_answers(FileLock(f'{cesta}.lock'), cesta, data, adresar, PREDMET, TRIEDA, SKUPINA, KAPITOLA, FILEID, kluc)
+
+def test_write_answers_necha_odhalene_a_hodnotenie_nezmenenych_odpovedi(answers_file):
+   strom = ET.parse(str(answers_file))
+   test = strom.find(f'.//test[@id="{KLUC}"]')
+   assert test is not None
+   test.set('odhalene', '1')
+   q1 = test.find('otazka[@id="q1"]')
+   assert q1 is not None
+   q1.set('body', '3')
+   q1.set('koment', 'dobre')
+   strom.write(str(answers_file), encoding='utf-8', xml_declaration=True)
+   _write_answers(answers_file, {'q1': 'a', 'q2': 'b'})
+   test = ET.parse(str(answers_file)).find(f'.//test[@id="{KLUC}"]')
+   assert test is not None and test.get('odhalene') == '1'
+   q1 = _otazka(answers_file, 'q1')
+   assert q1 is not None and [q1.get('body'), q1.get('koment'), q1.text] == ['3', 'dobre', 'a']
+   assert test.get('dat') != DAT
+
+def test_write_answers_zmenena_odpoved_zahodi_stare_body_a_komentar(answers_file):
+   strom = ET.parse(str(answers_file))
+   q1 = strom.find(f'.//test[@id="{KLUC}"]/otazka[@id="q1"]')
+   assert q1 is not None
+   q1.set('body', '3')
+   q1.set('koment', 'dobre')
+   strom.write(str(answers_file), encoding='utf-8', xml_declaration=True)
+   _write_answers(answers_file, {'q1': 'zmenena'})
+   q1 = _otazka(answers_file, 'q1')
+   assert q1 is not None and dict(q1.attrib) == {'id': 'q1'} and q1.text == 'zmenena'
+
+def test_write_answers_nezmaze_odpovede_na_otazky_mimo_odoslania(answers_file):
+   _write_answers(answers_file, {'q1': 'c'})
+   q2 = _otazka(answers_file, 'q2')
+   assert q2 is not None and q2.text == 'b'
+
+def test_write_answers_vyprazdnena_odpoved_sa_zapise(answers_file):
+   _write_answers(answers_file, {'q1': ''})
+   q1 = _otazka(answers_file, 'q1')
+   assert q1 is not None and (q1.text or '') == ''
+
+# --- hlavicka suboru odpovedi: hodnoty sa escapuju ---
+
+@pytest.mark.parametrize('autor', ['ucitel', 'Peter "Pišta" <ucitel> & spol.', "o'neil"])
+def test_novy_subor_odpovedi_ma_platnu_hlavicku_aj_s_nebezpecnym_autorom(tests_file, tmp_path, autor):
+   strom = ET.parse(str(tests_file))
+   strom.getroot().set('autor', autor)
+   strom.write(str(tests_file), encoding='utf-8', xml_declaration=True)
+   cesta = _odpovede_cesta(tmp_path)
+   _write_answers(cesta, {'q1': 'a'})
+   root = ET.parse(str(cesta)).getroot()
+   assert [root.get(a) for a in ('predmet', 'trieda', 'skupina', 'kapitola', 'fileid', 'autor')] == [PREDMET, TRIEDA, SKUPINA, KAPITOLA, FILEID, autor]
+   assert root.get('{http://www.w3.org/XML/1998/namespace}lang') == 'sk'
+
+def test_importmanual_novy_subor_ma_platnu_hlavicku_aj_s_nebezpecnym_autorom(tests_file, tmp_path):
+   strom = ET.parse(str(tests_file))
+   strom.getroot().set('autor', 'A "B" <C> & D')
+   strom.write(str(tests_file), encoding='utf-8', xml_declaration=True)
+   cesta = _odpovede_cesta(tmp_path)
+   write_answers_import(FileLock(f'{cesta}.lock'), cesta, {'q1': 'a'}, KLUC, PREDMET, TRIEDA, SKUPINA, KAPITOLA, FILEID)
+   assert ET.parse(str(cesta)).getroot().get('autor') == 'A "B" <C> & D'
+
+
+# --- chybove hlasky pre ziaka: bez vnutornych podrobnosti ---
+
+TAJNE = '/srv/web/pisomky/res/xml/tajna-cesta.xml'
+
+def test_saveanswers_chyba_zapisu_vrati_obecnu_hlasku(tests_file, monkeypatch):
+   import app.routers.testrun as testrun
+
+   def zlyhaj(*args, **kwargs):
+      raise OSError(TAJNE)
+
+   monkeypatch.setattr(testrun, 'write_answers', zlyhaj)
+   with PySaxonProcessor(license=False) as proc:
+      with pytest.raises(HTTPException) as exc:
+         asyncio.run(saveanswers(_saveanswers_request(proc, {'q1': 'a'}), Response(), KLUC, subory=None))  # type: ignore[arg-type]
+   assert exc.value.status_code == 400
+   assert exc.value.detail == 'Odpovede sa nepodarilo uložiť.' and TAJNE not in exc.value.detail
+
+def test_saveanswers_chyba_suboru_vrati_obecnu_hlasku(tests_file, monkeypatch):
+   class Zly:
+      filename = 'x.txt'
+
+      async def read(self):
+         raise OSError(TAJNE)
+
+   with PySaxonProcessor(license=False) as proc:
+      with pytest.raises(HTTPException) as exc:
+         asyncio.run(saveanswers(_saveanswers_request(proc, {}), Response(), KLUC, subory=[Zly()]))  # type: ignore[arg-type,list-item]
+   assert exc.value.detail == 'Súbor sa nepodarilo uložiť.'
+
+def test_stoptime_chyba_vrati_obecnu_hlasku_a_zaloguje_podrobnosti(tests_file, monkeypatch, caplog):
+   import app.routers.testrun as testrun
+
+   def zlyhaj(*args, **kwargs):
+      raise OSError(TAJNE)
+
+   monkeypatch.setattr(testrun, 'modify_test_xml', zlyhaj)
+   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(kluc_cache={}, mcq_hotove={}, logger=logging.getLogger('pisomky'))))
+   with caplog.at_level(logging.ERROR, logger='pisomky'):
+      with pytest.raises(HTTPException) as exc:
+         asyncio.run(stoptime(request, KLUC))  # type: ignore[arg-type]
+   assert exc.value.detail == 'Test sa nepodarilo ukončiť.' and TAJNE not in exc.value.detail
+   assert TAJNE in caplog.text
+
+
+# --- process_predmet ---
+
+@pytest.fixture
+def ucitelia(tmp_path):
+   """.perm: 'sef' smie zakladat predmety a mazat MAT; 'petrik' ma len edit:AUT3."""
+   (tmp_path / '.perm').write_text('sef: createp:ALL deletep:MAT create:MAT edit:MAT delete:MAT\npetrik: edit:AUT3\n', encoding='utf-8')
+
+def _predmet(operacia, predmet, user='sef'):
+   return asyncio.run(process_predmet(_banka_request(), predmet=predmet, operacia=operacia, X_Remote_User=user))  # type: ignore[arg-type]
+
+def _kod(odpoved):
+   return odpoved.status_code
+
+def test_process_predmet_vytvori_adresar(ucitelia, tmp_path):
+   assert _kod(_predmet('create', 'NOV4')) == 200
+   assert (tmp_path / 'res/xml/questions/NOV4').is_dir()
+
+@pytest.mark.parametrize('user', ['petrik', 'neznamy'])
+def test_process_predmet_vytvorenie_bez_opravnenia_je_403(ucitelia, tmp_path, user):
+   with pytest.raises(HTTPException) as exc:
+      _predmet('create', 'NOV4', user)
+   assert exc.value.status_code == 403
+   assert not (tmp_path / 'res/xml/questions/NOV4').exists()
+
+@pytest.mark.parametrize('predmet', ['../x', 'a', 'NOV4\n', 'ABCDEFGHIJK'])
+def test_process_predmet_neplatna_skratka_je_400(ucitelia, tmp_path, predmet):
+   with pytest.raises(HTTPException) as exc:
+      _predmet('create', predmet)
+   assert exc.value.status_code == 400
+   assert not (tmp_path / 'res/xml/questions').exists()
+
+def test_process_predmet_existujuci_je_400(ucitelia, tmp_path):
+   _predmet('create', 'NOV4')
+   with pytest.raises(HTTPException) as exc:
+      _predmet('create', 'NOV4')
+   assert exc.value.status_code == 400
+
+def test_process_predmet_zmaze_a_zalohuje(ucitelia, banka_mat):
+   assert _kod(_predmet('delete', 'MAT')) == 200
+   assert not (banka_mat / 'res/xml/questions/MAT').exists()
+   assert list((banka_mat / 'res/xml/archiv').rglob('MAT_*_otazky.tar.xz'))
+
+def test_process_predmet_zmazanie_len_s_pravom_deletep_pre_dany_predmet(ucitelia, banka_mat):
+   (banka_mat / 'res/xml/questions/AUT3').mkdir()
+   with pytest.raises(HTTPException) as exc:
+      _predmet('delete', 'AUT3')     # sef ma deletep len pre MAT
+   assert exc.value.status_code == 403
+   assert (banka_mat / 'res/xml/questions/AUT3').exists()
+
+def test_process_predmet_pouzity_v_testoch_sa_nezmaze(ucitelia, banka_mat):
+   (banka_mat / 'res/xml/tests/MAT').mkdir(parents=True, exist_ok=True)
+   (banka_mat / 'res/xml/tests/MAT/MAT_1A_01_ab12.xml').write_text('<testy><test id="K"><otazka id="otM"/></test></testy>', encoding='utf-8')
+   with pytest.raises(HTTPException) as exc:
+      _predmet('delete', 'MAT')
+   assert exc.value.status_code == 400
+   assert (banka_mat / 'res/xml/questions/MAT').exists()
+
+def test_process_predmet_neznama_operacia_je_400(ucitelia):
+   with pytest.raises(HTTPException) as exc:
+      _predmet('premenuj', 'MAT')
+   assert exc.value.status_code == 400
+
+@pytest.fixture
+def banka_mat(tmp_path):
+   adresar = tmp_path / 'res/xml/questions/MAT'
+   adresar.mkdir(parents=True)
+   (adresar / 'MAT_01.xml').write_text(KAT_XML.format(predmet='MAT', kat='katM', otazka='otM'), encoding='utf-8')
+   return tmp_path
+
+
+# --- process_chapter ---
+
+def _kapitola(operacia, kapitola_id='02', predmet='MAT', user='sef', nazov=None):
+   return asyncio.run(process_chapter(_banka_request(), predmet=predmet, kapitola_id=kapitola_id, operacia=operacia, X_Remote_User=user, nazov=nazov))  # type: ignore[arg-type]
+
+def test_process_chapter_vytvori_premenuje_a_zmaze(ucitelia, banka_mat):
+   cesta = banka_mat / 'res/xml/questions/MAT/MAT_02.xml'
+   assert _kapitola('create', nazov='Druha').status_code == 200
+   assert ET.parse(str(cesta)).getroot().get('nazov') == 'Druha'
+   _kapitola('update', nazov='Tretia')
+   assert ET.parse(str(cesta)).getroot().get('nazov') == 'Tretia'
+   _kapitola('delete')
+   assert not cesta.exists()
+
+@pytest.mark.parametrize('operacia', ['create', 'update', 'delete'])
+def test_process_chapter_bez_opravnenia_je_403_a_nic_nezmeni(ucitelia, banka_mat, operacia):
+   povodny = _kategoria_xml(banka_mat, 'MAT')
+   with pytest.raises(HTTPException) as exc:
+      _kapitola(operacia, kapitola_id='01' if operacia != 'create' else '07', user='petrik')     # petrik ma edit len pre AUT3
+   assert exc.value.status_code == 403
+   assert _kategoria_xml(banka_mat, 'MAT') == povodny
+   assert not (banka_mat / 'res/xml/questions/MAT/MAT_07.xml').exists()
+
+def test_process_chapter_existujuca_sa_nevytvori_znova(ucitelia, banka_mat):
+   with pytest.raises(HTTPException) as exc:
+      _kapitola('create', kapitola_id='01')
+   assert exc.value.status_code == 400
+
+def test_process_chapter_pouzita_v_testoch_sa_nezmaze(ucitelia, banka_mat):
+   (banka_mat / 'res/xml/tests/MAT').mkdir(parents=True, exist_ok=True)
+   (banka_mat / 'res/xml/tests/MAT/MAT_1A_01_ab12.xml').write_text('<testy><test id="K"><otazka id="otM"/></test></testy>', encoding='utf-8')
+   with pytest.raises(HTTPException) as exc:
+      _kapitola('delete', kapitola_id='01')
+   assert exc.value.status_code == 400
+   assert (banka_mat / 'res/xml/questions/MAT/MAT_01.xml').exists()
+
+def test_process_chapter_neznama_operacia_je_400(ucitelia, banka_mat):
+   with pytest.raises(HTTPException) as exc:
+      _kapitola('premenuj')
+   assert exc.value.status_code == 400
+
+
+# --- importanswers (AI import, trasa) ---
+
+class _FormaSuborov:
+   def __init__(self, subory):
+      self._subory = subory
+
+   async def __aenter__(self):
+      return self
+
+   async def __aexit__(self, *args):
+      return False
+
+   def getlist(self, nazov):
+      return self._subory if nazov == 'obrazky' else []
+
+def _importanswers_request(subory):
+   state = SimpleNamespace(kluc_cache={}, ai_provider=object(), logger=logging.getLogger('pisomky'))
+   return SimpleNamespace(app=SimpleNamespace(state=state), form=lambda: _FormaSuborov(subory))
+
+def test_importanswers_bez_suborov_je_400():
+   from app.routers.importanswers import importanswers
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(importanswers(_importanswers_request([])))  # type: ignore[arg-type]
+   assert exc.value.status_code == 400
+
+def test_importanswers_spracuje_kazdy_subor_a_vrati_vysledky(monkeypatch):
+   import json
+   import app.routers.importanswers as modul
+   volania = []
+
+   async def falosne_spracovanie(subor, cache, provider, vysledky):
+      volania.append((subor, provider))
+      vysledky.append({'subor': subor, 'zapisane': 1})
+
+   monkeypatch.setattr(modul, '_spracuj_subor', falosne_spracovanie)
+   request = _importanswers_request(['a.png', 'b.pdf'])
+   odpoved = asyncio.run(modul.importanswers(request))  # type: ignore[arg-type]
+   assert sorted(v['subor'] for v in json.loads(bytes(odpoved.body))['vysledky']) == ['a.png', 'b.pdf']
+   assert {p for _, p in volania} == {request.app.state.ai_provider}

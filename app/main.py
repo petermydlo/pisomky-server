@@ -34,18 +34,22 @@ async def custom_http_exception_handler(request: Request, _: HTTPException):
 
 exceptions = {404: custom_http_exception_handler}
 
+#najdlhsie cakanie na ohrev modelu pri starte (s); bez limitu by Ollama, ktora neodpoveda, zablokovala start workera
+OLLAMA_OHREV_TIMEOUT = 30
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
    try:
       import ollama
-      await ollama.AsyncClient().chat(
-         model=os.getenv('OLLAMA_MODEL', 'qwen3.5:9b'),
-         messages=[{'role': 'user', 'content': ''}],
-         think=False,
-         options={**OLLAMA_RUNNER_OPTIONS, 'num_predict': 1, 'keep_alive': '45m'}
-      )
-   except Exception:
-      pass
+      with anyio.fail_after(OLLAMA_OHREV_TIMEOUT):
+         await ollama.AsyncClient().chat(
+            model=os.getenv('OLLAMA_MODEL', 'qwen3.5:9b'),
+            messages=[{'role': 'user', 'content': ''}],
+            think=False,
+            options={**OLLAMA_RUNNER_OPTIONS, 'num_predict': 1, 'keep_alive': '45m'}
+         )
+   except Exception as e:
+      logging.getLogger('pisomky').warning(f'ohrev Ollamy zlyhal, aplikacia startuje bez neho: {e!r}')
    async with anyio.create_task_group() as tg:
       app.state.task_group = tg
       yield
@@ -162,8 +166,9 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
          vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok}, xslt_pools=request.app.state.xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
+      #zaciatok citania chyby (cesty, Saxon) nema vidiet ziak; ucitel ma podrobnosti v logu
       request.app.state.logger.error(f'chyba view: {e}')
-      raise HTTPException(status_code=400, detail=str(e))
+      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'error'}, status_code=500)
 
 @app.get('/admin/{kluc}', response_class=HTMLResponse)
 async def adminview(request: Request, _: Annotated[str, Header(alias='X-Remote-User')], kluc: StringPath, edit: BoolQuery = False):
