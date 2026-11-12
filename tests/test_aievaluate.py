@@ -243,3 +243,30 @@ def test_evaluate_test_viacriadkovy_vzor_zachova_riadky(monkeypatch):
    poslany_prompt = fake_client.messages.create.call_args.kwargs['messages'][0]['content']
    assert 'alternatives' not in poslany_prompt
    assert 'prvý riadok\n      druhý riadok' in poslany_prompt
+
+
+# --- evaluate_open: validacia parametrov ---
+
+@pytest.mark.parametrize('pole, hodnota', [
+   ('predmet', '../../etc'),
+   ('predmet', 'MAT\n'),
+   ('kapitola', '../x'),
+   ('kapitola', 'a/b'),
+   ('trieda', '1A/../..'),
+   ('skupina', 'a b'),
+])
+def test_evaluate_open_odmietne_neplatne_parametre_pred_pristupom_k_suborom(monkeypatch, pole, hodnota):
+   import asyncio
+   import logging
+   from app.routers import aievaluate
+
+   def nesmie_sa_zavolat(*args, **kwargs):
+      raise AssertionError('parametre sa nemali dostat k suborom')
+
+   monkeypatch.setattr(aievaluate, 'find_test_file', nesmie_sa_zavolat)
+   monkeypatch.setattr(aievaluate, '_nacitaj_otvorene_otazky', nesmie_sa_zavolat)
+   parametre = {'test_id': TEST_ID, 'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': 'kap1', 'skupina': ''}
+   parametre[pole] = hodnota
+   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(proc=None, logger=logging.getLogger('pisomky'))))
+   vysledok = asyncio.run(aievaluate.evaluate_open(request, **parametre))  # type: ignore[arg-type]
+   assert vysledok['ok'] is False and 'Neplatný parameter' in vysledok['error']

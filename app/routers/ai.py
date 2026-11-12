@@ -483,6 +483,8 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
 
 @router.post('/ai/feedback')
 async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis_id: StringForm):
+   if val not in (0, 1):  #do feedback XML (val 1/0/'') sa nesmie dostat ina hodnota
+      raise HTTPException(status_code=400, detail='Neplatné hodnotenie')
    try:
       proc = request.app.state.proc
       test_node = find_test(proc=proc, kluc=test_id, admin=True, cache=request.app.state.kluc_cache)

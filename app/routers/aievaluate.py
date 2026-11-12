@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import cast
 import lxml.etree as ET
 from app.mytypes import StringForm
-from app.utils import find_test_file, normalizuj_vzor, xquery_to_string
+from app.utils import find_test_file, normalizuj_vzor, test_xml_path, xquery_to_string
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
 
@@ -159,6 +159,10 @@ async def evaluate_open(
    skupina: StringForm = ''
 ):
    """Vyhodnotí všetky otvorené odpovede žiaka naraz. Vráti zoznam {id, body, dovod}."""
+   try:
+      test_xml_path(predmet, trieda, skupina, kapitola, '')  #predmet a kapitola idu do cesty k XQuery; odpoved je dict, klient cita ok/error
+   except ValueError as e:
+      return {'ok': False, 'error': str(e)}
    try:
       proc = request.app.state.proc
       cesta_tst = find_test_file(test_id) or ''

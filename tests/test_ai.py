@@ -581,3 +581,13 @@ def test_priprav_prompt_kluc_sa_meni_so_znenim_a_moznostami():
    _, kluc = _prompt(['1', '2'])
    assert _prompt(['1', '2'], znenie='Iné znenie')[1] != kluc
    assert _prompt(['1', '5'])[1] != kluc
+
+
+# --- ai_feedback: val len 0 alebo 1 ---
+
+@pytest.mark.parametrize('val', [2, -1, 99])
+def test_ai_feedback_odmietne_neplatne_hodnotenie(val):
+   from fastapi.exceptions import HTTPException
+   with pytest.raises(HTTPException) as exc:
+      anyio.run(ai.ai_feedback, None, TEST_ID, val, 'zap1')  # type: ignore[arg-type]
+   assert exc.value.status_code == 400
