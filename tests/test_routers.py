@@ -14,7 +14,7 @@ from saxonche import PySaxonProcessor
 
 from app.utils import modify_test_xml
 from datetime import datetime
-from app.routers.testrun import write_answers, saveanswers, nastav_stop, stoptime, set_paused, ocisti_odpovede, MAX_DLZKA_ODPOVEDE
+from app.routers.testrun import write_answers, saveanswers, nastav_stop, nastav_cas, changetime, stoptime, set_paused, ocisti_odpovede, MAX_DLZKA_ODPOVEDE
 from app.routers.results import write_marks, write_odhalene, over_body
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
 from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
@@ -185,56 +185,70 @@ def test_over_body_normalizuje():
    assert over_body('  ') is None
 
 
-# --- changetime logika ---
+# --- changetime ---
 
-def _changetime_modify(tree, kluc, start, stop):
-   """Replika _modify closury z changetime.py na priame testovanie."""
-   root = tree.getroot()
+def _strom(tests_file):
+   return ET.parse(str(tests_file))
 
-   def _set_attr(node, attr, value):
-      if value is not None:
-         if value.strip() != '':
-            node.set(attr, value)
-         else:
-            node.attrib.pop(attr, None)
-
-   if kluc is None:
-      _set_attr(root, 'start', start)
-      _set_attr(root, 'stop', stop)
-   else:
-      tests = [t for t in tree.findall('.//test') if t.get('id') == kluc]
-      if not tests:
-         raise HTTPException(status_code=404, detail='Test nenájdený')
-      _set_attr(tests[0], 'start', start)
-      _set_attr(tests[0], 'stop', stop)
-
-
-def test_changetime_skupina_nastavi_start(tests_file):
-   modify_test_xml(str(tests_file), lambda t: _changetime_modify(t, None, '2026-01-01T08:00', None))
-   root = ET.parse(str(tests_file)).getroot()
-   assert root.get('start') == '2026-01-01T08:00'
-
-def test_changetime_skupina_nastavi_stop(tests_file):
-   modify_test_xml(str(tests_file), lambda t: _changetime_modify(t, None, None, '2026-01-01T10:00'))
-   root = ET.parse(str(tests_file)).getroot()
-   assert root.get('stop') == '2026-01-01T10:00'
-
-def test_changetime_skupina_vymaze_atribut(tests_file):
-   modify_test_xml(str(tests_file), lambda t: _changetime_modify(t, None, '2026-01-01T08:00', None))
-   modify_test_xml(str(tests_file), lambda t: _changetime_modify(t, None, '  ', None))
-   root = ET.parse(str(tests_file)).getroot()
-   assert root.get('start') is None
-
-def test_changetime_test_nastavi_start(tests_file):
-   modify_test_xml(str(tests_file), lambda t: _changetime_modify(t, KLUC, '2026-01-01T09:00', None))
-   test = ET.parse(str(tests_file)).find(f'.//test[@id="{KLUC}"]')
+def _test_el(strom):
+   test = strom.find(f'.//test[@id="{KLUC}"]')
    assert test is not None
-   assert test.get('start') == '2026-01-01T09:00'
+   return test
 
-def test_changetime_test_nenajdeny(tests_file):
+def test_nastav_cas_sada_start_a_stop(tests_file):
+   strom = _strom(tests_file)
+   nastav_cas(strom, None, '2026-01-01T08:00', '2026-01-01T10:00')
+   assert [strom.getroot().get('start'), strom.getroot().get('stop')] == ['2026-01-01T08:00', '2026-01-01T10:00']
+   assert _test_el(strom).get('start') is None
+
+def test_nastav_cas_none_nemeni_a_prazdny_retazec_zrusi(tests_file):
+   strom = _strom(tests_file)
+   nastav_cas(strom, None, '2026-01-01T08:00', '2026-01-01T10:00')
+   nastav_cas(strom, None, None, '  ')
+   assert [strom.getroot().get('start'), strom.getroot().get('stop')] == ['2026-01-01T08:00', None]
+
+def test_nastav_cas_jeden_test_nechava_sadu(tests_file):
+   strom = _strom(tests_file)
+   nastav_cas(strom, KLUC, '2026-01-01T09:00', '2026-01-01T09:45')
+   assert [_test_el(strom).get('start'), _test_el(strom).get('stop')] == ['2026-01-01T09:00', '2026-01-01T09:45']
+   assert strom.getroot().get('start') is None and strom.getroot().get('stop') is None
+
+def test_nastav_cas_test_nenajdeny(tests_file):
    with pytest.raises(HTTPException) as exc:
-      modify_test_xml(str(tests_file), lambda t: _changetime_modify(t, 'NEEXISTUJE', '2026-01-01T09:00', None))
+      nastav_cas(_strom(tests_file), 'NEEXISTUJE', '2026-01-01T09:00', None)
    assert exc.value.status_code == 404
+
+def _changetime(**parametre):
+   zaklad = {'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': KAPITOLA, 'fileid': FILEID, 'skupina': SKUPINA}
+   return asyncio.run(changetime(SimpleNamespace(), **{**zaklad, **parametre}))  # type: ignore[arg-type]
+
+def test_changetime_trasa_zapise_cas_do_suboru(tests_file):
+   odpoved = _changetime(start='2026-01-01T08:00', stop='2026-01-01T10:00')
+   assert odpoved.status_code == 204
+   root = ET.parse(str(tests_file)).getroot()
+   assert [root.get('start'), root.get('stop')] == ['2026-01-01T08:00', '2026-01-01T10:00']
+
+def test_changetime_trasa_jeden_test(tests_file):
+   _changetime(kluc=KLUC, stop='2026-01-01T09:30')
+   assert _test_el(ET.parse(str(tests_file))).get('stop') == '2026-01-01T09:30'
+
+def test_changetime_trasa_neznamy_test_je_404(tests_file):
+   with pytest.raises(HTTPException) as exc:
+      _changetime(kluc='NEEXISTUJE', stop='2026-01-01T09:30')
+   assert exc.value.status_code == 404
+
+def test_changetime_trasa_neplatna_cesta_je_400_a_nic_nezapise(tests_file, tmp_path):
+   povodny = tests_file.read_text(encoding='utf-8')
+   with pytest.raises(HTTPException) as exc:
+      _changetime(trieda='../../x', stop='2026-01-01T09:30')
+   assert exc.value.status_code == 400
+   assert tests_file.read_text(encoding='utf-8') == povodny
+   assert {p.relative_to(tmp_path).parts[0] for p in tmp_path.rglob('*')} == {'res'}
+
+def test_changetime_trasa_chybajuci_subor_je_400(tmp_path):
+   with pytest.raises(HTTPException) as exc:
+      _changetime(stop='2026-01-01T09:30')
+   assert exc.value.status_code == 400
 
 
 # --- stoptime ---
@@ -665,3 +679,37 @@ def test_setpaused_neexistujuce_je_404(banka):
    with pytest.raises(HTTPException) as exc:
       asyncio.run(set_paused(_banka_request(), id='nie', typ='otazka', paused='1', X_Remote_User='petrik'))  # type: ignore[arg-type]
    assert exc.value.status_code == 404
+
+
+# --- importmanual ---
+
+def _importmanual(data, kluc=KLUC, **parametre):
+   zaklad = {'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': KAPITOLA, 'fileid': FILEID, 'skupina': SKUPINA}
+   return asyncio.run(importmanual(_saveanswers_request(None, data), kluc, **{**zaklad, **parametre}))  # type: ignore[arg-type]
+
+def _odpovede_cesta(tmp_path):
+   return tmp_path / 'res/xml/answers' / PREDMET / f'{PREDMET}_{TRIEDA}{SKUPINA}_{KAPITOLA}_{FILEID}.xml'
+
+def test_importmanual_vytvori_subor_odpovedi(tests_file, tmp_path):
+   odpoved = _importmanual({'q1': 'a', 'q2': 'bc'})
+   assert odpoved.status_code == 200
+   xml = ET.parse(str(_odpovede_cesta(tmp_path))).getroot()
+   assert [xml.get(a) for a in ('predmet', 'trieda', 'kapitola', 'fileid')] == [PREDMET, TRIEDA, KAPITOLA, FILEID]
+   assert [(o.get('id'), o.text) for o in xml.findall(f'test[@id="{KLUC}"]/otazka')] == [('q1', 'a'), ('q2', 'bc')]
+   assert xml.find(f'test[@id="{KLUC}"]').get('dat')  # type: ignore[union-attr]
+
+def test_importmanual_aktualizuje_existujucu_odpoved_a_necha_ostatne(tests_file, answers_file, tmp_path):
+   _importmanual({'q1': 'd'})
+   xml = ET.parse(str(_odpovede_cesta(tmp_path))).getroot()
+   assert [(o.get('id'), o.text) for o in xml.findall(f'test[@id="{KLUC}"]/otazka')] == [('q1', 'd'), ('q2', 'b')]
+
+def test_importmanual_nezapisuje_polia_tykajuce_sa_cesty_do_odpovedi(tests_file, tmp_path):
+   _importmanual({'predmet': 'x', 'trieda': 'x', 'q1': 'a'})
+   xml = ET.parse(str(_odpovede_cesta(tmp_path))).getroot()
+   assert [o.get('id') for o in xml.findall(f'test[@id="{KLUC}"]/otazka')] == ['q1']
+
+def test_importmanual_neplatna_cesta_je_400_a_nic_nevytvori(tests_file, tmp_path):
+   with pytest.raises(HTTPException) as exc:
+      _importmanual({'q1': 'a'}, predmet='../x')
+   assert exc.value.status_code == 400
+   assert not _odpovede_cesta(tmp_path).exists()

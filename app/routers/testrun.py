@@ -153,30 +153,30 @@ async def set_paused(request: Request, id: StringForm, typ: StringForm, paused: 
       request.app.state.logger.error(f'chyba setpaused: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
+def nastav_cas(tree, kluc: str | None, start: str | None, stop: str | None) -> None:
+   """Nastavi start/stop celej sady (kluc None) alebo jedneho testu; None = nemenit, prazdny retazec = atribut zrusit."""
+   def _set_attr(node, attr, value):
+      if value is not None:
+         if value.strip() != '':
+            node.set(attr, value)
+         else:
+            node.attrib.pop(attr, None)
+
+   if kluc is None:
+      root = tree.getroot()
+      _set_attr(root, 'start', start)
+      _set_attr(root, 'stop', stop)
+   else:
+      tests = [t for t in tree.findall('.//test') if t.get('id') == kluc]
+      if not tests:
+         raise HTTPException(status_code=404, detail='Test nenájdený')
+      _set_attr(tests[0], 'start', start)
+      _set_attr(tests[0], 'stop', stop)
+
 @router.post('/admin/changetime', response_class=HTMLResponse)
 async def changetime(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', start: StringFormOptional = None, stop: StringFormOptional = None, kluc: StringFormOptional = None):
-   def _modify(tree):
-      root = tree.getroot()
-
-      def _set_attr(node, attr, value):
-         if value is not None:
-            if value.strip() != '':
-               node.set(attr, value)
-            else:
-               node.attrib.pop(attr, None)
-
-      if kluc is None:
-         _set_attr(root, 'start', start)
-         _set_attr(root, 'stop', stop)
-      else:
-         tests = [t for t in tree.findall('.//test') if t.get('id') == kluc]
-         if not tests:
-            raise HTTPException(status_code=404, detail='Test nenájdený')
-         test = tests[0]
-         _set_attr(test, 'start', start)
-         _set_attr(test, 'stop', stop)
    try:
-      modify_test_xml(test_xml_path(predmet, trieda, skupina, kapitola, fileid), _modify)
+      modify_test_xml(test_xml_path(predmet, trieda, skupina, kapitola, fileid), lambda tree: nastav_cas(tree, kluc, start, stop))
       return HTMLResponse(content='ok', status_code=204)
    except HTTPException:
       raise

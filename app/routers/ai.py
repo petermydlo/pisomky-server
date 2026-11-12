@@ -390,13 +390,13 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
    xsltpath.set_context(xdm_item=otazka)
    if xsltpath.evaluate_single('tabulka'):
       return JSONResponse({'error': 'Pre túto otázku nie je nápoveda'}, status_code=400)
-   znenie_text = xsltpath.evaluate_single('string(znenie)')
+   znenie_text = xsltpath.evaluate_single('string(znenie)').string_value     #objekt Saxonu je vzdy 'pravdivy', prazdnotu treba kontrolovat na retazci
    spravna_el = xsltpath.evaluate_single('odpoved[@spravna="1"]')
    spravna_odpoved = spravna_el.string_value.strip() if spravna_el else None
    moznosti_value = xsltpath.evaluate('odpoved')
    moznosti = [m.string_value.strip() for m in moznosti_value] if moznosti_value else []
 
-   if not znenie_text:
+   if not znenie_text.strip():
       return JSONResponse({'error': 'Prázdne znenie otázky'}, status_code=400)
 
    zamok = _zamok_napovede(test_id)
