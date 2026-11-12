@@ -207,7 +207,7 @@
             </xsl:apply-templates>
          </xsl:if>
          <xsl:if test="@rating and not(odpoved)">
-            <xsl:variable name="vybodpoved" select="$rtest/otazka[@id = @id]"/>
+            <xsl:variable name="vybodpoved" select="$rtest/otazka[@id = $idotazky]"/>
             <xsl:variable name="otazka_id" select="@id"/>
             <div>
                <div class="rating-wrap">
