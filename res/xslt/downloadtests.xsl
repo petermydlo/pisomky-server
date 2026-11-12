@@ -196,7 +196,7 @@
       <xsl:apply-templates select="odpoved[position() mod 2 = 1]" mode="row"/>
    </xsl:if>
    <xsl:apply-templates select="tabulka"/>
-   <xsl:apply-templates select="miesto" mode="pdf"/>
+   <xsl:apply-templates select="miesto"/>
    <xsl:if test="not(odpoved) and not(miesto) and not(tabulka)">
       <fo:table-row keep-with-previous.within-page="always">
          <fo:table-cell keep-together.within-page="always" number-columns-spanned="2">
@@ -227,8 +227,9 @@
    </fo:table-cell>
 </xsl:template>
 
+<!-- miesto na dopisanie odpovede rukou do vytlaceneho testu: @riadky riadkov (chybajuce = 1), kazdy 30 pt vysoky -->
 <xsl:template match="miesto">
-   <fo:table-row keep-with-previous.within-page="always" height="30pt">
+   <fo:table-row keep-with-previous.within-page="always" height="{(@riadky, 1)[1] * 30}pt">
       <fo:table-cell keep-together.within-page="always" number-columns-spanned="2">
          <fo:block/>
       </fo:table-cell>

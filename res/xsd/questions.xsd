@@ -138,11 +138,23 @@
       <xs:attribute name="povolene" type="xs:string"/>
    </xs:complexType>
 
+   <!-- miesto: miesto na dopísanie odpovede rukou do vytlačeného testu (len PDF), @riadky riadkov po 30 pt; chýbajúce = 1 -->
+   <xs:simpleType name="MiestoRiadky">
+      <xs:restriction base="xs:positiveInteger">
+         <xs:maxInclusive value="30"/>
+      </xs:restriction>
+   </xs:simpleType>
+
+   <xs:complexType name="Miesto">
+      <xs:attribute name="riadky" type="MiestoRiadky"/>
+   </xs:complexType>
+
    <xs:complexType name="Otazka" mixed="true">
       <xs:choice minOccurs="0" maxOccurs="unbounded">
          <xs:element name="znenie" type="InlineMixed"/>
          <xs:element name="odpoved" type="Odpoved"/>
          <xs:element name="tabulka" type="Tabulka"/>
+         <xs:element name="miesto" type="Miesto"/>
          <!-- vzor: vzorová odpoveď pre otvorené otázky (môže byť viacriadková); viac vzor = alternatívy -->
          <xs:element name="vzor" type="xs:string"/>
          <!-- napoveda: nápoveda k celej otázke alebo k odpovedi podľa @pre -->

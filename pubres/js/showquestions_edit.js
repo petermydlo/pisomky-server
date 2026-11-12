@@ -241,6 +241,13 @@ function zostavTabulku(form) {
    return form.querySelector('.otazka-ma-tabulku').checked ? form.querySelector('.otazka-tabulka').value : '';
 }
 
+//pocet riadkov miesta na dopisanie v tlacenom teste, alebo prazdny retazec (miesto sa odstrani); prazdne policko pri zaskrtnutom
+//checkboxe sa posle ako '0', aby server vratil spravu o povolenom rozsahu namiesto toho, ze by miesto potichu zmizlo
+function zostavMiesto(form) {
+   if (!form.querySelector('.otazka-ma-miesto').checked) return '';
+   return form.querySelector('.otazka-miesto-riadky').value.trim() || '0';
+}
+
 function vytvorFormularOtazky(data, jeMcq) {
    const form = document.createElement('form');
    form.className = 'otazka-formular';
@@ -264,6 +271,12 @@ function vytvorFormularOtazky(data, jeMcq) {
       </div>
       <label><input type="checkbox" class="otazka-ma-odpovede"/> má odpovede (MCQ)</label>
       <label><input type="checkbox" class="otazka-ma-tabulku"/> má tabuľku</label>
+      <div class="otazka-atributy-riadok">
+         <label><input type="checkbox" class="otazka-ma-miesto"/> miesto na dopísanie v tlačenom teste</label>
+         <label class="otazka-miesto-riadky-label">Počet riadkov
+            <input type="number" class="otazka-miesto-riadky" min="1" max="30" step="1"/>
+         </label>
+      </div>
       <fieldset class="otazka-tabulka-fieldset">
          <legend>Tabuľka</legend>
          <input type="hidden" class="otazka-tabulka"/>
@@ -295,6 +308,8 @@ function vytvorFormularOtazky(data, jeMcq) {
    form.querySelector('.otazka-ma-odpovede').checked = !!jeMcq && !jeTabulka;
    form.querySelector('.otazka-ma-tabulku').checked = jeTabulka;
    form.querySelector('.otazka-klucove-slova').value = (data.klucove_slova || []).join(', ');
+   form.querySelector('.otazka-ma-miesto').checked = !!data.miesto;
+   form.querySelector('.otazka-miesto-riadky').value = data.miesto || '3';
    form.querySelector('.otazka-body').value = data.body || '';
    form.querySelector('.otazka-static').checked = data.static === '1';
    form.querySelector('.otazka-bonus').checked = data.bonus === '1';
@@ -331,6 +346,11 @@ function vytvorFormularOtazky(data, jeMcq) {
       aktualizujVetvu();
    });
    aktualizujVetvu();
+   const aktualizujMiesto = () => {
+      form.querySelector('.otazka-miesto-riadky-label').hidden = !form.querySelector('.otazka-ma-miesto').checked;
+   };
+   form.querySelector('.otazka-ma-miesto').addEventListener('change', aktualizujMiesto);
+   aktualizujMiesto();
    pripojEditorTabulky(form, data.tabulka || '');
 
    return form;
@@ -359,6 +379,7 @@ function otvorFormularOtazky(otazkaId) {
             deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
             odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),
             tabulka: zostavTabulku(form),
+            miesto: zostavMiesto(form),
             napovede: JSON.stringify(zostavCeloplosneNapovede(form)),
             vzory: JSON.stringify(mcq ? [] : zostavVzory(form)),
             klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),
@@ -391,6 +412,7 @@ function pridajOtazku(kategoriaId) {
          deprecated: form.querySelector('.otazka-deprecated').checked ? '1' : '',
          odpovede: JSON.stringify(mcq ? zostavOdpovede(form) : []),
          tabulka: zostavTabulku(form),
+         miesto: zostavMiesto(form),
          napovede: JSON.stringify(zostavCeloplosneNapovede(form)),
          vzory: JSON.stringify(mcq ? [] : zostavVzory(form)),
          klucove_slova: JSON.stringify(mcq ? [] : form.querySelector('.otazka-klucove-slova').value.split(',').map(s => s.trim()).filter(Boolean)),

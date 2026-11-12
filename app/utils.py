@@ -783,6 +783,31 @@ def serializuj_tabulku(otazka: ET._Element) -> str:
    ET.indent(kopia, space='   ')
    return ET.tostring(kopia, encoding='unicode', with_tail=False)
 
+#najviac riadkov miesta na dopisanie odpovede v tlacenom teste (jeden riadok = 30 pt, pozri downloadtests.xsl)
+MIESTO_MAX_RIADKOV = 30
+
+def over_miesto(text: str | None) -> str | None:
+   """Pocet riadkov miesta na dopisanie v tlacenom teste z formulara editora: prazdne = ziadne miesto (None), inak
+   cele cislo 1 az MIESTO_MAX_RIADKOV (normalizovane na retazec). Inak vyhodi ValueError so spravou pre ucitela."""
+   if text is None or not text.strip():
+      return None
+   text = text.strip()
+   if not re.fullmatch(r'[0-9]+', text) or not 1 <= int(text) <= MIESTO_MAX_RIADKOV:
+      raise ValueError(f'Počet riadkov miesta musí byť celé číslo od 1 do {MIESTO_MAX_RIADKOV}.')
+   return str(int(text))
+
+def riadky_miesta(otazka: ET._Element) -> str | None:
+   """Pocet riadkov <miesto> otazky (element bez @riadky = 1), alebo None, ak ho otazka nema."""
+   miesto = otazka.find('miesto')
+   return None if miesto is None else miesto.get('riadky') or '1'
+
+def _vloz_miesto(otazka: ET._Element, riadky: str) -> None:
+   """Vlozi <miesto riadky="..."/> hned za <tabulka> (alebo za <znenie>, alebo na zaciatok otazky)."""
+   predchadzajuci = otazka.find('tabulka')
+   if predchadzajuci is None:
+      predchadzajuci = otazka.find('znenie')
+   otazka.insert(otazka.index(predchadzajuci) + 1 if predchadzajuci is not None else 0, ET.Element('miesto', riadky=riadky))
+
 def _vloz_tabulku(otazka: ET._Element, tabulka: ET._Element) -> None:
    """Vlozi <tabulka> hned za <znenie> (alebo na zaciatok otazky)."""
    znenie = otazka.find('znenie')
@@ -814,6 +839,9 @@ def _zostav_otazka_element(data: dict) -> ET._Element:
       el.append(znenie_el)
    if data.get('tabulka'):
       _vloz_tabulku(el, over_tabulku(data['tabulka']))
+   riadky = over_miesto(data.get('miesto'))
+   if riadky:
+      _vloz_miesto(el, riadky)
    _pridaj_odpovede(el, data.get('odpovede', []))
    if data.get('napovede'):
       _pridaj_napovede(el, data['napovede'])
@@ -842,7 +870,8 @@ def zmenene_zamrznute_polia(otazka_el: ET._Element, data: dict) -> bool:
    niektore z poli, ktore createtests.xsl kopiruje/zamrazi do vygenerovaneho testu
    (znenie, tabulka, text/spravna odpovedi, body, static, bonus) oproti aktualnemu stavu
    otazka_el. Zmena len vzory/klucove_slova/napoveda (citaju sa zivo pri AI
-   napovede, nekopiruju sa do testu) sa nepocita.
+   napovede, nekopiruju sa do testu) sa nepocita. Zmena miesta na dopisanie sa nepocita tiez: ovplyvnuje len tlac
+   a nie body ani statistiky (uz vygenerovane testy si nesu staru kopiu <miesto>).
    """
    if 'znenie' in data:
       nove_znenie = ET.fromstring(data['znenie']) if data.get('znenie') else None
@@ -876,6 +905,7 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
      'deprecated' - '1' (rucne archivovat), alebo None (odstranit atribut)
      'odpovede'  - list dictov [{'text': ..., 'spravna': '1'/'0', 'napovedy': [text, ...]}, ...]
      'tabulka'   - XML string <tabulka>, alebo '' (tabulku odstranit); bez kluca sa tabulka nemeni
+     'miesto'    - pocet riadkov miesta na dopisanie v tlacenom teste ('1'..'30'), alebo '' (odstranit); bez kluca sa nemeni
      'napovede'  - list textov celoplosnych napovedi (bez @pre)
      'vzory'     - list vzorovych odpovedi (alternativy, kazda moze byt viacriadkova)
    Vracia True ak uspech, False ak otazka nenajdena.
@@ -911,6 +941,13 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
             otazka.remove(stara_tabulka)
          if nove_data['tabulka']:
             _vloz_tabulku(otazka, over_tabulku(nove_data['tabulka']))
+      # miesto na dopisanie v tlacenom teste
+      if 'miesto' in nove_data:
+         for stare_miesto in otazka.findall('miesto'):
+            otazka.remove(stare_miesto)
+         riadky = over_miesto(nove_data['miesto'])
+         if riadky:
+            _vloz_miesto(otazka, riadky)
       # odpovede
       if 'odpovede' in nove_data:
          for old in otazka.findall('napoveda'):
@@ -1067,6 +1104,9 @@ def fork_question(otazka_id: str, nova_data: dict, cache: dict | None = None) ->
       tabulka = stara.find('tabulka')      # formular bez pola tabulka (stary JS v keši) ju necha zo starej otazky
       if tabulka is not None and 'tabulka' not in nova_data:
          _vloz_tabulku(nova, copy.deepcopy(tabulka))
+      riadky = riadky_miesta(stara)      # formular bez pola miesto (stary JS v keši) ho necha zo starej otazky
+      if riadky is not None and 'miesto' not in nova_data:
+         _vloz_miesto(nova, riadky)
       kategoria.append(nova)
       stara.set('deprecated', '1')
       ET.indent(tree, space='   ')

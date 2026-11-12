@@ -728,6 +728,11 @@ div:hover > span.penIcon.editActions {
    width: 5rem;
 }
 
+/* display: flex vyssie by prebil atribut hidden (pocet riadkov miesta sa ukaze az po zaskrtnuti) */
+.otazka-atributy-riadok label[hidden] {
+   display: none;
+}
+
 .deprecated-checkbox {
    margin-left: auto;
    color: firebrick;

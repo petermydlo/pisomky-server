@@ -180,7 +180,8 @@ Vytváranie/úprava/mazanie/obnova cez `POST /admin/process_question`:
   `body`, `static`, `bonus`, `nazov`, `vzory` (JSON pole textov), `klucove_slova` (JSON pole), `odpovede` (JSON
   pole objektov `{text, spravna, napovedy}`), `napovede` (JSON pole textov
   celoplošných nápovedí)
-- `operacia=update` — mení tie isté polia. Ak je otázka **použitá** v existujúcom
+- `operacia=update` — mení tie isté polia (aj `tabulka` a `miesto`; prázdna hodnota ich z otázky
+  odstráni, chýbajúce pole ich nemení). Ak je otázka **použitá** v existujúcom
   teste a mení sa čokoľvek okrem `vzory`/`klucove_slova`/nápovedí/`nazov` (teda `znenie`,
   `odpovede`, `body`, `static`, `bonus`), appka **automaticky namiesto zápisu na
   mieste vytvorí novú otázku** (aby sa neskombinovali štatistiky starej a novej
@@ -225,6 +226,13 @@ Atribúty a elementy otázky (`questions.xsd`, typ `Otazka`):
 - `nahrada_za` — id otázky, ktorú táto nahrádza (pre daného autora)
 
 **Voliteľné vnorené elementy:**
+- `<miesto riadky="N"/>` — miesto na dopísanie odpovede rukou do **vytlačeného** testu (PDF,
+  kapitola 13): za otázkou sa vynechá `N` riadkov po 30 pt (`N` je 1 až 30, chýbajúci
+  atribút = 1). Žiakovi na obrazovke sa nezobrazuje. Hodí sa len pri otázkach, kam žiak
+  do papierového zadania niečo dopisuje; zadanie čítané z papiera a vypĺňané na počítači
+  miesto nepotrebuje. V editore otázok sa nastavuje poľom "miesto na dopísanie v tlačenom
+  teste" a počtom riadkov. Zmena sa týka až nových testov (vygenerovaný test si nesie kópiu)
+  a nepovažuje sa za zmenu otázky, ktorá by ju rozvetvila.
 - `<odpoved spravna="0|1" napoveda_key="...">text</odpoved>` — jedna z možností pri
   MCQ; atribút `napoveda_key` je id tejto odpovede, na ktoré odkazujú `<napoveda pre="...">`
   elementy otázky (viď nižšie) — nie je to samotný text nápovedy
@@ -704,6 +712,8 @@ stĺpci "Akcie").
 | `POST /admin/downloadresults` | šípka nadol | PDF so **súhrnom výsledkov** celej sady (všetci žiaci) |
 | `GET /admin/downloadresult/{kluc}` | — (z detailu jedného žiaka) | PDF s výsledkom **jedného konkrétneho žiaka** |
 | `POST /admin/downloadcodes` | prázdny hárok | PDF len s **QR kódmi/kľúčmi** testov (bez zadania) — vhodné napr. na vytlačenie štítkov/lístočkov s kódmi zvlášť |
+
+Otázky s `<miesto/>` majú v PDF so zadaniami za znením vynechané miesto na písanie (kapitola 4.4).
 
 Generovanie PDF beží cez Apache FOP (XSL-FO transformácia, `res/xslt/downloadtests.xsl`,
 `downloadresult.xsl`, `downloadcodes.xsl`) — appka volá `fop` ako externý proces, musí

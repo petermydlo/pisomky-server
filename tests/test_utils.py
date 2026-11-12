@@ -836,3 +836,83 @@ def test_find_test_nenacitatelny_subor_sa_zaloguje_cez_logger_nie_print(tests_fi
       assert find_test(proc, 'NIE', True, {}) is None
    assert 'chyba parsexml' in caplog.text and 'rozbite.xml' in caplog.text
    assert 'chyba parsexml' not in capsys.readouterr().out
+
+
+# --- miesto na dopisanie v tlacenom teste ---
+
+MIESTO_OTAZKA = {'znenie': '<znenie>Napíš postup</znenie>', 'body': '2', 'odpovede': []}
+
+def _otazka_v_banke(questions_file, otazka_id):
+   el = ET.parse(str(questions_file)).find(f'.//otazka[@id="{otazka_id}"]')
+   assert el is not None
+   return el
+
+@pytest.mark.parametrize('vstup, vysledok', [(None, None), ('', None), ('  ', None), ('1', '1'), (' 07 ', '7'), ('30', '30')])
+def test_over_miesto_platne_hodnoty(vstup, vysledok):
+   from app.utils import over_miesto
+   assert over_miesto(vstup) == vysledok
+
+@pytest.mark.parametrize('vstup', ['0', '31', '-2', '2.5', 'abc', '1_0', '٣', '1e1', '3\n3'])
+def test_over_miesto_neplatne_hodnoty(vstup):
+   from app.utils import over_miesto
+   with pytest.raises(ValueError, match='1 do 30'):
+      over_miesto(vstup)
+
+def test_add_question_s_miestom(questions_file):
+   nova_id, ok = add_question('kat1', {**MIESTO_OTAZKA, 'miesto': '4'})
+   assert ok
+   otazka = _otazka_v_banke(questions_file, nova_id)
+   assert [c.tag for c in otazka][:2] == ['znenie', 'miesto']
+   assert otazka.find('miesto').get('riadky') == '4'  # type: ignore[union-attr]
+
+def test_add_question_bez_miesta_ho_nema(questions_file):
+   nova_id, _ = add_question('kat1', {**MIESTO_OTAZKA, 'miesto': ''})
+   assert _otazka_v_banke(questions_file, nova_id).find('miesto') is None
+
+def test_update_question_prida_zmeni_a_odstrani_miesto(questions_file):
+   update_question('otq1', {'miesto': '2'})
+   assert [m.get('riadky') for m in _otazka_v_banke(questions_file, 'otq1').findall('miesto')] == ['2']
+   update_question('otq1', {'miesto': '5'})
+   assert [m.get('riadky') for m in _otazka_v_banke(questions_file, 'otq1').findall('miesto')] == ['5']     # nahradene, nie zdvojene
+   update_question('otq1', {'miesto': ''})
+   assert _otazka_v_banke(questions_file, 'otq1').find('miesto') is None
+
+def test_update_question_bez_kluca_miesto_nemeni(questions_file):
+   update_question('otq1', {'miesto': '2'})
+   update_question('otq1', {'body': '5'})
+   assert _otazka_v_banke(questions_file, 'otq1').find('miesto').get('riadky') == '2'  # type: ignore[union-attr]
+
+def test_update_question_miesto_ide_za_tabulku(questions_file):
+   tabulka = '<tabulka><riadok><bunka odpoved="1"/></riadok></tabulka>'
+   update_question('otq1', {'odpovede': [], 'tabulka': tabulka, 'miesto': '2'})
+   assert [c.tag for c in _otazka_v_banke(questions_file, 'otq1')][:3] == ['znenie', 'tabulka', 'miesto']
+
+def test_update_question_neplatne_miesto_nic_nezapise(questions_file):
+   povodny = questions_file.read_text(encoding='utf-8')
+   with pytest.raises(ValueError):
+      update_question('otq1', {'miesto': '99'})
+   assert questions_file.read_text(encoding='utf-8') == povodny
+
+def test_zmena_miesta_nie_je_zmena_zamrznutych_poli(questions_file):
+   from app.utils import zmenene_zamrznute_polia
+   update_question('otq1', {'miesto': '2'})
+   assert zmenene_zamrznute_polia(_otazka_v_banke(questions_file, 'otq1'), {'miesto': '9'}) is False
+
+def test_fork_question_prevezme_miesto_zo_starej_otazky_ak_formular_nema_pole(questions_file):
+   update_question('otq1', {'miesto': '3'})
+   nova_id = fork_question('otq1', {'znenie': '<znenie>Iné</znenie>', 'body': '1', 'odpovede': []})
+   assert _otazka_v_banke(questions_file, nova_id).find('miesto').get('riadky') == '3'  # type: ignore[union-attr,index]
+
+def test_fork_question_pouzije_miesto_z_formulara_aj_prazdne(questions_file):
+   update_question('otq1', {'miesto': '3'})
+   nova_id = fork_question('otq1', {'znenie': '<znenie>Iné</znenie>', 'body': '1', 'odpovede': [], 'miesto': '6'})
+   assert _otazka_v_banke(questions_file, nova_id).find('miesto').get('riadky') == '6'  # type: ignore[union-attr,index]
+   assert nova_id is not None
+   dalsia = fork_question(nova_id, {'znenie': '<znenie>Iné 2</znenie>', 'body': '1', 'odpovede': [], 'miesto': ''})
+   assert _otazka_v_banke(questions_file, dalsia).find('miesto') is None  # type: ignore[arg-type]
+
+def test_riadky_miesta_chybajuci_atribut_je_jeden():
+   from app.utils import riadky_miesta
+   assert riadky_miesta(ET.fromstring('<otazka><miesto/></otazka>')) == '1'
+   assert riadky_miesta(ET.fromstring('<otazka><miesto riadky="4"/></otazka>')) == '4'
+   assert riadky_miesta(ET.fromstring('<otazka/>')) is None

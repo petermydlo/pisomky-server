@@ -98,12 +98,25 @@
       <xs:attribute name="povolene" type="xs:string"/>
    </xs:complexType>
 
-   <!-- Otázka v teste: znenie + odpovede (MCQ), znenie + tabuľka na vyplnenie, alebo len znenie (otvorená otázka) -->
+   <!-- miesto: miesto na dopísanie odpovede rukou do vytlačeného testu (len PDF), @riadky riadkov po 30 pt; chýbajúce = 1 -->
+   <xs:simpleType name="MiestoRiadky">
+      <xs:restriction base="xs:positiveInteger">
+         <xs:maxInclusive value="30"/>
+      </xs:restriction>
+   </xs:simpleType>
+
+   <xs:complexType name="Miesto">
+      <xs:attribute name="riadky" type="MiestoRiadky"/>
+   </xs:complexType>
+
+   <!-- Otázka v teste: znenie + odpovede (MCQ), znenie + tabuľka na vyplnenie, alebo len znenie (otvorená otázka);
+        voliteľne miesto na dopísanie odpovede v tlačenom teste -->
    <xs:complexType name="Otazka">
       <xs:sequence>
          <xs:element name="znenie" type="InlineMixed" minOccurs="0"/>
          <xs:element name="odpoved" type="Odpoved" minOccurs="0" maxOccurs="unbounded"/>
          <xs:element name="tabulka" type="Tabulka" minOccurs="0"/>
+         <xs:element name="miesto" type="Miesto" minOccurs="0"/>
       </xs:sequence>
       <xs:attribute name="id" type="xs:string" use="required"/>
       <xs:attribute name="body" type="Body"/>

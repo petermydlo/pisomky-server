@@ -18,7 +18,8 @@ from app.routers.testrun import write_answers, saveanswers, nastav_stop, nastav_
 from app.routers.results import write_marks, write_odhalene, over_body
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
 from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
-from app.routers.questions import process_chapter, showquestions, process_category, process_predmet
+from app.main import app as fastapi_app
+from app.routers.questions import process_chapter, showquestions, process_category, process_predmet, process_question
 from app.routers.results import savemarks, groupstatistics
 from app.routers.importanswers import importmanual
 from app.routers.ai import feedbackreport
@@ -455,6 +456,8 @@ class _FormaStub:
       return False
    def items(self):
       return self._data.items()
+   def keys(self):
+      return self._data.keys()
 
 def _saveanswers_request(proc, data):
    state = SimpleNamespace(proc=proc, kluc_cache={}, logger=logging.getLogger('pisomky'))
@@ -981,3 +984,91 @@ def test_importanswers_spracuje_kazdy_subor_a_vrati_vysledky(monkeypatch):
    odpoved = asyncio.run(modul.importanswers(request))  # type: ignore[arg-type]
    assert sorted(v['subor'] for v in json.loads(bytes(odpoved.body))['vysledky']) == ['a.png', 'b.pdf']
    assert {p for _, p in volania} == {request.app.state.ai_provider}
+
+
+# --- editor otazky: miesto na dopisanie ---
+
+def _process_question(**parametre):
+   """Volanie ako z HTTP: polia z `parametre` prisli vo formulari, ale prazdny retazec sa v parametri tvari ako None (FastAPI)."""
+   zaklad = {'operacia': 'update', 'X_Remote_User': 'sef', 'otazka_id': 'otM', 'znenie': '<znenie>Napíš postup</znenie>', 'body': '1'}
+   vsetky = {**zaklad, **parametre}
+   request = _banka_request()
+   request.form = lambda: _FormaStub({k: v for k, v in vsetky.items() if k != 'X_Remote_User'})  # type: ignore[attr-defined]
+   argumenty = {k: (None if v == '' else v) for k, v in vsetky.items()}
+   return asyncio.run(process_question(request, **argumenty))  # type: ignore[arg-type]
+
+def _get_question(otazka_id='otM'):
+   import json
+   from app.routers.questions import get_question
+   return json.loads(bytes(asyncio.run(get_question(otazka_id)).body))
+
+def test_process_question_ulozi_miesto_a_get_question_ho_vrati(ucitelia, banka_mat):
+   _process_question(miesto='4')
+   assert _get_question()['miesto'] == '4'
+   assert 'riadky="4"' in _kategoria_xml(banka_mat, 'MAT')
+
+def test_process_question_prazdne_miesto_ho_odstrani_a_chybajuce_pole_nemeni(ucitelia, banka_mat):
+   _process_question(miesto='4')
+   _process_question()                       # stary JS bez pola miesto
+   assert _get_question()['miesto'] == '4'
+   _process_question(miesto='')
+   assert _get_question()['miesto'] is None
+
+@pytest.mark.parametrize('hodnota', ['0', '31', 'abc', '2.5'])
+def test_process_question_neplatne_miesto_je_400_a_nic_nezapise(ucitelia, banka_mat, hodnota):
+   povodny = _kategoria_xml(banka_mat, 'MAT')
+   with pytest.raises(HTTPException) as exc:
+      _process_question(miesto=hodnota)
+   assert exc.value.status_code == 400 and '1 do 30' in exc.value.detail
+   assert _kategoria_xml(banka_mat, 'MAT') == povodny
+
+def test_process_question_vytvori_otazku_s_miestom(ucitelia, banka_mat):
+   odpoved = _process_question(operacia='create', otazka_id=None, kategoria_id='katM', miesto='2')
+   import json
+   nova_id = json.loads(bytes(odpoved.body))['id']
+   assert _get_question(nova_id)['miesto'] == '2'
+
+def test_process_question_pouzita_otazka_sa_pri_zmene_len_miesta_nerozvetvi(ucitelia, banka_mat):
+   (banka_mat / 'res/xml/tests/MAT').mkdir(parents=True, exist_ok=True)
+   (banka_mat / 'res/xml/tests/MAT/MAT_1A_01_ab12.xml').write_text('<testy><test id="K"><otazka id="otM"/></test></testy>', encoding='utf-8')
+   import json
+   odpoved = _process_question(znenie='<znenie>x</znenie>', body='', miesto='5')    # znenie a body ostavaju ako v banke, meni sa len miesto
+   assert json.loads(bytes(odpoved.body))['forked'] is False
+   assert _get_question()['miesto'] == '5'
+
+
+# --- process_question cez skutocne HTTP: prazdne pole znamena "odstran", chybajuce "nemen" ---
+
+TABULKA_XML = '<tabulka><riadok><bunka odpoved="1"/></riadok></tabulka>'
+
+@pytest.fixture
+def klient(ucitelia, banka_mat):
+   from fastapi.testclient import TestClient
+   fastapi_app.state.perm_cache.clear()
+   return TestClient(fastapi_app, base_url='http://pisomky.ternac.net', headers={'X-Remote-User': 'sef'})
+
+def _post_otazka(klient, **polia):
+   return klient.post('/admin/process_question', data={'operacia': 'update', 'otazka_id': 'otM', 'znenie': '<znenie>x</znenie>', 'body': '1', **polia})
+
+def test_http_prazdne_pole_miesto_odstrani_miesto(klient, banka_mat):
+   assert _post_otazka(klient, miesto='3').status_code == 200
+   assert 'riadky="3"' in _kategoria_xml(banka_mat, 'MAT')
+   assert _post_otazka(klient, miesto='').status_code == 200
+   assert '<miesto' not in _kategoria_xml(banka_mat, 'MAT')
+
+def test_http_chybajuce_pole_miesto_ho_nemeni(klient, banka_mat):
+   _post_otazka(klient, miesto='3')
+   assert _post_otazka(klient).status_code == 200      # stary JS bez pola
+   assert 'riadky="3"' in _kategoria_xml(banka_mat, 'MAT')
+
+def test_http_prazdne_pole_tabulka_odstrani_tabulku(klient, banka_mat):
+   assert _post_otazka(klient, tabulka=TABULKA_XML, odpovede='[]').status_code == 200
+   assert '<tabulka' in _kategoria_xml(banka_mat, 'MAT')
+   assert _post_otazka(klient, tabulka='', odpovede='[{"text": "a", "spravna": "1", "napovedy": []}]').status_code == 200
+   xml = _kategoria_xml(banka_mat, 'MAT')
+   assert '<tabulka' not in xml and '<odpoved' in xml
+
+def test_http_chybajuce_pole_tabulka_ju_nemeni(klient, banka_mat):
+   _post_otazka(klient, tabulka=TABULKA_XML, odpovede='[]')
+   assert _post_otazka(klient, odpovede='[]').status_code == 200
+   assert '<tabulka' in _kategoria_xml(banka_mat, 'MAT')
