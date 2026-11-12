@@ -2,6 +2,7 @@
 
 import os
 import re
+import logging
 import copy
 import glob
 import shutil
@@ -1183,14 +1184,25 @@ def body_tabulka(otazka: ET._Element, odpoved: str) -> Decimal:
    zhody = sum(1 for i, spravna in enumerate(spravne) if i < len(zadane) and normalizuj(zadane[i]) != '' and normalizuj(zadane[i]) == normalizuj(spravna))
    return Decimal(otazka.get('body', '0')) * zhody / len(spravne)
 
-def store_mcq_scores(kluc: str, cache: dict | None = None) -> None:
+def _podpis_suboru(cesta: str) -> tuple[int, int]:
+   """Cas poslednej zmeny a velkost suboru; zmena kedykolvek po zapise znamena, ze subor treba znova spracovat."""
+   st = os.stat(cesta)
+   return st.st_mtime_ns, st.st_size
+
+def store_mcq_scores(kluc: str, cache: dict | None = None, hotove: dict | None = None) -> None:
    """Zapise @body pre MCQ a tabulkove otazky do answer XML, ak este nie su zapisane (statistiky citaju
-   body len z odpovedi; hodnotenie tabuliek sa aj tak pocita znova v grading.xsl a score.xq)."""
+   body len z odpovedi; hodnotenie tabuliek sa aj tak pocita znova v grading.xsl a score.xq).
+   `hotove` (kluc -> podpis suboru odpovedi po spracovani, pamat jedneho workera) vynecha zamykanie a parsovanie,
+   ak sa subor od posledneho spracovania nezmenil; dopisane odpovede po predlzeni testu ho zmenia, takze sa
+   spracuju znova. Chyba sa zaloguje a do `hotove` sa nezapise."""
    test_subor = find_test_file(kluc, cache)
    if not test_subor:
       return
    answer_subor = test_subor.replace('/tests/', '/answers/', 1)
-   if not os.path.exists(answer_subor):
+   try:
+      if hotove is not None and hotove.get(kluc) == _podpis_suboru(answer_subor):
+         return
+   except OSError:  #subor odpovedi neexistuje, nie je co zapisovat
       return
    lock = FileLock(f'{answer_subor}.lock')
    try:
@@ -1201,33 +1213,34 @@ def store_mcq_scores(kluc: str, cache: dict | None = None) -> None:
       with lock:
          answer_tree = ET.parse(answer_subor, xmlParser)
          answer_test = next(iter(answer_tree.xpath('.//test[@id=$id]', id=kluc)), None)  # type: ignore[arg-type]
-         if answer_test is None:
-            return
-         changed = False
-         for otazka in test_node.findall('otazka'):
-            if otazka.get('rating'):
-               continue
-            odpovedove = otazka.findall('odpoved')
-            spravna = ''.join(chr(ord('a') + i) for i, o in enumerate(odpovedove) if o.get('spravna') == '1')
-            je_tabulka = otazka.find('tabulka') is not None
-            if not spravna and not je_tabulka:
-               continue
-            oid = otazka.get('id')
-            answer_otazka = next(iter(answer_test.xpath('.//otazka[@id=$id]', id=oid)), None)
-            if answer_otazka is None or answer_otazka.get('body') is not None:
-               continue
-            if je_tabulka:
-               body = body_tabulka(otazka, answer_otazka.text or '')
-            else:
-               student_answer = (answer_otazka.text or '').strip()
-               body = Decimal(otazka.get('body', '0')) if student_answer == spravna else Decimal(0)
-            answer_otazka.set('body', format(body, 'f'))
-            changed = True
-         if changed:
-            ET.indent(answer_tree, space='   ')
-            answer_tree.write(answer_subor, encoding='utf-8', xml_declaration=True, pretty_print=True)
-   except Exception:
-      pass
+         if answer_test is not None:
+            changed = False
+            for otazka in test_node.findall('otazka'):
+               if otazka.get('rating'):
+                  continue
+               odpovedove = otazka.findall('odpoved')
+               spravna = ''.join(chr(ord('a') + i) for i, o in enumerate(odpovedove) if o.get('spravna') == '1')
+               je_tabulka = otazka.find('tabulka') is not None
+               if not spravna and not je_tabulka:
+                  continue
+               oid = otazka.get('id')
+               answer_otazka = next(iter(answer_test.xpath('.//otazka[@id=$id]', id=oid)), None)
+               if answer_otazka is None or answer_otazka.get('body') is not None:
+                  continue
+               if je_tabulka:
+                  body = body_tabulka(otazka, answer_otazka.text or '')
+               else:
+                  student_answer = (answer_otazka.text or '').strip()
+                  body = Decimal(otazka.get('body', '0')) if student_answer == spravna else Decimal(0)
+               answer_otazka.set('body', format(body, 'f'))
+               changed = True
+            if changed:
+               ET.indent(answer_tree, space='   ')
+               answer_tree.write(answer_subor, encoding='utf-8', xml_declaration=True, pretty_print=True)
+         if hotove is not None:
+            hotove[kluc] = _podpis_suboru(answer_subor)  #pod zamkom, aby zapis ziaka medzi zapisom a podpisom neostal nespracovany
+   except Exception as e:
+      logging.getLogger('pisomky').error(f'chyba store_mcq_scores {kluc}: {e}')
 
 def je_odhalene(kluc: str, cache: dict | None = None) -> bool:
    """Vrati True, ak ucitel odhalil zakovi spravne odpovede (answers test/@odhalene)."""

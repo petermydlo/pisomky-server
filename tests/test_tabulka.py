@@ -257,6 +257,50 @@ def test_store_mcq_scores_zapise_body_tabulky():
    assert _xp(odpovede, 'test/otazka[@id="o3"]') == []     # bez odpovede sa nezapisuje
 
 
+def _pocitaj_zamky(monkeypatch):
+   """Spocita, kolkokrat store_mcq_scores vytvori FileLock (= naozaj spracuva subor)."""
+   from filelock import FileLock
+   import app.utils as utils
+   vytvorene: list[str] = []
+
+   def pocitaj(cesta, *args, **kwargs):
+      vytvorene.append(cesta)
+      return FileLock(cesta, *args, **kwargs)
+
+   monkeypatch.setattr(utils, 'FileLock', pocitaj)
+   return vytvorene
+
+
+def test_store_mcq_scores_hotovy_subor_sa_nespracuje_znova(monkeypatch):
+   zamky = _pocitaj_zamky(monkeypatch)
+   hotove: dict = {}
+   store_mcq_scores('k1', None, hotove)
+   assert len(zamky) == 1 and 'k1' in hotove
+   store_mcq_scores('k1', None, hotove)
+   store_mcq_scores('k1', None, hotove)
+   assert len(zamky) == 1     # druhe a tretie volanie nezamyka ani neparsuje
+
+
+def test_store_mcq_scores_zmeneny_subor_odpovedi_sa_spracuje_znova(monkeypatch):
+   zamky = _pocitaj_zamky(monkeypatch)
+   hotove: dict = {}
+   store_mcq_scores('k1', None, hotove)
+   cesta = ANSWERS_DIR / TEST_SUBOR
+   cesta.write_text(cesta.read_text(encoding='utf-8').replace('</test>', '<otazka id="o3">1|1</otazka></test>', 1), encoding='utf-8')     # po predlzeni testu ziak dopisal odpoved
+   store_mcq_scores('k1', None, hotove)
+   assert len(zamky) == 2
+   assert _xp(ET.parse(cesta).getroot(), 'string-length(test/otazka[@id="o3"]/@body) > 0') is True
+
+
+def test_store_mcq_scores_chyba_sa_zaloguje_a_nepovazuje_za_hotovu(caplog):
+   (ANSWERS_DIR / TEST_SUBOR).write_text('<odpovede><test', encoding='utf-8')
+   hotove: dict = {}
+   with caplog.at_level(logging.ERROR, logger='pisomky'):
+      store_mcq_scores('k1', None, hotove)
+   assert 'chyba store_mcq_scores k1' in caplog.text
+   assert hotove == {}
+
+
 def test_fork_otazky_zachova_tabulku():
    nova_id = fork_question('q1', {'znenie': '<znenie>Upravene znenie</znenie>', 'body': '100', 'odpovede': []})
    kapitola = ET.parse(QUESTIONS_FILE).getroot()

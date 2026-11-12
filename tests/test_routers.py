@@ -275,7 +275,7 @@ def test_nastav_stop_nenajdeny(tests_file):
    assert exc.value.status_code == 404
 
 def test_stoptime_trasa_zapise_serverovy_cas_nie_cas_z_formulara(tests_file):
-   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(kluc_cache={})))
+   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(kluc_cache={}, mcq_hotove={})))
    pred = datetime.now().replace(second=0, microsecond=0)
    asyncio.run(stoptime(request, KLUC))  # type: ignore[arg-type]
    zapisany = datetime.fromisoformat(_stop_testu(tests_file) or '')

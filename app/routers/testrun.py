@@ -122,7 +122,7 @@ async def stoptime(request: Request, kluc: StringPath):
       if not cesta:
          raise HTTPException(status_code=404, detail='Test nenájdený')
       modify_test_xml(cesta, _modify)
-      await run_in_threadpool(store_mcq_scores, kluc, request.app.state.kluc_cache)
+      await run_in_threadpool(store_mcq_scores, kluc, request.app.state.kluc_cache, request.app.state.mcq_hotove)
       return HTMLResponse(content='ok', status_code=204)
    except HTTPException:
       raise

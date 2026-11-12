@@ -68,6 +68,9 @@ app.state.otazka_cache = {}
 #cache pre rychle vyhladavanie kategorii podla id
 app.state.kategoria_cache = {}
 
+#kluc testu -> podpis suboru odpovedi po zapise MCQ bodov (store_mcq_scores), aby sa nespracuvalo zbytocne znova
+app.state.mcq_hotove = {}
+
 #cache pre rychle vyhladavanie kapitol podla id
 app.state.kapitola_cache = {}
 
@@ -139,7 +142,7 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
       if stav == 'before':
          return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'beforeTime'})
       if stav == 'after':
-         await run_in_threadpool(store_mcq_scores, kluc, request.app.state.kluc_cache)
+         await run_in_threadpool(store_mcq_scores, kluc, request.app.state.kluc_cache, request.app.state.mcq_hotove)
          if je_odhalene(kluc, request.app.state.kluc_cache):
             vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showresult_student.xsl', xdm_node=node, xslt_pools=request.app.state.xslt_pools)
             return HTMLResponse(content=vysledok, status_code=200)
