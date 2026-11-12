@@ -7,7 +7,7 @@ import tempfile
 import lxml.etree as ET
 from app.mytypes import StringForm, StringFormOptional, StringHeader, StringQuery
 from app.utils import (
-   xslt_to_string, xquery_to_string, ensure_ids, is_used,
+   xslt_to_string, xquery_to_string, ensure_ids, is_used, pouzite_otazky,
    add_category, delete_category, update_category, restore_category, find_category,
    add_question, update_question, delete_question, restore_question, fork_question, find_question,
    zmenene_zamrznute_polia, normalizuj_vzor, over_tabulku, serializuj_tabulku,
@@ -309,7 +309,8 @@ async def get_is_used(id: StringQuery, typ: StringQuery):
       kategoria, _ = find_category(id)
       if kategoria is None:
          raise HTTPException(status_code=404, detail='Kategória nenájdená')
-      pouzita = any(is_used(o.get('id') or '') for o in kategoria.findall('.//otazka[@id]'))
+      pouzite = pouzite_otazky()
+      pouzita = any(o.get('id') in pouzite for o in kategoria.findall('.//otazka[@id]'))
    elif typ == 'otazka':
       pouzita = is_used(id)
    else:

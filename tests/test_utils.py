@@ -719,3 +719,106 @@ def test_xslt_to_pdf_pri_chybe_fop_nezostanu_docasne_subory(tmp_path, monkeypatc
       with pytest.raises(subprocess.SubprocessError):
          utils.xslt_to_pdf(proc, xsl, source_file=zdroj)
    assert list(tmp.iterdir()) == []
+
+
+# --- negativna cache hladania testov ---
+
+class _ProcSpy:
+   """Obali PySaxonProcessor a pamata, ktore subory sa naparsovali."""
+   def __init__(self, proc):
+      self._proc = proc
+      self.parsovane: list[str] = []
+
+   def parse_xml(self, **kwargs):
+      self.parsovane.append(str(kwargs.get('xml_file_name')))
+      return self._proc.parse_xml(**kwargs)
+
+   def __getattr__(self, nazov):
+      return getattr(self._proc, nazov)
+
+def _dalsi_subor(tmp_path, kluc, nazov='MAT_1B_kap1.xml'):
+   cesta = tmp_path / 'res/xml/tests' / PREDMET / nazov
+   cesta.write_text(TESTS_XML.replace('ABC123', kluc), encoding='utf-8')
+   return cesta
+
+def test_find_test_nenajdeny_kluc_sa_pri_nezmenenych_suboroch_nehlada_znova(tests_file):
+   from saxonche import PySaxonProcessor
+   from app.utils import find_test
+   with PySaxonProcessor(license=False) as proc:
+      spy, cache = _ProcSpy(proc), {}
+      assert find_test(spy, 'NIE', True, cache) is None  # type: ignore[arg-type]
+      prvy = len(spy.parsovane)
+      assert prvy > 0
+      assert find_test(spy, 'NIE', True, cache) is None  # type: ignore[arg-type]
+      assert find_test(spy, 'NIE', True, cache) is None  # type: ignore[arg-type]
+      assert len(spy.parsovane) == prvy
+
+def test_find_test_novy_subor_zrusi_negativnu_cache(tests_file, tmp_path):
+   from saxonche import PySaxonProcessor
+   from app.utils import find_test
+   with PySaxonProcessor(license=False) as proc:
+      cache: dict = {}
+      assert find_test(proc, 'NOVY', True, cache) is None
+      _dalsi_subor(tmp_path, 'NOVY')  # napr. ucitel prave vytvoril sadu testov
+      assert find_test(proc, 'NOVY', True, cache) is not None
+
+def test_find_test_zmena_existujuceho_suboru_zrusi_negativnu_cache(tests_file):
+   from saxonche import PySaxonProcessor
+   from app.utils import find_test
+   with PySaxonProcessor(license=False) as proc:
+      cache: dict = {}
+      assert find_test(proc, 'NOVY', True, cache) is None
+      tests_file.write_text(TESTS_XML.replace('</testy>', '   <test id="NOVY"><otazka id="otq2"/></test>\n</testy>'), encoding='utf-8')
+      assert find_test(proc, 'NOVY', True, cache) is not None
+
+def test_find_test_file_nenajdeny_kluc_sa_nehlada_znova(tests_file, tmp_path, monkeypatch):
+   import app.utils as utils
+   cache: dict = {}
+   assert find_test_file('NIE', cache) is None
+   parsovane: list = []
+   povodny = utils.ET.parse
+   monkeypatch.setattr(utils.ET, 'parse', lambda *a, **k: parsovane.append(a) or povodny(*a, **k))
+   assert find_test_file('NIE', cache) is None
+   assert parsovane == []
+   _dalsi_subor(tmp_path, 'NIE')
+   assert find_test_file('NIE', cache) is not None
+
+@pytest.mark.parametrize('kluc', ['__hot__', '__chyba__'])
+def test_rezervovany_kluc_cache_nie_je_kluc_testu(tests_file, kluc):
+   from saxonche import PySaxonProcessor
+   from app.utils import find_test
+   cache = {'__hot__': str(tests_file), '__chyba__': {'x': 1}}
+   assert find_test_file(kluc, cache) is None
+   with PySaxonProcessor(license=False) as proc:
+      assert find_test(proc, kluc, True, cache) is None
+   assert cache['__chyba__'] == {'x': 1}  # lookup ju nesmie zmazat
+
+def test_negativna_cache_je_obmedzena_a_dlhe_kluce_nepamata(tests_file, monkeypatch):
+   import app.utils as utils
+   monkeypatch.setattr(utils, '_NENAJDENE_MAX', 5)
+   cache: dict = {}
+   for i in range(12):
+      find_test_file(f'NIE{i}', cache)
+   assert 1 <= len(cache['__chyba__']) <= 5
+   dlhe: dict = {}
+   find_test_file('x' * 101, dlhe)
+   assert dlhe.get('__chyba__', {}) == {}
+
+
+# --- pouzite_otazky: jeden prechod ---
+
+def test_pouzite_otazky_zjednoti_vsetky_subory(tests_file, tmp_path):
+   from app.utils import pouzite_otazky
+   (tmp_path / 'res/xml/tests' / PREDMET / 'MAT_1B_kap1.xml').write_text('<testy><test id="X"><otazka id="otq9"/><otazka id="otq1"/></test></testy>', encoding='utf-8')
+   (tmp_path / 'res/xml/tests' / PREDMET / 'rozbite.xml').write_text('<testy><test', encoding='utf-8')
+   assert pouzite_otazky() == {'otq1', 'otq9'}
+
+def test_delete_chapter_cita_tests_len_raz_nie_pre_kazdu_otazku(questions_file, tmp_path, monkeypatch):
+   import app.utils as utils
+   for i in range(3):
+      (tmp_path / 'res/xml/tests' / PREDMET / f'MAT_{i}_kap9.xml').write_text('<testy><test id="X"><otazka id="ina"/></test></testy>', encoding='utf-8')
+   cesty: list[str] = []
+   povodny = utils.ET.parse
+   monkeypatch.setattr(utils.ET, 'parse', lambda zdroj, *a, **k: cesty.append(str(zdroj)) or povodny(zdroj, *a, **k))
+   assert delete_chapter('kap1', PREDMET) is True
+   assert len([c for c in cesty if '/tests/' in c]) == 3  # kapitola ma 2 otazky, ale kazdy tests subor sa precita raz

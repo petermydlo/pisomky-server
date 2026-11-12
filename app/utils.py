@@ -282,11 +282,8 @@ def delete_chapter(kapitola_id: str, predmet: str, cache: dict | None = None) ->
    kapitola, cesta = find_chapter(kapitola_id, predmet, cache)
    if kapitola is None or cesta is None:
       return False
-   pouzita = any(
-      is_used(o.get('id') or '')
-      for o in kapitola.findall('.//otazka[@id]')
-   )
-   if pouzita:
+   pouzite = pouzite_otazky()
+   if any(o.get('id') in pouzite for o in kapitola.findall('.//otazka[@id]')):
       return False
    Path(cesta).unlink()
    if cache is not None:
@@ -371,8 +368,9 @@ def delete_predmet(predmet: str) -> tuple[bool, str | None]:
    cesta = Path(f'./res/xml/questions/{predmet}')
    if not cesta.is_dir():
       return False, 'Predmet neexistuje'
+   pouzite = pouzite_otazky()
    pouzita = any(
-      is_used(o.get('id') or '')
+      o.get('id') in pouzite
       for subor in cesta.glob('*.xml')
       for o in ET.parse(str(subor)).findall('.//otazka[@id]')
    )
@@ -479,7 +477,8 @@ def delete_category(kategoria_id: str, cache: dict | None = None) -> bool:
       kategoria = _xfind(tree, ".//kategoria[@id=$id]", id=kategoria_id)
       if kategoria is None:
          return False
-      pouzita = any(is_used(o.get('id') or '') for o in kategoria.findall('.//otazka[@id]'))
+      pouzite = pouzite_otazky()
+      pouzita = any(o.get('id') in pouzite for o in kategoria.findall('.//otazka[@id]'))
       if pouzita:
          kategoria.set('deprecated', '1')
       else:
@@ -553,10 +552,43 @@ def add_category(kapitola_id: str, nova_kategoria: dict, za_kategoria_id: str | 
    nova_id = kategorie[-1].get('id') if kategorie else None
    return nova_id, True
 
+#kluce v cache, ktore nie su kluce testov; kluc s tymto menom sa povazuje za nenajdeny
+_REZERVOVANE_KLUCE = frozenset({'__hot__', '__chyba__'})
+#negativna cache: najviac tolko pamatanych nenajdenych klucov, dlhsie kluce sa nepamataju (utocnik by ich mohol zasypat)
+_NENAJDENE_MAX = 1000
+_NENAJDENE_MAX_DLZKA_KLUCA = 100
+
+def _otlacok_testov() -> int:
+   """Otlacok vsetkych tests XML (cesta, cas zmeny, velkost); zmeni sa, ked subor pribudne, zmizne alebo sa zmeni."""
+   polozky = []
+   for cesta in glob.iglob('./res/xml/tests/**/*.xml', recursive=True):
+      try:
+         st = os.stat(cesta)
+      except OSError:
+         continue
+      polozky.append((cesta, st.st_mtime_ns, st.st_size))
+   return hash(tuple(sorted(polozky)))
+
+def _nenajdeny_znamy(cache: dict, kluc: str, otlacok: int) -> bool:
+   """True, ak sa kluc uz hladal pri tom istom stave tests XML a nenasiel sa (plne prehladavanie by dopadlo rovnako)."""
+   return cache.get('__chyba__', {}).get(kluc) == otlacok
+
+def _zapamataj_nenajdeny(cache: dict, kluc: str, otlacok: int) -> None:
+   """Otlacok treba vziat PRED prehladavanim: subor, ktory pribudne uprostred, ho pri dalsom hladani zmeni."""
+   if len(kluc) > _NENAJDENE_MAX_DLZKA_KLUCA:
+      return
+   nenajdene = cache.setdefault('__chyba__', {})
+   if len(nenajdene) >= _NENAJDENE_MAX:
+      nenajdene.clear()
+   nenajdene[kluc] = otlacok
+
 def find_test_file(kluc: str, cache: dict | None = None) -> str | None:
-   """Najde cestu k tests XML suboru podla kluca testu, vyuziva cache."""
+   """Najde cestu k tests XML suboru podla kluca testu, vyuziva cache (aj negativnu: kluc, ktory sa nenasiel,
+   sa pri nezmenenych tests XML znova neprehladava)."""
    if cache is None:
       cache = {}
+   if kluc in _REZERVOVANE_KLUCE:
+      return None
 
    if kluc in cache:
       cesta = cache[kluc]
@@ -576,6 +608,9 @@ def find_test_file(kluc: str, cache: dict | None = None) -> str | None:
          except Exception:
             pass
 
+   otlacok = _otlacok_testov()
+   if _nenajdeny_znamy(cache, kluc, otlacok):
+      return None
    for cesta in glob.iglob(os.path.join('./res/xml/tests/', '**/*.xml'), recursive=True):
       try:
          tree = ET.parse(cesta)
@@ -586,6 +621,7 @@ def find_test_file(kluc: str, cache: dict | None = None) -> str | None:
       except Exception:
          continue
 
+   _zapamataj_nenajdeny(cache, kluc, otlacok)
    return None
 
 def is_used(otazka_id: str) -> bool:
@@ -600,6 +636,17 @@ def is_used(otazka_id: str) -> bool:
       except Exception:
          pass
    return False
+
+def pouzite_otazky() -> set[str]:
+   """Id vsetkych otazok pouzitych v tests XML, v jednom prechode (is_used v cykle cez otazky by cital vsetky
+   subory pre kazdu otazku zvlast)."""
+   pouzite: set[str] = set()
+   for cesta in glob.iglob('./res/xml/tests/**/*.xml', recursive=True):
+      try:
+         pouzite.update(str(i) for i in ET.parse(cesta).xpath('//otazka/@id'))  # type: ignore[union-attr]
+      except Exception:
+         pass
+   return pouzite
 
 def find_question(otazka_id: str, cache: dict | None = None) -> tuple[ET._Element, str] | tuple[None, None]:
    """Najde otazku v questions XML podla @id."""
@@ -1068,6 +1115,8 @@ def find_test(proc: 'PySaxonProcessor', kluc: str, admin: bool = False, cache: d
    """Najde test v tests XML podla @id."""
    if cache is None:
       cache = {}
+   if kluc in _REZERVOVANE_KLUCE:
+      return None
    xsltpath = proc.new_xpath_processor()
    try:
       test_node = None
@@ -1095,8 +1144,11 @@ def find_test(proc: 'PySaxonProcessor', kluc: str, admin: bool = False, cache: d
          if test_node is not None:
             cache[kluc] = cache['__hot__']
 
-      #3. full scan ako posledna moznost
+      #3. full scan ako posledna moznost; kluc, ktory sa pri rovnakom stave tests XML uz nenasiel, sa nehlada znova
       if test_node is None:
+         otlacok = _otlacok_testov()
+         if _nenajdeny_znamy(cache, kluc, otlacok):
+            return None
          for filename in glob.iglob('./res/xml/tests/**/*.xml', recursive=True):
             try:
                node = proc.parse_xml(xml_file_name=filename)
@@ -1112,6 +1164,8 @@ def find_test(proc: 'PySaxonProcessor', kluc: str, admin: bool = False, cache: d
                cache['__hot__'] = filename
                test_node = found
                break
+         if test_node is None:
+            _zapamataj_nenajdeny(cache, kluc, otlacok)
 
       if test_node is not None and not admin:
          rodic_node = test_node.get_parent()
