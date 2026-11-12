@@ -137,6 +137,9 @@
                                     <xsl:if test="not(@paused='1')">
                                        <xsl:attribute name="checked">checked</xsl:attribute>
                                     </xsl:if>
+                                    <xsl:if test="not($can_edit)">
+                                       <xsl:attribute name="disabled">disabled</xsl:attribute>
+                                    </xsl:if>
                                  </input>
                               </xsl:otherwise>
                            </xsl:choose>
@@ -254,6 +257,9 @@
                <input type="checkbox" class="pause-check form-check-input flex-shrink-0" data-id="{@id}" data-typ="otazka">
                   <xsl:if test="not(@paused='1')">
                      <xsl:attribute name="checked">checked</xsl:attribute>
+                  </xsl:if>
+                  <xsl:if test="not($can_edit)">
+                     <xsl:attribute name="disabled">disabled</xsl:attribute>
                   </xsl:if>
                </input>
             </xsl:otherwise>
