@@ -57,6 +57,22 @@ input[type="text"] {
    margin-top: 0.25rem;
 }
 
+/* jednotny focus: cyan z Bootstrapu (--bs-info) namiesto jeho pevne zadanej modrej */
+input:focus,
+select:focus,
+textarea:focus,
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+   outline: none;
+   border-color: rgba(var(--bs-info-rgb), 0.5);
+   box-shadow: 0 0 0 0.125rem rgba(var(--bs-info-rgb), 0.5);
+}
+
+.btn:focus-visible {
+   box-shadow: 0 0 0 0.125rem rgba(var(--bs-info-rgb), 0.5);
+}
+
 input.casInput {
    display: block;
    margin-bottom: 0;
