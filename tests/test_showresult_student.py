@@ -81,6 +81,12 @@ def test_neohodnotena_otvorena_otazka(html):
    assert 'ešte nie sú ohodnotené' in html
 
 
+def test_ma_vodoznak_s_klucom_testu(html):
+   assert 'id="vodoznak"' in html
+   assert 'data-kluc="' in html
+   assert '/pubres/js/vodoznak.js' in html
+
+
 def test_bez_hodnotiaceho_formulara(html):
    assert '<form' not in html
    assert 'savemarks' not in html

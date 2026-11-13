@@ -69,6 +69,8 @@
                <xsl:with-param name="rtest" select="$riestest" tunnel="yes"/>
             </xsl:apply-templates>
          </div>
+         <div id="vodoznak" class="vodoznak" data-kluc="{@id}" aria-hidden="true"/>
+         <script src="/pubres/js/vodoznak.js"><xsl:comment>MyJS</xsl:comment></script>
       </body>
    </html>
 </xsl:template>

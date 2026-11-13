@@ -1369,3 +1369,28 @@ table.tabulka input.bunka-siroka {
 .otazka-formular .odp-pridaj-napovedu {
    align-self: flex-start;
 }
+
+/* vodoznak testu: kluc a cas cez celu obrazovku, nevadi citaniu ani klikaniu */
+.vodoznak {
+   position: fixed;
+   inset: 0;
+   overflow: hidden;
+   pointer-events: none;
+   user-select: none;
+   z-index: 1050;
+}
+
+.vodoznak-text {
+   position: absolute;
+   top: -50%;
+   left: -50%;
+   width: 200%;
+   height: 200%;
+   transform: rotate(-25deg);
+   color: var(--bs-body-color);
+   opacity: 0.08;
+   font-size: 1rem;
+   line-height: 4rem;
+   text-align: center;
+   overflow: hidden;
+}

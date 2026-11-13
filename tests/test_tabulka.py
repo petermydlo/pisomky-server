@@ -129,6 +129,13 @@ def test_createtests_kopiruje_tabulku_aj_so_spravnymi_hodnotami(proc):
    assert _xp(strom, './/otazka/tabulka/@povolene') == ['01']
 
 
+@pytest.mark.parametrize('stylesheet', ['writetest.xsl', 'showtest.xsl'])
+def test_vodoznak_je_len_pre_ziaka(proc, stylesheet):
+   zak = _html(proc, stylesheet, {'admin': False, 'napovedy_zostatok': 3})
+   assert 'id="vodoznak"' in zak and 'data-kluc="' in zak and '/pubres/js/vodoznak.js' in zak
+   assert 'id="vodoznak"' not in _html(proc, stylesheet, {'admin': True, 'napovedy_zostatok': 3})
+
+
 def test_formular_ma_polia_skryte_pole_a_nema_napovedu(proc):
    html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})
    assert html.count('class="bunka-vstup form-control"') == 4 + 16 + 4
