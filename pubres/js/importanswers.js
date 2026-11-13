@@ -1,6 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-   const ODPOVEDE = ['a', 'b', 'c', 'd'];
+   const PREDVOLENY_POCET = 4;
+
+   function pismena(pocet) {
+      const n = Number.isInteger(pocet) && pocet > 0 ? Math.min(pocet, 26) : PREDVOLENY_POCET;
+      return Array.from({length: n}, (_, i) => String.fromCharCode(97 + i));
+   }
 
    function el(tag, classes = '', text = '') {
       const e = document.createElement(tag);
@@ -102,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   const optEmpty = el('option', '', '—');
                   optEmpty.value = '';
                   select.appendChild(optEmpty);
-                  ODPOVEDE.forEach(pism => {
+                  pismena(n.pocet).forEach(pism => {
                      const opt = el('option', '', pism);
                      opt.value = pism;
                      select.appendChild(opt);

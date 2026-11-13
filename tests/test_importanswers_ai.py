@@ -209,3 +209,20 @@ def test_spracuj_subor_zapis_pre_neexistujuci_test_id_v_odpovedi(tests_file):
    _run(_spracuj_subor(subor, {}, provider, vysledky))
 
    assert vysledky == [{'subor': 'scan.png', 'test_id': 'INY_NEEXISTUJUCI', 'chyba': 'Zadanie nenájdené v DB'}]
+
+
+def test_spracuj_subor_nejasnost_nesie_pocet_odpovedi_otazky(tests_file):
+   odpovede = ''.join(f'<odpoved spravna="0">{i}</odpoved>' for i in range(6))
+   tests_file.write_text(TESTS_XML.replace('<otazka id="q1"/>', f'<otazka id="q1">{odpovede}</otazka><otazka id="q2"/>'), encoding='utf-8')
+   subor = FakeUpload('scan.png', 'image/png', _qr_png(TEST_ID))
+   provider = FakeProvider(answers={'tests': [{'test_id': TEST_ID, 'odpovede': [], 'nejasnosti': [
+      {'id': 'q1', 'znenie': 'Z', 'dovod': 'D'},
+      {'id': 'q2', 'znenie': 'Z', 'dovod': 'D'},
+      {'id': 'neznama', 'znenie': 'Z', 'dovod': 'D'},
+   ]}]})
+   vysledky = []
+
+   _run(_spracuj_subor(subor, {}, provider, vysledky))
+
+   pocty = {n['id']: n.get('pocet') for n in vysledky[0]['nejasnosti']}
+   assert pocty == {'q1': 6, 'q2': None, 'neznama': None}

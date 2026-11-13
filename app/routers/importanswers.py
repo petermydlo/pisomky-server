@@ -50,6 +50,19 @@ def nacitaj_tests_xml(cesta: str, test_id: str) -> str:
       return ET.tostring(test, encoding='unicode')
    return ''
 
+def pocty_odpovedi(cesta: str, test_id: str) -> dict[str, int]:
+   """Vrati {id otazky: pocet odpovedi} testu, aby UI ponukalo len platne pismena."""
+   tree = ET.parse(cesta)
+   test = next(iter(tree.xpath(".//test[@id=$id]", id=test_id)), None)  # type: ignore[arg-type]
+   if test is None:
+      return {}
+   pocty = {}
+   for otazka in test.iter('otazka'):
+      pocet = sum(1 for _ in otazka.iter('odpoved'))
+      if pocet and otazka.get('id'):
+         pocty[str(otazka.get('id'))] = pocet
+   return pocty
+
 def ziskaj_metadata(cesta: str) -> tuple[str, str, str, str, str]:
    tree = ET.parse(cesta)
    root = tree.getroot()
@@ -161,7 +174,9 @@ async def _spracuj_subor(subor, cache, provider, vysledky):
       Path(adresar).mkdir(parents=True, exist_ok=True)
       cesta_ans = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
       lock = FileLock(f'{cesta_ans}.lock')
-      nejasne_ids = {n.get('id') for n in entry.get('nejasnosti', [])}
+      pocty = pocty_odpovedi(cesta_tests, tid)
+      nejasnosti = [{**n, 'pocet': pocty[n.get('id')]} if n.get('id') in pocty else n for n in entry.get('nejasnosti', [])]
+      nejasne_ids = {n.get('id') for n in nejasnosti}
       form_data = {o['id']: o['odpoved'] for o in entry.get('odpovede', []) if o['id'] not in nejasne_ids}
 
       try:
@@ -175,7 +190,7 @@ async def _spracuj_subor(subor, cache, provider, vysledky):
             'kapitola': kapitola,
             'fileid': fileid,
             'zapisane': len(form_data),
-            'nejasnosti': entry.get('nejasnosti', [])
+            'nejasnosti': nejasnosti
          })
       except Exception as e:
          vysledky.append({'subor': subor.filename, 'test_id': tid, 'chyba': f'Chyba pri zápise: {str(e)}'})
