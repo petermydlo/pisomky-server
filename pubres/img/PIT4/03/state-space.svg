@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 0 428 160" width="856" height="320" font-family="Arial, Helvetica, sans-serif" font-size="14">
+   <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+         <path d="M0,0 L10,5 L0,10 z" fill="#000"/>
+      </marker>
+   </defs>
+   <rect x="-8" width="428" height="160" fill="#fff"/>
+
+   <g fill="none" stroke="#000" stroke-width="1" marker-end="url(#arrow)">
+      <!-- vstup u -> uzol -> B -->
+      <path d="M14,73 H32" marker-end="none"/>
+      <path d="M32,73 H62"/>
+      <!-- horna vetva: D -->
+      <path d="M32,73 V20 H168" marker-end="url(#arrow)"/>
+      <path d="M198,20 H322 V61"/>
+      <!-- B -> sucet 1 -> integrator -->
+      <path d="M92,73 H114"/>
+      <path d="M138,73 H168"/>
+      <!-- integrator -> C -> sucet 2 -> y -->
+      <path d="M198,73 H258"/>
+      <path d="M288,73 H310"/>
+      <path d="M334,73 H386"/>
+      <!-- spatna vazba: A -->
+      <path d="M232,73 V133 H198"/>
+      <path d="M168,133 H126 V85"/>
+   </g>
+
+   <!-- vstup: sipka u -->
+   <path d="M10,69 L14,73 L10,77" fill="none" stroke="#000" stroke-width="1"/>
+
+   <!-- uzly vetvenia -->
+   <circle cx="32" cy="73" r="2.5" fill="#000"/>
+   <circle cx="232" cy="73" r="2.5" fill="#000"/>
+
+   <!-- bloky -->
+   <g fill="#fff" stroke="#000" stroke-width="1">
+      <rect x="168" y="6" width="30" height="28"/>
+      <rect x="62" y="58" width="30" height="30"/>
+      <rect x="168" y="58" width="30" height="30"/>
+      <rect x="258" y="58" width="30" height="30"/>
+      <rect x="168" y="118" width="30" height="30"/>
+   </g>
+
+   <!-- sumatory -->
+   <g fill="#fff" stroke="#000" stroke-width="1">
+      <circle cx="126" cy="73" r="12"/>
+      <circle cx="322" cy="73" r="12"/>
+   </g>
+   <!-- znamienka + pri kazdom vstupe sumatora -->
+   <g font-size="10" text-anchor="middle" dominant-baseline="central">
+      <text x="120" y="74.5">+</text>
+      <text x="126" y="80.5">+</text>
+      <text x="316" y="74.5">+</text>
+      <text x="322" y="67">+</text>
+   </g>
+
+   <!-- popisky blokov -->
+   <g text-anchor="middle" dominant-baseline="central">
+      <text x="183" y="20">D</text>
+      <text x="77" y="73">B</text>
+      <text x="273" y="73">C</text>
+      <text x="183" y="133">A</text>
+      <!-- 1/s -->
+      <text x="183" y="67">1</text>
+      <path d="M176,73 H190" stroke="#000" stroke-width="1"/>
+      <text x="183" y="80">s</text>
+   </g>
+
+   <!-- vstup a vystup -->
+   <text x="-5" y="77">u</text>
+   <text x="392" y="77">y</text>
+</svg>
