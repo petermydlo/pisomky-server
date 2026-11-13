@@ -69,15 +69,16 @@ def test_schema_testov_miesto_za_odpovedami(schema_testov, obsah, platne):
    assert schema_testov.is_valid(TESTS.format(obsah=obsah)) is platne
 
 
-def _fo(tmp_path):
+def _fo(tmp_path, vodoznak=False):
    zdroj = tmp_path / 't.xml'
    zdroj.write_text(TLAC_XML, encoding='utf-8')
-   (tmp_path / 'qr').mkdir()
+   (tmp_path / 'qr').mkdir(exist_ok=True)
    (tmp_path / 'qr/K1.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>', encoding='utf-8')
    fo = tmp_path / 't.fo'
    with PySaxonProcessor(license=False) as proc:
       xsl = proc.new_xslt30_processor().compile_stylesheet(stylesheet_file=str(PROJECT_ROOT / 'res/xslt/downloadtests.xsl'))
       xsl.set_parameter('qrdir', proc.make_string_value(f'file://{tmp_path}/qr'))
+      xsl.set_parameter('vodoznak', proc.make_boolean_value(vodoznak))
       xsl.transform_to_file(source_file=str(zdroj), output_file=str(fo))
    return fo
 
@@ -86,6 +87,14 @@ def test_downloadtests_vykresli_miesto_s_poctom_riadkov_po_30_pt(tmp_path):
    fo = _fo(tmp_path).read_text(encoding='utf-8')
    assert re.findall(r'<fo:table-row[^>]* height="(\d+)pt"', fo) == ['90', '30']     # o1 (3 riadky) a o3 (bez atributu = 1 riadok)
    assert fo.count('<fo:block margin-bottom="0.5cm"/>') == 2                          # bezny odstup maju len o2 a o4, nie otazky s miestom
+
+
+def test_vodoznak_s_klucom_testu_je_len_ked_je_zapnuty(tmp_path):
+   bez = _fo(tmp_path).read_text(encoding='utf-8')
+   assert '<svg' not in bez
+   s = _fo(tmp_path, vodoznak=True).read_text(encoding='utf-8')
+   assert 'fill-opacity="0.08"' in s
+   assert '>K1</text>' in s
 
 
 @pytest.mark.skipif(shutil.which('fop') is None, reason='FOP nie je nainstalovany')

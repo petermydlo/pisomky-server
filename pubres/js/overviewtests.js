@@ -267,8 +267,19 @@ document.addEventListener('DOMContentLoaded', () => {
       event.stopPropagation();
       event.preventDefault();
       if (btn.classList.contains('caka')) return;   //PDF sa uz generuje
-      btn.classList.add('caka');
       const d = skupinaData(btn);
+      if (btn.classList.contains('tests')) {
+         const vyber = await vyberDialog({
+            nadpis: 'Stiahnuť testy',
+            text: 'Vodoznak s kľúčom testu cez stranu zhorší čítanie QR kódov a rukopisu pri skenovaní odpovedí.',
+            moznosti: [{id: 'vodoznak', popis: 'Vložiť vodoznak s kľúčom testu', zapnute: false, aktivne: true}],
+            potvrdit: 'Stiahnuť',
+            asponJedno: false,
+         });
+         if (!vyber) return;
+         if (vyber.vodoznak) d.vodoznak = '1';
+      }
+      btn.classList.add('caka');
       const url = btn.classList.contains('results') ? '/admin/downloadresults'
                 : btn.classList.contains('tests')   ? '/admin/downloadtests'
                 : '/admin/downloadcodes';

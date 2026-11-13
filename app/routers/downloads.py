@@ -50,7 +50,7 @@ def _generuj_qr_kody(cesta: str) -> str:
    return qrdir
 
 @router.post('/admin/downloadtests', response_class=FileResponse)
-async def downloadtests(request: Request, background_tasks: BackgroundTasks, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
+async def downloadtests(request: Request, background_tasks: BackgroundTasks, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', vodoznak: StringForm = ''):
    cesta = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
    if not os.path.exists(cesta):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
@@ -59,7 +59,7 @@ async def downloadtests(request: Request, background_tasks: BackgroundTasks, pre
       proc = request.app.state.proc
       qrdir = await run_in_threadpool(_generuj_qr_kody, cesta)
       try:
-         pdffile = await run_in_threadpool(xslt_to_pdf, proc, stylesheet='./res/xslt/downloadtests.xsl', source_file=cesta, params={'qrdir': f'file://{qrdir}'}, xslt_pools=request.app.state.xslt_pools)
+         pdffile = await run_in_threadpool(xslt_to_pdf, proc, stylesheet='./res/xslt/downloadtests.xsl', source_file=cesta, params={'qrdir': f'file://{qrdir}', 'vodoznak': vodoznak == '1'}, xslt_pools=request.app.state.xslt_pools)
       except BaseException:
          shutil.rmtree(qrdir, ignore_errors=True)  #background_tasks sa pri vyhodenej vynimke nespustia
          raise

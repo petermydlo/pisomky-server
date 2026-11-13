@@ -165,7 +165,8 @@ function oznamDialog({nadpis = 'Chyba', text}) {
 
 //Modalny vyber zaskrtavacich poli (napr. co vymazat); vrati Promise: objekt {id: boolean} po potvrdeni, inak null
 //moznosti: [{id, popis, zapnute, aktivne}]; neaktivna moznost sa nezobrazi ako zaskrtnuta ani sa neda zmenit
-function vyberDialog({nadpis, text, moznosti, potvrdit, nebezpecne = false}) {
+//asponJedno: potvrdit sa da len so zaskrtnutou aspon jednou moznostou (pri volitelnych moznostiach false)
+function vyberDialog({nadpis, text, moznosti, potvrdit, nebezpecne = false, asponJedno = true}) {
    return new Promise(resolve => {
       const dialog = document.createElement('dialog');
       dialog.className = 'dialog-okno';
@@ -205,7 +206,7 @@ function vyberDialog({nadpis, text, moznosti, potvrdit, nebezpecne = false}) {
       tlacidla.append(zrus, ok);
       form.appendChild(tlacidla);
 
-      const aktualizuj = () => { ok.disabled = !vstupy.some(v => v.checked); };
+      const aktualizuj = () => { ok.disabled = asponJedno && !vstupy.some(v => v.checked); };
       vstupy.forEach(v => v.addEventListener('change', aktualizuj));
       aktualizuj();
 
@@ -221,6 +222,6 @@ function vyberDialog({nadpis, text, moznosti, potvrdit, nebezpecne = false}) {
 
       document.body.appendChild(dialog);
       dialog.showModal();
-      zrus.focus();
+      (nebezpecne ? zrus : ok).focus();
    });
 }

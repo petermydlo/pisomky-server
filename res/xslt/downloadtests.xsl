@@ -11,6 +11,9 @@
 <xsl:import href="formatbodov.xsl"/>
 
 <xsl:param name="qrdir"/>
+<xsl:param name="vodoznak" as="xs:boolean" select="false()"/>
+<!-- priehladnost vodoznaku (rovnaka ako na obrazovke, pozri .vodoznak-text v testy.css); pri tlaci ju pripadne zvysit -->
+<xsl:variable name="vodoznak-priehladnost" select="0.08"/>
 
 <xsl:template match="testy">
    <fo:root xml:lang="sk">
@@ -46,6 +49,27 @@
    </fo:root>
 </xsl:template>
 
+<!-- sikmy text s klucom testu cez celu stranu; FOP nevie otacat o lubovolny uhol, preto SVG -->
+<xsl:template name="vodoznak">
+   <xsl:param name="text" as="xs:string"/>
+   <fo:block-container absolute-position="fixed" top="0cm" left="0cm" width="21cm" height="29.7cm" overflow="hidden">
+      <fo:block font-size="0pt" line-height="0pt">
+         <fo:instream-foreign-object content-width="21cm" content-height="29.7cm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297">
+               <g transform="rotate(-25 105 148.5)" fill="#000000" fill-opacity="{$vodoznak-priehladnost}" font-family="DejaVu Sans" font-size="4" text-anchor="middle">
+                  <xsl:for-each select="-4 to 24">
+                     <xsl:variable name="riadok" select="."/>
+                     <xsl:for-each select="-1 to 4">
+                        <text x="{. * 75 + (if ($riadok mod 2 = 0) then 0 else 37)}" y="{$riadok * 16}"><xsl:value-of select="$text"/></text>
+                     </xsl:for-each>
+                  </xsl:for-each>
+               </g>
+            </svg>
+         </fo:instream-foreign-object>
+      </fo:block>
+   </fo:block-container>
+</xsl:template>
+
 <xsl:template match="test">
    <fo:page-sequence master-reference="strany">
       <fo:static-content flow-name="xsl-region-before">
@@ -74,6 +98,9 @@
                </fo:table-body>
             </fo:table>
          </fo:block>
+         <xsl:if test="$vodoznak">
+            <xsl:call-template name="vodoznak"><xsl:with-param name="text" select="string(@id)"/></xsl:call-template>
+         </xsl:if>
       </fo:static-content>
       <fo:static-content flow-name="nie-prazdna-neparna-footer">
          <fo:block font-family="DejaVu Serif">
