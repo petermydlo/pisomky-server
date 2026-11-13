@@ -715,11 +715,13 @@ div:hover > span.penIcon.editActions {
    display: flex;
    flex-direction: column;
    gap: 0.5rem;
-   border: 1px solid silver;
-   border-radius: 0.25rem;
+   border: 1px solid #86b7fe;
+   border-left: 0.35rem solid #0d6efd;
+   border-radius: 0.5rem;
    padding: 0.75rem;
-   margin-block: 0.5rem;
-   background: white;
+   margin-block: 1rem;
+   background: #f4f8ff;
+   box-shadow: 0 0.25rem 1rem rgb(13 110 253 / 0.2);
 }
 
 .otazka-formular textarea, .otazka-formular input[type="text"], .otazka-formular input[type="number"] {
@@ -929,19 +931,12 @@ div:hover > span.penIcon.editActions {
 .tabulka-vkladanie {
    width: min(80vw, 60rem);
    max-height: 90vh;
-   border: 1px solid silver;
-   border-radius: 0.25rem;
-   padding: 1rem;
 }
 
 .tabulka-vkladanie[open] {
    display: flex;
    flex-direction: column;
    gap: 0.5rem;
-}
-
-.tabulka-vkladanie::backdrop {
-   background: rgb(0 0 0 / 0.4);
 }
 
 .tabulka-vloz-text {
@@ -1282,15 +1277,22 @@ table.tabulka input.bunka-siroka {
    height: auto;
 }
 
-.dialog-okno {
-   width: min(90vw, 28rem);
-   border: 1px solid silver;
-   border-radius: 0.25rem;
-   padding: 1rem;
+.dialog-okno,
+.tabulka-vkladanie {
+   border: none;
+   border-radius: 0.75rem;
+   padding: 1.5rem;
+   box-shadow: 0 1rem 3rem rgb(0 0 0 / 0.3);
 }
 
-.dialog-okno::backdrop {
-   background: rgb(0 0 0 / 0.4);
+.dialog-okno {
+   width: min(90vw, 28rem);
+}
+
+.dialog-okno::backdrop,
+.tabulka-vkladanie::backdrop {
+   background: rgb(0 0 0 / 0.5);
+   backdrop-filter: blur(2px);
 }
 
 .dialog-okno form {
@@ -1301,7 +1303,8 @@ table.tabulka input.bunka-siroka {
 
 .dialog-okno h2 {
    margin: 0;
-   font-size: 1.1rem;
+   font-size: 1.25rem;
+   font-weight: 600;
 }
 
 .dialog-okno label {
@@ -1310,9 +1313,29 @@ table.tabulka input.bunka-siroka {
    gap: 0.25rem;
 }
 
-.dialog-okno input[type="text"] {
-   width: 100%;
+.dialog-okno input[type="text"],
+.dialog-okno textarea,
+.tabulka-vkladanie textarea,
+.tabulka-vkladanie select {
    box-sizing: border-box;
+   padding: 0.4rem 0.6rem;
+   border: 1px solid #ced4da;
+   border-radius: 0.4rem;
+}
+
+.dialog-okno input[type="text"],
+.dialog-okno textarea,
+.tabulka-vkladanie textarea {
+   width: 100%;
+}
+
+.dialog-okno input[type="text"]:focus,
+.dialog-okno textarea:focus,
+.tabulka-vkladanie textarea:focus,
+.tabulka-vkladanie select:focus {
+   outline: none;
+   border-color: #86b7fe;
+   box-shadow: 0 0 0 0.2rem rgb(13 110 253 / 0.25);
 }
 
 .dialog-okno small {
@@ -1324,15 +1347,107 @@ table.tabulka input.bunka-siroka {
    white-space: pre-line;
 }
 
-.dialog-okno button.dialog-nebezpecne {
-   background: firebrick;
-   border: 1px solid firebrick;
-   border-radius: 0.2rem;
+.dialog-okno button,
+.tabulka-vloz-tlacidla button,
+.tabulka-nastroje button,
+.otazka-formular .kat-zrus,
+.otazka-formular .otazka-zrus,
+.otazka-formular .kat-uloz,
+.otazka-formular .otazka-uloz,
+.otazka-formular .otazka-pridaj-napovedu,
+.otazka-formular .otazka-pridaj-odpoved,
+.otazka-formular .otazka-pridaj-vzor,
+.otazka-formular .odp-pridaj-napovedu,
+.otazka-formular .napoveda-odstran,
+.tabulka-vloz-otvor {
+   margin: 0;
+   padding: 0.45rem 1.1rem;
+   border: 1px solid #ced4da;
+   border-radius: 0.4rem;
+   background: white;
+   color: #212529;
+   font: inherit;
+   cursor: pointer;
+}
+
+.dialog-okno button:hover:not(:disabled),
+.tabulka-vloz-tlacidla button:hover:not(:disabled),
+.tabulka-nastroje button:hover:not(:disabled),
+.otazka-formular .kat-zrus:hover:not(:disabled),
+.otazka-formular .otazka-zrus:hover:not(:disabled),
+.otazka-formular .kat-uloz:hover:not(:disabled),
+.otazka-formular .otazka-uloz:hover:not(:disabled),
+.otazka-formular .otazka-pridaj-napovedu:hover:not(:disabled),
+.otazka-formular .otazka-pridaj-odpoved:hover:not(:disabled),
+.otazka-formular .otazka-pridaj-vzor:hover:not(:disabled),
+.otazka-formular .odp-pridaj-napovedu:hover:not(:disabled),
+.otazka-formular .napoveda-odstran:hover:not(:disabled),
+.tabulka-vloz-otvor:hover:not(:disabled) {
+   background: #e9ecef;
+}
+
+.dialog-okno button[type="submit"],
+.tabulka-vloz-tlacidla .tabulka-vloz-vloz,
+.otazka-formular .kat-uloz,
+.otazka-formular .otazka-uloz {
+   background: #0d6efd;
+   border-color: #0d6efd;
    color: white;
 }
 
+.dialog-okno button[type="submit"]:hover:not(:disabled),
+.tabulka-vloz-tlacidla .tabulka-vloz-vloz:hover:not(:disabled),
+.otazka-formular .kat-uloz:hover:not(:disabled),
+.otazka-formular .otazka-uloz:hover:not(:disabled) {
+   background: #0b5ed7;
+}
+
+.dialog-okno button:disabled,
+.tabulka-vloz-tlacidla button:disabled,
+.tabulka-nastroje button:disabled,
+.otazka-formular .kat-zrus:disabled,
+.otazka-formular .otazka-zrus:disabled,
+.otazka-formular .kat-uloz:disabled,
+.otazka-formular .otazka-uloz:disabled,
+.otazka-formular .otazka-pridaj-napovedu:disabled,
+.otazka-formular .otazka-pridaj-odpoved:disabled,
+.otazka-formular .otazka-pridaj-vzor:disabled,
+.otazka-formular .odp-pridaj-napovedu:disabled,
+.otazka-formular .napoveda-odstran:disabled,
+.tabulka-vloz-otvor:disabled {
+   opacity: 0.5;
+   cursor: not-allowed;
+}
+
+.dialog-okno button:focus-visible,
+.tabulka-vloz-tlacidla button:focus-visible,
+.tabulka-nastroje button:focus-visible,
+.otazka-formular .kat-zrus:focus-visible,
+.otazka-formular .otazka-zrus:focus-visible,
+.otazka-formular .kat-uloz:focus-visible,
+.otazka-formular .otazka-uloz:focus-visible,
+.otazka-formular .otazka-pridaj-napovedu:focus-visible,
+.otazka-formular .otazka-pridaj-odpoved:focus-visible,
+.otazka-formular .otazka-pridaj-vzor:focus-visible,
+.otazka-formular .odp-pridaj-napovedu:focus-visible,
+.otazka-formular .napoveda-odstran:focus-visible,
+.tabulka-vloz-otvor:focus-visible {
+   outline: none;
+   box-shadow: 0 0 0 0.2rem rgb(13 110 253 / 0.35);
+}
+
+.dialog-okno button.dialog-nebezpecne {
+   background: #dc3545;
+   border-color: #dc3545;
+   color: white;
+}
+
+.dialog-okno button.dialog-nebezpecne:hover:not(:disabled) {
+   background: #bb2d3b;
+}
+
 .dialog-chyba {
-   color: firebrick;
+   color: #dc3545;
 }
 
 .dialog-chyba:empty {
@@ -1343,4 +1458,17 @@ table.tabulka input.bunka-siroka {
    display: flex;
    justify-content: flex-end;
    gap: 0.5rem;
+}
+
+.dialog-okno label.dialog-moznost {
+   flex-direction: row;
+   align-items: center;
+   gap: 0.5rem;
+}
+
+.otazka-formular .otazka-pridaj-napovedu,
+.otazka-formular .otazka-pridaj-odpoved,
+.otazka-formular .otazka-pridaj-vzor,
+.otazka-formular .odp-pridaj-napovedu {
+   align-self: flex-start;
 }

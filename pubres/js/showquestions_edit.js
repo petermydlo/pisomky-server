@@ -87,8 +87,10 @@ function vytvorFormularKategorie(data) {
          <label class="deprecated-checkbox"><input type="checkbox" class="kat-deprecated"/> deprecated</label>
       </div>
       <div class="dialog-chyba"></div>
-      <button type="button" class="kat-uloz">Uložiť</button>
-      <button type="button" class="kat-zrus">Zrušiť</button>
+      <div class="dialog-tlacidla">
+         <button type="button" class="kat-zrus">Zrušiť</button>
+         <button type="button" class="kat-uloz">Uložiť</button>
+      </div>
    `;
    form.querySelector('.kat-nazov').value = data.nazov || '';
    form.querySelector('.kat-pocet').value = data.pocet || '';
@@ -299,8 +301,10 @@ function vytvorFormularOtazky(data, jeMcq) {
          </label>
       </div>
       <div class="dialog-chyba"></div>
-      <button type="button" class="otazka-uloz">Uložiť</button>
-      <button type="button" class="otazka-zrus">Zrušiť</button>
+      <div class="dialog-tlacidla">
+         <button type="button" class="otazka-zrus">Zrušiť</button>
+         <button type="button" class="otazka-uloz">Uložiť</button>
+      </div>
    `;
    const znenieRaw = (data.znenie || '').replace(/^<znenie[^>]*>/, '').replace(/<\/znenie>$/, '');
    form.querySelector('.otazka-znenie').value = znenieRaw;

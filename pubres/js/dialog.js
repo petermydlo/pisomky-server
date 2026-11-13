@@ -156,3 +156,63 @@ function oznamDialog({nadpis = 'Chyba', text}) {
       ok.focus();
    });
 }
+
+//Modalny vyber zaskrtavacich poli (napr. co vymazat); vrati Promise: objekt {id: boolean} po potvrdeni, inak null
+//moznosti: [{id, popis, zapnute, aktivne}]; neaktivna moznost sa nezobrazi ako zaskrtnuta ani sa neda zmenit
+function vyberDialog({nadpis, text, moznosti, potvrdit, nebezpecne = false}) {
+   return new Promise(resolve => {
+      const dialog = document.createElement('dialog');
+      dialog.className = 'dialog-okno';
+      const form = document.createElement('form');
+      dialog.appendChild(form);
+
+      const hlavicka = document.createElement('h2');
+      hlavicka.textContent = nadpis;
+      const odstavec = document.createElement('p');
+      odstavec.className = 'dialog-text';
+      odstavec.textContent = text;
+      form.append(hlavicka, odstavec);
+
+      const vstupy = moznosti.map(m => {
+         const label = document.createElement('label');
+         label.className = 'dialog-moznost';
+         const vstup = document.createElement('input');
+         vstup.type = 'checkbox';
+         vstup.checked = m.aktivne && m.zapnute;
+         vstup.disabled = !m.aktivne;
+         label.append(vstup, m.popis);
+         form.appendChild(label);
+         return vstup;
+      });
+
+      const tlacidla = document.createElement('div');
+      tlacidla.className = 'dialog-tlacidla';
+      const zrus = document.createElement('button');
+      zrus.type = 'button';
+      zrus.textContent = 'Zrušiť';
+      const ok = document.createElement('button');
+      ok.type = 'submit';
+      ok.textContent = potvrdit;
+      if (nebezpecne) ok.className = 'dialog-nebezpecne';
+      tlacidla.append(zrus, ok);
+      form.appendChild(tlacidla);
+
+      const aktualizuj = () => { ok.disabled = !vstupy.some(v => v.checked); };
+      vstupy.forEach(v => v.addEventListener('change', aktualizuj));
+      aktualizuj();
+
+      form.addEventListener('submit', (e) => {
+         e.preventDefault();
+         dialog.close('ano');
+      });
+      zrus.addEventListener('click', () => dialog.close());
+      dialog.addEventListener('close', () => {
+         resolve(dialog.returnValue === 'ano' ? Object.fromEntries(moznosti.map((m, i) => [m.id, vstupy[i].checked])) : null);
+         dialog.remove();
+      });
+
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      zrus.focus();
+   });
+}

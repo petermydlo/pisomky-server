@@ -187,43 +187,32 @@ document.addEventListener('DOMContentLoaded', () => {
    });
 
    //vymaze skupinu testov
-   let _deleteData = null;
-   let _deleteEl = null;
-   document.addEventListener('click', (event) => {
+   document.addEventListener('click', async (event) => {
       if (!event.target.closest('.del')) return;
       event.stopPropagation();
       event.preventDefault();
       const el = event.target.closest('.del');
-      _deleteData = skupinaData(el);
-      _deleteEl = el.closest('div.skupina');
-      document.getElementById('deleteModalDesc').textContent =
-         `Čo vymazať pre ${_deleteData.predmet}:${_deleteData.trieda}${_deleteData.skupina}:${_deleteData.kapitola}?`;
-      const ikony = el.closest('div.skupina').querySelector('.subory-ikony');
-      const maTest     = !!ikony.querySelector('.bi-journal-text');
-      const maAnswers  = !!ikony.querySelector('.bi-pencil');
-      const maFeedback = !!ikony.querySelector('.bi-chat-right-text');
-      for (const [id, exists] of [['delTest', maTest], ['delAnswers', maAnswers], ['delFeedback', maFeedback]]) {
-         const chk = document.getElementById(id);
-         chk.checked  = exists;
-         chk.disabled = !exists;
-      }
-      bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).show();
-   });
-
-   document.getElementById('deleteModalConfirm').addEventListener('click', async (event) => {
-      const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal'));
-      event.currentTarget.blur();
-      modal.hide();
-      if (!_deleteData || !_deleteEl) return;
+      const data = skupinaData(el);
+      const deleteEl = el.closest('div.skupina');
+      const ikony = deleteEl.querySelector('.subory-ikony');
+      const vyber = await vyberDialog({
+         nadpis: 'Vymazať súbory',
+         text: `Čo vymazať pre ${data.predmet}:${data.trieda}${data.skupina}:${data.kapitola}?`,
+         moznosti: [
+            {id: 'test', popis: 'Test', zapnute: true, aktivne: !!ikony.querySelector('.bi-journal-text')},
+            {id: 'answers', popis: 'Odpovede (aj odovzdané súbory)', zapnute: true, aktivne: !!ikony.querySelector('.bi-pencil')},
+            {id: 'feedback', popis: 'Feedback', zapnute: true, aktivne: !!ikony.querySelector('.bi-chat-right-text')},
+         ],
+         potvrdit: 'Vymazať',
+         nebezpecne: true,
+      });
+      if (!vyber) return;
       const d = {
-         ..._deleteData,
-         del_test:     document.getElementById('delTest').checked     ? '1' : '0',
-         del_answers:  document.getElementById('delAnswers').checked  ? '1' : '0',
-         del_feedback: document.getElementById('delFeedback').checked ? '1' : '0',
+         ...data,
+         del_test:     vyber.test ? '1' : '0',
+         del_answers:  vyber.answers ? '1' : '0',
+         del_feedback: vyber.feedback ? '1' : '0',
       };
-      const deleteEl = _deleteEl;
-      _deleteData = null;
-      _deleteEl = null;
       try {
          const resp = await fetch('/admin/deletetests', {
             method: 'DELETE',
