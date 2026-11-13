@@ -163,7 +163,7 @@
       <div class="flex-container-table-znenie {$farba}">
          <div class="prvy">
             <xsl:if test="not(odpoved) and not(tabulka) and not($je_rating_formular)">
-               <div><input type="number" id="{$zaciatok}_{@id}" name="{$zaciatok}_{@id}" min="0" max="{@body}" step="any" value="{$body}"/></div>
+               <div><input type="number" class="form-control" id="{$zaciatok}_{@id}" name="{$zaciatok}_{@id}" min="0" max="{@body}" step="any" value="{$body}"/></div>
             </xsl:if>
             <xsl:if test="odpoved or tabulka or $je_rating_formular">
                <div class="radio col-up">
@@ -208,7 +208,7 @@
             </div>
          </xsl:if>
          <xsl:if test="not(odpoved) and not(@rating) and not(tabulka)">
-            <div><input type="text" id="{@id}" name="{@id}" size="83" value="{$vybodpoved}" readonly="true"/></div>
+            <div><input type="text" class="form-control" id="{@id}" name="{@id}" size="83" value="{$vybodpoved}" readonly="true"/></div>
          </xsl:if>
          <xsl:if test="tabulka">
             <div class="odpoved-siroka tabulka-obal">
@@ -226,7 +226,7 @@
          </div>
          <xsl:variable name="komentar" select="$rtest/otazka[@id = $idotazky]/@koment"/>
          <div class="posledny okraj">
-            <input type="text" id="k_{@id}" name="k_{@id}" size="83" value="{$komentar}"/>
+            <input type="text" class="form-control" id="k_{@id}" name="k_{@id}" size="83" value="{$komentar}"/>
          </div>
       </div>
    </div>

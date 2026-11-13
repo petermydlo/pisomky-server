@@ -42,7 +42,7 @@
       <xsl:choose>
          <xsl:when test="not(@odpoved)"><xsl:apply-templates/></xsl:when>
          <xsl:when test="$rezim = 'vstup'">
-            <input type="text" class="bunka-vstup{if (../../@povolene) then '' else ' bunka-siroka'}" autocomplete="off" value="{$zadane}">
+            <input type="text" class="bunka-vstup form-control{if (../../@povolene) then '' else ' bunka-siroka'}" autocomplete="off" value="{$zadane}">
                <xsl:if test="../../@povolene">
                   <xsl:attribute name="data-povolene" select="../../@povolene"/>
                </xsl:if>

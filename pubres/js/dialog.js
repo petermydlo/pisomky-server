@@ -16,6 +16,7 @@ function otvorDialog({nadpis, polia, potvrdit, ulozit}) {
       label.append(pole.popis);
       const vstup = document.createElement('input');
       vstup.type = 'text';
+      vstup.className = 'form-control';
       vstup.value = pole.hodnota || '';
       vstup.autocomplete = 'off';
       vstup.spellcheck = false;

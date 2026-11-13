@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
       oznamDialog({nadpis: 'Test je otvorený inde', text: 'Tento test sa otvoril na inom mieste, preto sa odpovede z tejto stránky už neuložia. Zostanú tu zobrazené; otvorte test znovu až keď ho inde zatvoríte.'});
    }
    if (token) {
+      //pri obnoveni stranky sa stary prenajom uvolni az po nacitani novej, preto si token pamata karta (pozri index.js)
+      try { sessionStorage.setItem('relacia_' + location.pathname, token); } catch (e) { /* bez sessionStorage sa len obnovenie nepozna */ }
       pingTimer = setInterval(() => {
          fetch('/ping/' + klucTestu, { method: 'POST', body: new URLSearchParams({ token }) })
             .then(resp => { if (resp.status === 423) prenajomPrevzaty(); })

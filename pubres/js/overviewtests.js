@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       //vytvorime inline input s potvrdenim a zrusenim
       const input = document.createElement('input');
-      input.className = 'casInput';
+      input.className = 'casInput form-control';
       input.type = 'text';
       input.title = 'Formát: YYYY-MM-DDTHH:MM';
       input.value = predvyplneny;

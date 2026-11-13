@@ -229,7 +229,7 @@
          </xsl:if>
          <xsl:if test="not(odpoved) and not(@rating) and not(tabulka)">
             <xsl:variable name="vybodpoved" select="$rtest/otazka[@id = $idotazky]"/>
-            <div><input type="text" class="odpoved" id="{@id}" name="{@id}" value="{$vybodpoved}"/></div>
+            <div><input type="text" class="odpoved form-control" id="{@id}" name="{@id}" value="{$vybodpoved}"/></div>
          </xsl:if>
          <xsl:if test="tabulka">
             <xsl:variable name="vybodpoved" select="string($rtest/otazka[@id = $idotazky])"/>

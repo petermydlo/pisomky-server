@@ -131,7 +131,7 @@ def test_createtests_kopiruje_tabulku_aj_so_spravnymi_hodnotami(proc):
 
 def test_formular_ma_polia_skryte_pole_a_nema_napovedu(proc):
    html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})
-   assert html.count('class="bunka-vstup"') == 4 + 16 + 4
+   assert html.count('class="bunka-vstup form-control"') == 4 + 16 + 4
    assert 'tabulka-hodnota' in html
    assert 'ai-napoveda-btn' not in html
    assert 'data-povolene="01"' in html
@@ -143,7 +143,7 @@ def test_pole_bez_povolene_je_siroke(proc):
    zdroj = (TESTY_DIR / TEST_SUBOR).read_text(encoding='utf-8').replace(' povolene="01"', '')
    (TESTY_DIR / TEST_SUBOR).write_text(zdroj, encoding='utf-8')
    html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})
-   assert html.count('bunka-vstup bunka-siroka') == 24
+   assert html.count('bunka-vstup form-control bunka-siroka') == 24
    assert 'data-povolene' not in html
 
 

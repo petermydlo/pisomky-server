@@ -33,7 +33,7 @@ function zobrazXmlTabulky(xml) {
    dialog.innerHTML = `
       <form>
          <h2>XML tabuľky</h2>
-         <textarea class="tabulka-xml-text" rows="16" readonly spellcheck="false"></textarea>
+         <textarea class="tabulka-xml-text form-control" rows="16" readonly spellcheck="false"></textarea>
          <div class="dialog-tlacidla">
             <span class="tabulka-xml-info"></span>
             <button type="button" class="tabulka-xml-kopiruj btn btn-outline-secondary">Kopírovať</button>
@@ -78,8 +78,8 @@ const HTML_EDITORA_TABULKY = `
       <button type="button" class="tabulka-xml-otvor btn btn-outline-secondary">Zobraz XML tabuľky</button>
    </div>
    <div class="tabulka-nastroje">
-      <label><input type="checkbox" class="tabulka-hlavicka"/> prvý riadok je hlavička</label>
-      <label>Povolené znaky <input type="text" class="tabulka-povolene" spellcheck="false"/></label>
+      <label><input type="checkbox" class="tabulka-hlavicka form-check-input"/> prvý riadok je hlavička</label>
+      <label>Povolené znaky <input type="text" class="tabulka-povolene form-control" spellcheck="false"/></label>
    </div>
    <div class="tabulka-chyba"></div>
    <div class="tabulka-mriezka"></div>
@@ -89,9 +89,9 @@ const HTML_EDITORA_TABULKY = `
    </div>
    <dialog class="tabulka-vkladanie">
       <div class="tabulka-vloz-nastavenia">
-         <label><input type="checkbox" class="tabulka-vloz-hlavicka" checked/> prvý riadok je hlavička</label>
+         <label><input type="checkbox" class="tabulka-vloz-hlavicka form-check-input" checked/> prvý riadok je hlavička</label>
          <label>Oddeľovač
-            <select class="tabulka-vloz-oddelovac">
+            <select class="tabulka-vloz-oddelovac form-select">
                <option value="">automaticky</option>
                <option value="&#9;">tabulátor</option>
                <option value=";">bodkočiarka ;</option>
@@ -99,7 +99,7 @@ const HTML_EDITORA_TABULKY = `
             </select>
          </label>
       </div>
-      <textarea class="tabulka-vloz-text" rows="5" spellcheck="false" placeholder="Sem vložte (Ctrl+V) tabuľku skopírovanú z tabuľkového procesora alebo Markdown"></textarea>
+      <textarea class="tabulka-vloz-text form-control" rows="5" spellcheck="false" placeholder="Sem vložte (Ctrl+V) tabuľku skopírovanú z tabuľkového procesora alebo Markdown"></textarea>
       <div class="tabulka-vloz-nahlad"></div>
       <div class="tabulka-vloz-chyba"></div>
       <div class="tabulka-vloz-tlacidla">

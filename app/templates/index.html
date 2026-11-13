@@ -13,7 +13,7 @@
          {%- elif "error" == detail %}
          <div class="alert alert-danger">Písomku sa teraz nepodarilo načítať. Skúste stránku obnoviť, ak sa to opakuje, povedzte to učiteľovi.</div>
          {%- elif "occupied" == detail %}
-         <div class="alert alert-warning">Tento test je práve otvorený na inom mieste. Ak ho nepíšete inde, skúste to znovu o minútu.</div>
+         <div id="obsadene" class="alert alert-warning">Tento test je práve otvorený na inom mieste. Ak ho nepíšete inde, skúste to znovu o minútu.</div>
          {%- elif "beforeTime" == detail %}
          <div class="alert alert-info">Čas na spustenie testu ešte nenastal.</div>
          {%- elif "pending" == detail %}

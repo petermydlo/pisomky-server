@@ -188,6 +188,7 @@ def test_stranka_druhy_otvori_dostane_423_bez_obsahu_testu(stranka):
    assert druhy.status_code == 423
    assert 'otvorený na inom mieste' in druhy.text
    assert 'hlavicka' not in druhy.text
+   assert 'id="obsadene"' in druhy.text
 
 
 def test_stranka_po_uvolneni_sa_da_otvorit_znova(stranka):

@@ -77,14 +77,14 @@ function vytvorFormularKategorie(data) {
    form.className = 'otazka-formular kat-formular';
    form.innerHTML = `
       <label>Názov (voliteľné, inak sa zobrazuje id)
-         <input type="text" class="kat-nazov"/>
+         <input type="text" class="kat-nazov form-control"/>
       </label>
       <div class="otazka-atributy-riadok">
-         <label>Počet otázok na výber <input type="number" class="kat-pocet" min="0"/></label>
-         <label>Body <input type="number" class="kat-body" min="0" step="any"/></label>
-         <label><input type="checkbox" class="kat-static"/> statická</label>
-         <label><input type="checkbox" class="kat-bonus"/> bonusová</label>
-         <label class="deprecated-checkbox"><input type="checkbox" class="kat-deprecated"/> deprecated</label>
+         <label>Počet otázok na výber <input type="number" class="kat-pocet form-control" min="0"/></label>
+         <label>Body <input type="number" class="kat-body form-control" min="0" step="any"/></label>
+         <label><input type="checkbox" class="kat-static form-check-input"/> statická</label>
+         <label><input type="checkbox" class="kat-bonus form-check-input"/> bonusová</label>
+         <label class="deprecated-checkbox"><input type="checkbox" class="kat-deprecated form-check-input"/> deprecated</label>
       </div>
       <div class="dialog-chyba"></div>
       <div class="dialog-tlacidla">
@@ -181,9 +181,9 @@ function riadokOdpoved(odp) {
       <legend>Odpoveď</legend>
       <i class="bi bi-trash odp-odstran" title="Odstrániť odpoveď"></i>
       <label>Text odpovede (môže obsahovať &lt;bold&gt;/&lt;italic&gt;/&lt;underline&gt;)
-         <textarea class="odp-text" rows="2"></textarea>
+         <textarea class="odp-text form-control" rows="2"></textarea>
       </label>
-      <label><input type="checkbox" class="odp-spravna"/> správna</label>
+      <label><input type="checkbox" class="odp-spravna form-check-input"/> správna</label>
       <div class="odp-napovedy"></div>
       <button type="button" class="odp-pridaj-napovedu btn btn-outline-secondary">+ nápoveda k tejto odpovedi</button>
    `;
@@ -207,7 +207,7 @@ function aktualizujViditelnostNapovedi(riadokOdp) {
 function riadokNapoveda(text) {
    const div = document.createElement('div');
    div.className = 'napoveda-riadok';
-   div.innerHTML = `<textarea class="napoveda-text" rows="1"></textarea><button type="button" class="napoveda-odstran btn btn-outline-secondary">×</button>`;
+   div.innerHTML = `<textarea class="napoveda-text form-control" rows="1"></textarea><button type="button" class="napoveda-odstran btn btn-outline-secondary">×</button>`;
    div.querySelector('.napoveda-text').value = text || '';
    div.querySelector('.napoveda-odstran').addEventListener('click', () => div.remove());
    return div;
@@ -216,7 +216,7 @@ function riadokNapoveda(text) {
 function riadokVzor(text) {
    const div = document.createElement('div');
    div.className = 'napoveda-riadok';
-   div.innerHTML = `<textarea class="vzor-text" rows="2"></textarea><button type="button" class="napoveda-odstran btn btn-outline-secondary">×</button>`;
+   div.innerHTML = `<textarea class="vzor-text form-control" rows="2"></textarea><button type="button" class="napoveda-odstran btn btn-outline-secondary">×</button>`;
    div.querySelector('.vzor-text').value = text || '';
    div.querySelector('.napoveda-odstran').addEventListener('click', () => div.remove());
    return div;
@@ -256,28 +256,28 @@ function vytvorFormularOtazky(data, jeMcq) {
    form.className = 'otazka-formular';
    form.innerHTML = `
       <label>Názov (voliteľné, inak sa zobrazuje id)
-         <input type="text" class="otazka-nazov"/>
+         <input type="text" class="otazka-nazov form-control"/>
       </label>
       <label>Znenie (môže obsahovať markup tagy)
-         <textarea class="otazka-znenie" rows="3"></textarea>
+         <textarea class="otazka-znenie form-control" rows="3"></textarea>
       </label>
       <div class="otazka-atributy-riadok">
-         <label>Body <input type="number" class="otazka-body" min="0" step="any"/></label>
-         <label><input type="checkbox" class="otazka-static"/> statická</label>
-         <label><input type="checkbox" class="otazka-bonus"/> bonusová</label>
-         <label><input type="checkbox" class="otazka-rating"/> rating</label>
-         <label class="deprecated-checkbox"><input type="checkbox" class="otazka-deprecated"/> deprecated</label>
+         <label>Body <input type="number" class="otazka-body form-control" min="0" step="any"/></label>
+         <label><input type="checkbox" class="otazka-static form-check-input"/> statická</label>
+         <label><input type="checkbox" class="otazka-bonus form-check-input"/> bonusová</label>
+         <label><input type="checkbox" class="otazka-rating form-check-input"/> rating</label>
+         <label class="deprecated-checkbox"><input type="checkbox" class="otazka-deprecated form-check-input"/> deprecated</label>
       </div>
       <div class="otazka-napovedy">
          <div class="otazka-napovedy-zoznam"></div>
          <button type="button" class="otazka-pridaj-napovedu btn btn-outline-secondary">+ celoplošná nápoveda</button>
       </div>
-      <label><input type="checkbox" class="otazka-ma-odpovede"/> má odpovede (MCQ)</label>
-      <label><input type="checkbox" class="otazka-ma-tabulku"/> má tabuľku</label>
+      <label><input type="checkbox" class="otazka-ma-odpovede form-check-input"/> má odpovede (MCQ)</label>
+      <label><input type="checkbox" class="otazka-ma-tabulku form-check-input"/> má tabuľku</label>
       <div class="otazka-atributy-riadok">
-         <label><input type="checkbox" class="otazka-ma-miesto"/> miesto na dopísanie v tlačenom teste</label>
+         <label><input type="checkbox" class="otazka-ma-miesto form-check-input"/> miesto na dopísanie v tlačenom teste</label>
          <label class="otazka-miesto-riadky-label">Počet riadkov
-            <input type="number" class="otazka-miesto-riadky" min="1" max="30" step="1"/>
+            <input type="number" class="otazka-miesto-riadky form-control" min="1" max="30" step="1"/>
          </label>
       </div>
       <fieldset class="otazka-tabulka-fieldset">
@@ -297,7 +297,7 @@ function vytvorFormularOtazky(data, jeMcq) {
             <button type="button" class="otazka-pridaj-vzor btn btn-outline-secondary">+ vzor</button>
          </div>
          <label>Kľúčové slová (oddelené čiarkou)
-            <input type="text" class="otazka-klucove-slova"/>
+            <input type="text" class="otazka-klucove-slova form-control"/>
          </label>
       </div>
       <div class="dialog-chyba"></div>
