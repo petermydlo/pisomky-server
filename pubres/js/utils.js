@@ -63,7 +63,7 @@ document.addEventListener('click', (e) => {
    fetch('/ai/feedback', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: new URLSearchParams({ test_id: testId, val: pomohlo, zapis_id: zapisId })
+      body: new URLSearchParams({ test_id: testId, val: pomohlo, zapis_id: zapisId, token: document.getElementById('hlavicka')?.getAttribute('token') || '' })
    });
    setTimeout(() => {
       bootstrap.Toast.getInstance(document.getElementById('liveToast'))?.hide();

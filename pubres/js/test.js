@@ -1,5 +1,26 @@
 document.addEventListener('DOMContentLoaded', () => {
    const hlavicka = document.getElementById('hlavicka');
+   const klucTestu = hlavicka.getAttribute('kluc');
+   const token = hlavicka.getAttribute('token') || '';
+   const PING_INTERVAL = 15000;
+
+   //prenajom testu (relacie.py): ping drzi prenajom, pri zatvoreni stranky sa uvolni; ak ho prevzal iny, server odpoveda 423
+   let pingTimer = null;
+   let prenajomStraceny = false;
+   function prenajomPrevzaty() {
+      if (prenajomStraceny) return;
+      prenajomStraceny = true;
+      clearInterval(pingTimer);
+      oznamDialog({nadpis: 'Test je otvorený inde', text: 'Tento test sa otvoril na inom mieste, preto sa odpovede z tejto stránky už neuložia. Zostanú tu zobrazené; otvorte test znovu až keď ho inde zatvoríte.'});
+   }
+   if (token) {
+      pingTimer = setInterval(() => {
+         fetch('/ping/' + klucTestu, { method: 'POST', body: new URLSearchParams({ token }) })
+            .then(resp => { if (resp.status === 423) prenajomPrevzaty(); })
+            .catch(() => {});
+      }, PING_INTERVAL);
+      window.addEventListener('pagehide', () => navigator.sendBeacon('/uvolni/' + klucTestu, new URLSearchParams({ token })));
+   }
 
    // Odkazy a.okno-odkaz sa otvoria v samostatnom okne (rovnake meno = jedno okno); bez JS ostava nova karta
    document.querySelectorAll('a.okno-odkaz').forEach(a => {
@@ -76,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const toastEl = document.getElementById('liveToast');
 
       return new Promise((resolve) => {
-         const params = new URLSearchParams({ test_id: testId, otazka_id: otazkaId });
+         const params = new URLSearchParams({ test_id: testId, otazka_id: otazkaId, token });
          const es = new EventSource(`/ai/napoveda?${params.toString()}`);
          let hintText = '';
          let completed = false;
@@ -183,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!await potvrdDialog({nadpis: 'Ukončiť písomku?', text: hlaska, potvrdit: 'Ukončiť písomku', zrusit: 'Späť k písomke', nebezpecne: true})) return;
       const kluc = hlavicka.getAttribute('kluc');
       const data = new URLSearchParams({
+         token,
          predmet:  hlavicka.getAttribute('predmet'),
          trieda:   hlavicka.getAttribute('trieda'),
          skupina:  hlavicka.getAttribute('skupina'),
@@ -193,7 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
          const resp = await fetch('/stoptime/' + kluc, { method: 'POST', body: data,
             headers: {'Content-Type': 'application/x-www-form-urlencoded'} });
          if (!resp.ok) {
-            if (resp.status === 404) zobrazNotifikaciu('Test nenájdený!');
+            if (resp.status === 423) prenajomPrevzaty();
+            else if (resp.status === 404) zobrazNotifikaciu('Test nenájdený!');
             else if (resp.status === 403) zobrazNotifikaciu('Nemáte oprávnenie na danú akciu. Kontaktujte svojho administrátora!');
             else if (resp.status === 500) zobrazNotifikaciu('Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr.');
             else zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
@@ -256,6 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
       udaje.append('skupina',  hlavicka.getAttribute('skupina'));
       udaje.append('kapitola', hlavicka.getAttribute('kapitola'));
       udaje.append('fileid',   hlavicka.getAttribute('fileid'));
+      udaje.append('token', token);
       if (withAnswers) {
          document.querySelectorAll("#odpovede input[type='radio']:checked:not([form])").forEach(el => {
             udaje.append(el.name, el.value);
@@ -277,7 +301,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setIcon(suborCaka ? 'unsaved' : 'ok');
          } else {
             setIcon('error');
-            if (resp.status === 403) zobrazNotifikaciu('Čas na odovzdanie odpovedí vypršal!');
+            if (resp.status === 423) prenajomPrevzaty();
+            else if (resp.status === 403) zobrazNotifikaciu('Čas na odovzdanie odpovedí vypršal!');
             else if (resp.status === 500) zobrazNotifikaciu('Vyskytla sa vnútorná chyba servera! Skúste to prosím neskôr.');
             else zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
          }

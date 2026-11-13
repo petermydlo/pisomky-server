@@ -25,6 +25,7 @@ from app.routers import ai
 from app.routers import ainapovedy
 from app.routers import importanswers
 from app.routers import aievaluate
+from app.routers import relacie
 from app.routers.aiproviders import get_provider
 from app.permissions import readonly_blokuje
 
@@ -114,6 +115,7 @@ app.include_router(ai.router)
 app.include_router(ainapovedy.router)
 app.include_router(importanswers.router)
 app.include_router(aievaluate.router)
+app.include_router(relacie.router)
 
 #adresar so statickymi zdrojmi
 app.mount('/pubres', StaticFiles(directory='./pubres'), name='pubres')
@@ -141,6 +143,7 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
    node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
       return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
+   token: str | None = ''
    try:
       stav = get_time_state(node, node.get_parent())
       if stav == 'before':
@@ -156,18 +159,23 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
          return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'pending'})
       xp = proc.new_xpath_processor()
       xp.set_context(xdm_item=node)
+      token = await run_in_threadpool(relacie.otvor, kluc)
+      if token is None:  #test pisu na inom mieste; obsah testu sa nevracia
+         return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'occupied'}, status_code=423)
       pocet_otazok = int(xp.evaluate_single('count(otazka)') or 0)
       predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, node)
       subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
       napovedy_zostatok = max(0, pocet_otazok - _spocitaj_napovedy_testu(subor, kluc))
       if edit:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'token': token}, xslt_pools=request.app.state.xslt_pools)
       else:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'token': token}, xslt_pools=request.app.state.xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
       #zaciatok citania chyby (cesty, Saxon) nema vidiet ziak; ucitel ma podrobnosti v logu
       request.app.state.logger.error(f'chyba view: {e}')
+      if token:  #stranku sa nepodarilo vyrobit, ziak token nedostal, prenajom by ho zbytocne zdrzal
+         await run_in_threadpool(relacie.uvolni, kluc, token)
       return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'error'}, status_code=500)
 
 @app.get('/admin/{kluc}', response_class=HTMLResponse)
@@ -183,10 +191,11 @@ async def adminview(request: Request, _: Annotated[str, Header(alias='X-Remote-U
       predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, node)
       subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
       napovedy_zostatok = max(0, pocet_otazok - _spocitaj_napovedy_testu(subor, kluc))
+      token = relacie.vydaj_ucitelsky_token(kluc)  #ucitel prenajom nevyzaduje ani neblokuje
       if edit:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'token': token}, xslt_pools=request.app.state.xslt_pools)
       else:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'token': token}, xslt_pools=request.app.state.xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
       request.app.state.logger.error(f'chyba adminview: {e}')

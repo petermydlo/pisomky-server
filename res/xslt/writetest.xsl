@@ -11,6 +11,7 @@
 
 <xsl:param name="admin" as="xs:boolean"/>
 <xsl:param name="napovedy_zostatok" as="xs:integer" required="yes"/>
+<xsl:param name="token" as="xs:string" select="''"/>
 
 <xsl:template match="test">
    <xsl:variable name="riestest" select="my:riestest(.)"/>
@@ -39,7 +40,7 @@
          <link rel="stylesheet" type="text/css" href="/pubres/css/testy.css"/>
       </head>
       <body>
-         <div id="hlavicka" class="neviditelny" kluc="{@id}" predmet="{../@predmet}" trieda="{../@trieda}" skupina="{../@skupina}" kapitola="{../@kapitola}" fileid="{../@fileid}"/>
+         <div id="hlavicka" class="neviditelny" kluc="{@id}" token="{$token}" predmet="{../@predmet}" trieda="{../@trieda}" skupina="{../@skupina}" kapitola="{../@kapitola}" fileid="{../@fileid}"/>
          <div class="flex-container-icon bg-info-subtle">
             <div id="save-status" title="Uložiť odpovede">
                <i class="bi bi-cloud-check text-success" id="save-icon"/>

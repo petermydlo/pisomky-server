@@ -16,10 +16,12 @@ import anyio
 import ollama
 from dotenv import load_dotenv
 from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, normalizuj_vzor, test_xml_path, xquery_to_string, xslt_to_string
-from app.mytypes import StringQuery, IntForm, StringForm
+from app.mytypes import StringQuery, StringQueryOptional, StringFormOptional, IntForm, StringForm
+from app.routers import relacie
 from anyio.streams.memory import MemoryObjectSendStream
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import HTTPException
 
 load_dotenv()
@@ -375,12 +377,14 @@ def _priprav_prompt(templates, predmet: str, otazka_id: str, znenie_text: str, m
 
 
 @router.get('/ai/napoveda')
-async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuery):
+async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuery, token: StringQueryOptional = None):
    proc = request.app.state.proc
    xsltpath = proc.new_xpath_processor()
    test_node = find_test(proc, test_id, admin=True, cache=request.app.state.kluc_cache)
    if not test_node:
       return JSONResponse({'error': 'Test nenájdený'}, status_code=404)
+   if not await run_in_threadpool(relacie.over, test_id, token):
+      return JSONResponse({'error': relacie.CHYBA_OBSADENE}, status_code=423)
 
    xsltpath.set_context(xdm_item=test_node)
    otazka = next((o for o in (xsltpath.evaluate('otazka') or []) if o.get_attribute_value('id') == otazka_id), None)
@@ -482,9 +486,10 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
          zamok.release()
 
 @router.post('/ai/feedback')
-async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis_id: StringForm):
+async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis_id: StringForm, token: StringFormOptional = None):
    if val not in (0, 1):  #do feedback XML (val 1/0/'') sa nesmie dostat ina hodnota
       raise HTTPException(status_code=400, detail='Neplatné hodnotenie')
+   await run_in_threadpool(relacie.over_alebo_403, test_id, token)
    try:
       proc = request.app.state.proc
       test_node = find_test(proc=proc, kluc=test_id, admin=True, cache=request.app.state.kluc_cache)
