@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
    //vykona zmenu tabu podla hash v URL
    function onHashChange() {
       const hash = window.location.hash;
-      const tab = hash ? document.querySelector(`div.nav [data-bs-toggle='tab'][href='${hash}']`) : null;
+      const tab = hash ? Array.from(document.querySelectorAll("div.nav [data-bs-toggle='tab']")).find(t => t.getAttribute('href') === hash) : null;
       if (tab)
          bootstrap.Tab.getOrCreateInstance(tab).show();
       else {
@@ -58,6 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(val.trim());
    }
 
+   //na chvilu zafarbi bunku (trieda cas-ok / cas-chyba)
+   function zablikaj(cell, trieda) {
+      cell.classList.add(trieda);
+      setTimeout(() => cell.classList.remove(trieda), 1500);
+   }
+
    //odosle zmenu casu na server
    async function odosliZmenuCasu(trigger, starypolicko, novy) {
       const data = skupinaData(trigger);
@@ -74,17 +80,14 @@ document.addEventListener('DOMContentLoaded', () => {
          });
          if (resp.ok) {
             starypolicko.textContent = novy;
-            cell.style.backgroundColor = 'rgba(var(--bs-success-rgb), 0.5)';
-            setTimeout(() => { cell.style.backgroundColor = ''; }, 1500);
+            zablikaj(cell, 'cas-ok');
          } else {
-            cell.style.backgroundColor = 'rgba(var(--bs-danger-rgb), 0.5)';
-            setTimeout(() => { cell.style.backgroundColor = ''; }, 1500);
+            zablikaj(cell, 'cas-chyba');
             chybaNotifikaciu(resp.status);
          }
       } catch (err) {
          console.error('Chyba:', err);
-         cell.style.backgroundColor = 'rgba(var(--bs-danger-rgb), 0.5)';
-         setTimeout(() => { cell.style.backgroundColor = ''; }, 1500);
+         zablikaj(cell, 'cas-chyba');
          zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
       }
    }
@@ -124,8 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
       btns.append(btnOk, btnDel, btnX);
 
       //skryjeme stary text a pero
-      starypolicko.style.display = 'none';
-      pen.style.display = 'none';
+      starypolicko.hidden = true;
+      pen.hidden = true;
       parentDiv.append(input, btns);
       input.focus(); input.select();
 
@@ -138,8 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       function zavriet() {
          input.remove(); btns.remove();
-         starypolicko.style.display = '';
-         pen.style.display = '';
+         starypolicko.hidden = false;
+         pen.hidden = false;
          if (collapseTarget) {
             collapseTarget.setAttribute('data-bs-toggle', collapseTarget.dataset.bsToggleDisabled);
             delete collapseTarget.dataset.bsToggleDisabled;
@@ -274,6 +277,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!btn) return;
       event.stopPropagation();
       event.preventDefault();
+      if (btn.classList.contains('caka')) return;   //PDF sa uz generuje
+      btn.classList.add('caka');
       const d = skupinaData(btn);
       const url = btn.classList.contains('results') ? '/admin/downloadresults'
                 : btn.classList.contains('tests')   ? '/admin/downloadtests'
@@ -303,6 +308,8 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
          console.error('Chyba:', err);
          zobrazNotifikaciu('Vyskytla sa chyba! Skúste to prosím neskôr.');
+      } finally {
+         btn.classList.remove('caka');
       }
    });
 
@@ -345,17 +352,26 @@ document.addEventListener('DOMContentLoaded', () => {
       if (stav.bezi) text += ' (generuje sa…)';
       else if (stav.hotove < stav.celkom) text += ' — kliknutím predgenerovať';
       ikona.title = text;
+      naplanujKontrolu(ikona, stav.bezi);
+   }
+
+   function naplanujKontrolu(ikona, bezi) {
       clearTimeout(napovedyCasovace.get(ikona));
-      if (stav.bezi) napovedyCasovace.set(ikona, setTimeout(() => nacitajNapovedy(ikona), NAPOVEDY_POLL_MS));
+      if (bezi) napovedyCasovace.set(ikona, setTimeout(() => nacitajNapovedy(ikona), NAPOVEDY_POLL_MS));
    }
 
    async function nacitajNapovedy(ikona) {
       try {
          const resp = await fetch('/admin/napovedy/stav?' + new URLSearchParams(skupinaData(ikona)));
          if (resp.ok) napovedyStav(ikona, await resp.json());
-         else ikona.title = 'AI nápovedy: stav sa nepodarilo načítať';
+         else {
+            ikona.title = 'AI nápovedy: stav sa nepodarilo načítať';
+            naplanujKontrolu(ikona, ikona.classList.contains('napovedy-bezi'));
+         }
       } catch (err) {
          console.error('Chyba:', err);
+         //prechodna chyba siete nesmie zastavit sledovanie bezacej ulohy
+         naplanujKontrolu(ikona, ikona.classList.contains('napovedy-bezi'));
       }
    }
 

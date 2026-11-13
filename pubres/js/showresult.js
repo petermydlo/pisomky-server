@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
          });
          let totalPoints = autoBody;
          document.querySelectorAll("input[type='number'][id^='h_'], input[type='number'][id^='bh_']").forEach(el => {
-            totalPoints += parseFloat(el.value);
+            totalPoints += parseFloat(el.value) || 0;   //prazdne pole (neohodnotene) sa nepocita
          });
          totalPoints = Math.max(Math.min(totalPoints, maxPoints), 0);
          const percenta = totalPoints / maxPoints * 100 + 1e-9;   //tolerancia plavajucej ciarky pri porovnani s hranicami
@@ -83,6 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
    document.getElementById('ai-evaluate-btn').addEventListener('click', async (e) => {
       e.preventDefault();
       const btn = e.currentTarget;
+      if (btn.dataset.bezi) return;   //dvojklik by spustil druhe (platene) volanie AI
+      btn.dataset.bezi = '1';
       btn.querySelector('i').classList.replace('bi-robot', 'bi-hourglass-split');
       zobrazNotifikaciu('AI vyhodnocuje otázky...', 'info', 'AI', 10000);
 
@@ -101,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
          if (!data.ok) {
             const msg = data.kod === 'no_questions'
                ? 'Žiadne otvorené otázky so vzorom na vyhodnotenie.'
-               : `Chyba: ${data.error}`;
+               : `Chyba: ${data.error ?? data.detail ?? 'neznáma chyba'}`;
             zobrazNotifikaciu(msg, 'warning', 'AI');
             return;
          }
@@ -126,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
          zobrazNotifikaciu('Chyba pri komunikácii so serverom.', 'danger', 'AI');
       } finally {
          btn.querySelector('i').classList.replace('bi-hourglass-split', 'bi-robot');
+         delete btn.dataset.bezi;
       }
    });
 });

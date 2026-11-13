@@ -16,14 +16,17 @@ document.addEventListener('DOMContentLoaded', () => {
    document.querySelectorAll('.rating-wrap').forEach(wrap => {
       const stars = wrap.querySelectorAll('.rating-star');
       const radios = Array.from(wrap.querySelectorAll('input[type=radio]'));
-      radios.forEach(radio => {
-         radio.addEventListener('change', () => {
-            const idx = radios.indexOf(radio);
-            stars.forEach((star, j) => {
-               star.style.color = j < idx ? 'var(--bs-warning)' : 'var(--bs-secondary-bg)';
-            });
+      //prve radio je skryte "-" (nezodpovedane); hviezdy pred vybranym radiom svietia
+      function rozsvietHviezdy(radio) {
+         const idx = radios.indexOf(radio);
+         stars.forEach((star, j) => {
+            star.classList.toggle('rating-zapnuta', j < idx);
+            star.classList.toggle('rating-vypnuta', j >= idx);
          });
-      });
+      }
+      radios.forEach(radio => radio.addEventListener('change', () => rozsvietHviezdy(radio)));
+      const vybrane = radios.find(r => r.checked);
+      if (vybrane && radios.indexOf(vybrane) > 0) rozsvietHviezdy(vybrane);
    });
 
    // Zelená fajka pri otázke s vybranou odpoveďou (skryté radio "-" = nezodpovedané)
@@ -47,13 +50,9 @@ document.addEventListener('DOMContentLoaded', () => {
          if (btn.classList.contains('hint-vycerpany')) return;
          const otazkaId = btn.dataset.otazkaId;
          const testId = btn.dataset.testId;
-         btn.style.opacity = '0.5';
-         btn.style.pointerEvents = 'none';
+         btn.classList.add('caka');
 
-         poziadajAINapovedu(otazkaId, testId).finally(() => {
-            btn.style.opacity = '';
-            btn.style.pointerEvents = '';
-         });
+         poziadajAINapovedu(otazkaId, testId).finally(() => btn.classList.remove('caka'));
 
          document.querySelectorAll('#toastFeedback .feedback-btn').forEach(el => {
             el.dataset.testId = testId;
@@ -67,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
    //odosle otazku na AI a zobrazi odpoved cez SSE streaming
    function poziadajAINapovedu(otazkaId, testId) {
       if (ukonciPredchadzajucu) ukonciPredchadzajucu();
-      const toast = zabezpecToastKontajner('warning', 'AI Help (experimental)', false);
+      const toast = zabezpecToastKontajner('warning', 'AI Help (experimental)');
       const toastMessage = document.getElementById('toastMessage');
       const toastFeedback = document.getElementById('toastFeedback');
       toastMessage.innerHTML = '<strong>AI is thinking...</strong>';
@@ -188,8 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
          trieda:   hlavicka.getAttribute('trieda'),
          skupina:  hlavicka.getAttribute('skupina'),
          kapitola: hlavicka.getAttribute('kapitola'),
-         fileid:   hlavicka.getAttribute('fileid'),
-         stop:     terazFormatovany()
+         fileid:   hlavicka.getAttribute('fileid')
       });
       try {
          const resp = await fetch('/stoptime/' + kluc, { method: 'POST', body: data,
@@ -223,7 +221,32 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (stav === 'error')   icon.classList.add('bi-cloud-slash', 'text-danger');
    }
 
+   //naraz bezi najviac jedno ulozenie, aby pomalsie starsie nepredbehlo a neprepisalo novsie; ulozenie vyziadane pocas behu
+   //sa spusti po jeho skonceni (a zozbiera aktualny stav formulara)
+   let ukladaSa = false;
+   let cakajuceUkladanie = null;
    async function saveAnswers(withAnswers, withFiles) {
+      if (ukladaSa) {
+         cakajuceUkladanie = {
+            withAnswers: withAnswers || !!cakajuceUkladanie?.withAnswers,
+            withFiles: withFiles || !!cakajuceUkladanie?.withFiles
+         };
+         return;
+      }
+      ukladaSa = true;
+      try {
+         await odosliOdpovede(withAnswers, withFiles);
+      } finally {
+         ukladaSa = false;
+         if (cakajuceUkladanie) {
+            const dalsie = cakajuceUkladanie;
+            cakajuceUkladanie = null;
+            saveAnswers(dalsie.withAnswers, dalsie.withFiles);
+         }
+      }
+   }
+
+   async function odosliOdpovede(withAnswers, withFiles) {
       setIcon('saving');
       const kluc = hlavicka.getAttribute('kluc');
       const udaje = new FormData();

@@ -98,6 +98,15 @@ input.casInput {
    color: red;
 }
 
+/* krátke zafarbenie bunky po zmene času (overviewtests.js, zablikaj) */
+.cas-ok {
+   background-color: rgba(var(--bs-success-rgb), 0.5);
+}
+
+.cas-chyba {
+   background-color: rgba(var(--bs-danger-rgb), 0.5);
+}
+
 .casBtn-cancel {
    color: grey;
 }
@@ -177,6 +186,11 @@ button {
    border-color: var(--bs-warning-border-subtle);
    transform: scale(1.15) rotate(10deg);
    box-shadow: 0 0.125rem 0.25rem rgba(var(--bs-black-rgb), 0.075);
+}
+
+.ai-napoveda-btn.caka {
+   opacity: 0.5;
+   pointer-events: none;
 }
 
 .ai-napoveda-btn.hint-vycerpany {
@@ -259,6 +273,8 @@ button {
 .rating-label { cursor: pointer; }
 .rating-label .rating-star { font-size: 1.5em; color: var(--bs-gray-400); }
 .rating-label input:checked ~ .rating-star { color: var(--bs-warning); }
+.rating-wrap .rating-label input ~ .rating-star.rating-zapnuta { color: var(--bs-warning); }
+.rating-wrap .rating-label input ~ .rating-star.rating-vypnuta { color: var(--bs-secondary-bg); }
 
 /* Z-index pre kontajner toastov, aby bol nad všetkým */
 .toast-container {
@@ -1085,6 +1101,7 @@ div:hover > span.penIcon.editActions {
 .codes   { color: green; padding: 0.2rem; font-weight: bold; }
 .tests   { color: blue; padding: 0.2rem; }
 .results { color: orange; padding: 0.2rem; font-weight: bold; }
+.codes.caka, .tests.caka, .results.caka { opacity: 0.4; cursor: progress; pointer-events: none; }
 .groupstatistics { color: brown; padding: 0.2rem; font-weight: bold; }
 .feedback { color: purple; padding: 0.2rem; font-weight: bold; cursor: pointer; }
 .feedback.disabled { color: lightgrey; cursor: not-allowed; }
