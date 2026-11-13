@@ -352,7 +352,6 @@ body.admin-overview {
 }
 
 .span8 { --colspan: 8; }
-.span2 { --colspan: 2; }
 
 /* 4. FLEX KONTAJNERY A ROZLOŽENIE (Layout) */
 .flex-container-icon {
@@ -1023,9 +1022,6 @@ div:hover > span.penIcon.editActions {
    border-left: 3px solid silver;
    padding-left: 0.5rem;
    margin-block: 0.25rem;
-}
-
-.napoveda-riadok {
    display: flex;
    gap: 0.25rem;
    align-items: flex-start;

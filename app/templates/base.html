@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="sk">
    <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
       <title>{% block title %}Písomkový server{% endblock %}</title>
       {% block meta %}{% endblock %}
       <link rel="icon" type="image/svg+xml" href="/pubres/img/faviconP.svg"/>
@@ -10,7 +12,6 @@
    </head>
    <body>
       {% block body %}{% endblock %}
-      <script nonce="NGINX_CSP_NONCE" src="https://cdn.jsdelivr.net/npm/jquery@4.0.0/dist/jquery.min.js" integrity="sha384-fgGyf7Mo7DURSOMnOy7ed+dkq5Job205Gnzu6QIg0BOHKaqt4D76Dt8VlDCzcMHV" crossorigin="anonymous"><!--jQuery--></script>
       {% block extra_scripts %}{% endblock %}
    </body>
 </html>
