@@ -215,7 +215,7 @@
 
 <xsl:template match="znenie">
    <xsl:apply-templates/>
-   <xsl:if test="../@body"> (<xsl:value-of select="my:body-text(../@body)"/>b)</xsl:if>
+   <xsl:if test="../@body and ../@body != 0"> (<xsl:value-of select="my:body-text(../@body)"/>b)</xsl:if>
    <xsl:if test="not(../@body)"> (1b)</xsl:if>
 </xsl:template>
 
@@ -248,14 +248,5 @@
       </fo:block>
    </fo:table-cell>
 </xsl:template>
-
-<xsl:template match="miesto">
-   <fo:table-row keep-with-previous.within-page="always" height="30pt">
-      <fo:table-cell keep-together.within-page="always" number-columns-spanned="2">
-         <fo:block/>
-      </fo:table-cell>
-   </fo:table-row>
-</xsl:template>
-
 
 </xsl:stylesheet>

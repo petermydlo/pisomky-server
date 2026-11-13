@@ -101,6 +101,7 @@ let $otazky :=
                    </otazka>
          else
             <otazka id="{$otazka_id}" nazov="{$q_otazka/@nazov}" kategoria="{$kategoria_id}"
+                      neohodnotene="1"
                       body="0"
                       maxbody="0"
                       percento="0">

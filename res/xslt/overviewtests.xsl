@@ -86,7 +86,7 @@
                         <div class="grid skupinaToggle bg-info bg-opacity-25" role="button"
                              data-bs-toggle="collapse" data-bs-target="#{$skupina_id}">
                            <div class="zalomenie grid-span span8">
-                              <span id="trieda"><xsl:value-of select="@trieda"/></span><span id="skupina"><xsl:value-of select="@skupina"/></span>
+                              <span><xsl:value-of select="@trieda"/></span><span><xsl:value-of select="@skupina"/></span>
                            </div>
                         </div>
                         <div id="{$skupina_id}" class="collapse"
@@ -112,13 +112,13 @@
                                     <xsl:if test="$ma-answers"><i class="bi bi-pencil text-warning" title="Odpovede"/></xsl:if>
                                     <xsl:if test="$ma-test"><i class="bi bi-journal-text text-blue" title="Test"/></xsl:if>
                                  </div>
-                                 <div id="kapitola">
+                                 <div class="kapitola">
                                     <xsl:value-of select="@kapitola"/>
                                     <xsl:if test="@fileid">
                                        <span class="sive"> (<xsl:value-of select="@fileid"/>)</span>
                                     </xsl:if>
                                  </div>
-                                 <div id="gendat" class="sive"><xsl:value-of select="$testy-el/@gendat"/></div>
+                                 <div class="sive gendat"><xsl:value-of select="$testy-el/@gendat"/></div>
                                  <div>
                                     <span><xsl:value-of select="$testy-el/@start"/></span>
                                     <xsl:if test="$ma-test"><span class="startS penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></xsl:if>
@@ -241,8 +241,8 @@
       </input>
    </div>
    <div class="truncate" title="{@id}"><a class="kluc" href="/admin/{@id}"><xsl:value-of select="@id"/></a></div>
-   <div><span><xsl:value-of select="@start"/></span><span id="{@id}" class="startT penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
-   <div><span><xsl:value-of select="@stop"/></span><span id="{@id}" class="stopT penIcon" title="Stop time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
+   <div><span><xsl:value-of select="@start"/></span><span data-kluc="{@id}" class="startT penIcon" title="Start time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
+   <div><span><xsl:value-of select="@stop"/></span><span data-kluc="{@id}" class="stopT penIcon" title="Stop time" data-bs-toggle="collapse" data-bs-target=""><i class="bi bi-pencil"/></span></div>
    <div><xsl:value-of select="$vybtesty/odpovede/test[@id = $rid]/@dat"/></div>
    <xsl:variable name="riestest" select="my:riestest(.)"/>
    <div>

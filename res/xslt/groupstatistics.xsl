@@ -6,9 +6,9 @@
 <xsl:output method="html" version="5" indent="yes" encoding="UTF-8"/>
 <xsl:import href="head.xsl"/>
 <xsl:import href="formatbodov.xsl"/>
+<xsl:import href="common_html.xsl"/>
 
 <xsl:template match="statistika">
-   <xsl:variable name="tests" select="doc('../xml/tests/' || @predmet || '/' || @predmet || '_' || @trieda || @skupina || '_' || @kapitola || '_' || @fileid || '.xml')"/>
    <html lang="sk">
       <head>
          <title>Štatistika skupiny: <xsl:value-of select="@predmet"/> <xsl:value-of select="@trieda"/><xsl:value-of select="@skupina"/> <xsl:value-of select="@kapitola"/></title>
@@ -21,7 +21,7 @@
          <link rel="stylesheet" type="text/css" href="/pubres/css/testy.css"/>
          <style nonce="NGINX_CSP_NONCE">
             <xsl:for-each select="//otazka">
-               <xsl:value-of select="'.pb-' || translate(@id, '.', '-') || ' { width: ' || my:percent-text(@percento) || '%; }'"/>
+               <xsl:value-of select="'.pb-' || @id || ' { width: ' || my:percent-text(@percento) || '%; }'"/>
             </xsl:for-each>
          </style>
       </head>
@@ -52,7 +52,7 @@
                <div class="nav nav-tabs flex-container-tab bg-info-subtle bold">
                   <xsl:for-each select="kategoria">
                      <div>
-                        <a class="nav-link navbar-brand" data-bs-toggle="tab" href="#{'kat_' || @id}" title="{if (@nazov != '') then @nazov else @id}">
+                        <a class="nav-link navbar-brand" data-bs-toggle="tab" href="#{'kat_' || @id}">
                            <xsl:if test="position() = 1">
                               <xsl:attribute name="class">nav-link navbar-brand active</xsl:attribute>
                            </xsl:if>
@@ -70,9 +70,7 @@
                   </xsl:for-each>
                </div>
                <div class="tab-content">
-                  <xsl:apply-templates select="kategoria">
-                     <xsl:with-param name="tests" select="$tests" tunnel="yes"/>
-                  </xsl:apply-templates>
+                  <xsl:apply-templates select="kategoria"/>
                </div>
             </xsl:when>
             <xsl:otherwise>
@@ -99,6 +97,7 @@
    <xsl:variable name="collapse_id" select="'gs_' || @id"/>
    <xsl:variable name="farba">
       <xsl:choose>
+         <xsl:when test="@neohodnotene">bg-secondary-subtle</xsl:when>
          <xsl:when test="xs:decimal(@percento) >= 75">bg-success-subtle</xsl:when>
          <xsl:when test="xs:decimal(@percento) >= 50">bg-warning-subtle</xsl:when>
          <xsl:otherwise>bg-danger-subtle</xsl:otherwise>
@@ -115,11 +114,18 @@
             <xsl:text>] </xsl:text>
          </div>
          <div class="progress gs-progress">
-            <div class="progress-bar pb-{@id}" role="progressbar"
-                 aria-valuenow="{@percento}" aria-valuemin="0" aria-valuemax="100">
-               <xsl:value-of select="my:percent-text(@percento)"/>
-               <xsl:text>%</xsl:text>
-            </div>
+            <xsl:choose>
+               <xsl:when test="@neohodnotene">
+                  <div class="w-100 text-center">–</div>
+               </xsl:when>
+               <xsl:otherwise>
+                  <div class="progress-bar pb-{@id}" role="progressbar"
+                       aria-valuenow="{@percento}" aria-valuemin="0" aria-valuemax="100">
+                     <xsl:value-of select="my:percent-text(@percento)"/>
+                     <xsl:text>%</xsl:text>
+                  </div>
+               </xsl:otherwise>
+            </xsl:choose>
          </div>
          <xsl:if test="@spravne or @nespravne">
             <span class="tooltip-wrap gs-ikona">
@@ -156,15 +162,6 @@
    </div>
 </xsl:template>
 
-<xsl:template match="obrazok">
-   <div class="centrovane">
-      <img src="/pubres/img/{@src}">
-         <xsl:if test="@vyska"><xsl:attribute name="height"><xsl:value-of select="@vyska"/>px</xsl:attribute></xsl:if>
-         <xsl:if test="@sirka"><xsl:attribute name="width"><xsl:value-of select="@sirka"/>px</xsl:attribute></xsl:if>
-      </img>
-   </div>
-</xsl:template>
-
 <xsl:template match="ref">
    <xsl:variable name="ref_id" select="@id"/>
    <xsl:variable name="otazka" select="//otazka[@id = $ref_id]"/>
@@ -183,12 +180,6 @@
       <xsl:if test="position() > 1"><xsl:text> / </xsl:text></xsl:if>
       <xsl:apply-templates/>
    </xsl:for-each>
-</xsl:template>
-
-<xsl:template match="text()">
-   <xsl:if test="normalize-space(.)">
-      <xsl:value-of select="."/>
-   </xsl:if>
 </xsl:template>
 
 </xsl:stylesheet>

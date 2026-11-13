@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
          predmet:  el.closest('.tab-pane.active').id,
          trieda:   skupinaRows.dataset.trieda,
          skupina:  skupinaRows.dataset.skupina,
-         kapitola: skupinaDiv.querySelector('#kapitola').firstChild.textContent,
+         kapitola: skupinaDiv.querySelector('.kapitola').firstChild.textContent,
          fileid:   skupinaDiv.dataset.fileid
       };
    }
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
    //odosle zmenu casu na server
    async function odosliZmenuCasu(trigger, starypolicko, novy) {
       const data = skupinaData(trigger);
-      if (trigger.matches('.startT, .stopT')) data.kluc = trigger.id;
+      if (trigger.matches('.startT, .stopT')) data.kluc = trigger.dataset.kluc;
       if (trigger.matches('.startS, .startT')) data.start = novy;
       else data.stop = novy;
 
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
          });
          if (resp.ok) {
             const novyGendat = await resp.text();
-            btn.closest('div.skupina').querySelector('#gendat').textContent = novyGendat;
+            btn.closest('div.skupina').querySelector('.gendat').textContent = novyGendat;
          } else {
             chybaNotifikaciu(resp.status);
          }
