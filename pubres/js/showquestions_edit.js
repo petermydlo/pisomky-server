@@ -88,8 +88,8 @@ function vytvorFormularKategorie(data) {
       </div>
       <div class="dialog-chyba"></div>
       <div class="dialog-tlacidla">
-         <button type="button" class="kat-zrus">Zrušiť</button>
-         <button type="button" class="kat-uloz">Uložiť</button>
+         <button type="button" class="kat-zrus btn btn-outline-secondary">Zrušiť</button>
+         <button type="button" class="kat-uloz btn btn-outline-primary">Uložiť</button>
       </div>
    `;
    form.querySelector('.kat-nazov').value = data.nazov || '';
@@ -185,7 +185,7 @@ function riadokOdpoved(odp) {
       </label>
       <label><input type="checkbox" class="odp-spravna"/> správna</label>
       <div class="odp-napovedy"></div>
-      <button type="button" class="odp-pridaj-napovedu">+ nápoveda k tejto odpovedi</button>
+      <button type="button" class="odp-pridaj-napovedu btn btn-outline-secondary">+ nápoveda k tejto odpovedi</button>
    `;
    div.querySelector('.odp-text').value = odp.text;
    div.querySelector('.odp-spravna').checked = odp.spravna === '1';
@@ -207,7 +207,7 @@ function aktualizujViditelnostNapovedi(riadokOdp) {
 function riadokNapoveda(text) {
    const div = document.createElement('div');
    div.className = 'napoveda-riadok';
-   div.innerHTML = `<textarea class="napoveda-text" rows="1"></textarea><button type="button" class="napoveda-odstran">×</button>`;
+   div.innerHTML = `<textarea class="napoveda-text" rows="1"></textarea><button type="button" class="napoveda-odstran btn btn-outline-secondary">×</button>`;
    div.querySelector('.napoveda-text').value = text || '';
    div.querySelector('.napoveda-odstran').addEventListener('click', () => div.remove());
    return div;
@@ -216,7 +216,7 @@ function riadokNapoveda(text) {
 function riadokVzor(text) {
    const div = document.createElement('div');
    div.className = 'napoveda-riadok';
-   div.innerHTML = `<textarea class="vzor-text" rows="2"></textarea><button type="button" class="napoveda-odstran">×</button>`;
+   div.innerHTML = `<textarea class="vzor-text" rows="2"></textarea><button type="button" class="napoveda-odstran btn btn-outline-secondary">×</button>`;
    div.querySelector('.vzor-text').value = text || '';
    div.querySelector('.napoveda-odstran').addEventListener('click', () => div.remove());
    return div;
@@ -270,7 +270,7 @@ function vytvorFormularOtazky(data, jeMcq) {
       </div>
       <div class="otazka-napovedy">
          <div class="otazka-napovedy-zoznam"></div>
-         <button type="button" class="otazka-pridaj-napovedu">+ celoplošná nápoveda</button>
+         <button type="button" class="otazka-pridaj-napovedu btn btn-outline-secondary">+ celoplošná nápoveda</button>
       </div>
       <label><input type="checkbox" class="otazka-ma-odpovede"/> má odpovede (MCQ)</label>
       <label><input type="checkbox" class="otazka-ma-tabulku"/> má tabuľku</label>
@@ -288,13 +288,13 @@ function vytvorFormularOtazky(data, jeMcq) {
       <fieldset class="otazka-odpovede-fieldset">
          <legend>Odpovede</legend>
          <div class="otazka-odpovede"></div>
-         <button type="button" class="otazka-pridaj-odpoved">+ odpoveď</button>
+         <button type="button" class="otazka-pridaj-odpoved btn btn-outline-secondary">+ odpoveď</button>
       </fieldset>
       <div class="otazka-otvorena">
          <div class="otazka-vzory">
             Vzory (každý je samostatná správna odpoveď, môže mať viac riadkov)
             <div class="otazka-vzory-zoznam"></div>
-            <button type="button" class="otazka-pridaj-vzor">+ vzor</button>
+            <button type="button" class="otazka-pridaj-vzor btn btn-outline-secondary">+ vzor</button>
          </div>
          <label>Kľúčové slová (oddelené čiarkou)
             <input type="text" class="otazka-klucove-slova"/>
@@ -302,8 +302,8 @@ function vytvorFormularOtazky(data, jeMcq) {
       </div>
       <div class="dialog-chyba"></div>
       <div class="dialog-tlacidla">
-         <button type="button" class="otazka-zrus">Zrušiť</button>
-         <button type="button" class="otazka-uloz">Uložiť</button>
+         <button type="button" class="otazka-zrus btn btn-outline-secondary">Zrušiť</button>
+         <button type="button" class="otazka-uloz btn btn-outline-primary">Uložiť</button>
       </div>
    `;
    const znenieRaw = (data.znenie || '').replace(/^<znenie[^>]*>/, '').replace(/<\/znenie>$/, '');

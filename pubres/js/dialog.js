@@ -38,9 +38,11 @@ function otvorDialog({nadpis, polia, potvrdit, ulozit}) {
    tlacidla.className = 'dialog-tlacidla';
    const zrus = document.createElement('button');
    zrus.type = 'button';
+   zrus.className = 'btn btn-outline-secondary';
    zrus.textContent = 'Zrušiť';
    const ok = document.createElement('button');
    ok.type = 'submit';
+   ok.className = 'btn btn-outline-primary';
    ok.textContent = potvrdit;
    tlacidla.append(zrus, ok);
    form.appendChild(tlacidla);
@@ -97,11 +99,13 @@ function potvrdDialog({nadpis, text, potvrdit = 'Potvrdiť', zrusit = 'Zrušiť'
       tlacidla.className = 'dialog-tlacidla';
       const zrus = document.createElement('button');
       zrus.type = 'button';
+      zrus.className = 'btn btn-outline-secondary';
       zrus.textContent = zrusit;
       const ok = document.createElement('button');
       ok.type = 'submit';
+      ok.className = 'btn btn-outline-primary';
       ok.textContent = potvrdit;
-      if (nebezpecne) ok.className = 'dialog-nebezpecne';
+      if (nebezpecne) ok.className = 'btn btn-outline-danger';
       tlacidla.append(zrus, ok);
       form.appendChild(tlacidla);
 
@@ -138,6 +142,7 @@ function oznamDialog({nadpis = 'Chyba', text}) {
       tlacidla.className = 'dialog-tlacidla';
       const ok = document.createElement('button');
       ok.type = 'submit';
+      ok.className = 'btn btn-outline-primary';
       ok.textContent = 'Zavrieť';
       tlacidla.appendChild(ok);
       form.append(hlavicka, odstavec, tlacidla);
@@ -189,11 +194,13 @@ function vyberDialog({nadpis, text, moznosti, potvrdit, nebezpecne = false}) {
       tlacidla.className = 'dialog-tlacidla';
       const zrus = document.createElement('button');
       zrus.type = 'button';
+      zrus.className = 'btn btn-outline-secondary';
       zrus.textContent = 'Zrušiť';
       const ok = document.createElement('button');
       ok.type = 'submit';
+      ok.className = 'btn btn-outline-primary';
       ok.textContent = potvrdit;
-      if (nebezpecne) ok.className = 'dialog-nebezpecne';
+      if (nebezpecne) ok.className = 'btn btn-outline-danger';
       tlacidla.append(zrus, ok);
       form.appendChild(tlacidla);
 

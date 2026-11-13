@@ -36,8 +36,8 @@ function zobrazXmlTabulky(xml) {
          <textarea class="tabulka-xml-text" rows="16" readonly spellcheck="false"></textarea>
          <div class="dialog-tlacidla">
             <span class="tabulka-xml-info"></span>
-            <button type="button" class="tabulka-xml-kopiruj">Kopírovať</button>
-            <button type="submit">Zavrieť</button>
+            <button type="button" class="tabulka-xml-kopiruj btn btn-outline-secondary">Kopírovať</button>
+            <button type="submit" class="btn btn-outline-primary">Zavrieť</button>
          </div>
       </form>`;
    const text = dialog.querySelector('.tabulka-xml-text');
@@ -74,8 +74,8 @@ const PLAINTEXT_ONLY = (() => {
 
 const HTML_EDITORA_TABULKY = `
    <div class="tabulka-nastroje">
-      <button type="button" class="tabulka-vloz-otvor">Vložiť zo schránky</button>
-      <button type="button" class="tabulka-xml-otvor">Zobraz XML tabuľky</button>
+      <button type="button" class="tabulka-vloz-otvor btn btn-outline-secondary">Vložiť zo schránky</button>
+      <button type="button" class="tabulka-xml-otvor btn btn-outline-secondary">Zobraz XML tabuľky</button>
    </div>
    <div class="tabulka-nastroje">
       <label><input type="checkbox" class="tabulka-hlavicka"/> prvý riadok je hlavička</label>
@@ -84,8 +84,8 @@ const HTML_EDITORA_TABULKY = `
    <div class="tabulka-chyba"></div>
    <div class="tabulka-mriezka"></div>
    <div class="tabulka-nastroje">
-      <button type="button" class="tabulka-pridaj-riadok">+ riadok</button>
-      <button type="button" class="tabulka-pridaj-stlpec">+ stĺpec</button>
+      <button type="button" class="tabulka-pridaj-riadok btn btn-outline-secondary">+ riadok</button>
+      <button type="button" class="tabulka-pridaj-stlpec btn btn-outline-secondary">+ stĺpec</button>
    </div>
    <dialog class="tabulka-vkladanie">
       <div class="tabulka-vloz-nastavenia">
@@ -103,8 +103,8 @@ const HTML_EDITORA_TABULKY = `
       <div class="tabulka-vloz-nahlad"></div>
       <div class="tabulka-vloz-chyba"></div>
       <div class="tabulka-vloz-tlacidla">
-         <button type="button" class="tabulka-vloz-zrus">Zrušiť</button>
-         <button type="button" class="tabulka-vloz-vloz">Vložiť</button>
+         <button type="button" class="tabulka-vloz-zrus btn btn-outline-secondary">Zrušiť</button>
+         <button type="button" class="tabulka-vloz-vloz btn btn-outline-primary">Vložiť</button>
       </div>
    </dialog>`;
 

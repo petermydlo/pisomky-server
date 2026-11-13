@@ -631,10 +631,9 @@ div:hover > span.penIcon.editActions {
 }
 
 .predmetRow {
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   gap: 0.5rem;
+   position: relative;
+   width: fit-content;
+   margin-inline: auto;
 }
 
 .predmetRow .inputW {
@@ -642,6 +641,11 @@ div:hover > span.penIcon.editActions {
 }
 
 .predmetActions {
+   position: absolute;
+   left: 100%;
+   top: 50%;
+   transform: translateY(-50%);
+   margin-left: 0.5rem;
    display: inline-flex;
    align-items: center;
    gap: 0.5rem;
@@ -1347,103 +1351,11 @@ table.tabulka input.bunka-siroka {
    white-space: pre-line;
 }
 
-.dialog-okno button,
-.tabulka-vloz-tlacidla button,
-.tabulka-nastroje button,
-.otazka-formular .kat-zrus,
-.otazka-formular .otazka-zrus,
-.otazka-formular .kat-uloz,
-.otazka-formular .otazka-uloz,
-.otazka-formular .otazka-pridaj-napovedu,
-.otazka-formular .otazka-pridaj-odpoved,
-.otazka-formular .otazka-pridaj-vzor,
-.otazka-formular .odp-pridaj-napovedu,
-.otazka-formular .napoveda-odstran,
-.tabulka-vloz-otvor {
+.dialog-okno .btn,
+.tabulka-vloz-tlacidla .btn,
+.tabulka-nastroje .btn,
+.otazka-formular .btn {
    margin: 0;
-   padding: 0.45rem 1.1rem;
-   border: 1px solid #ced4da;
-   border-radius: 0.4rem;
-   background: white;
-   color: #212529;
-   font: inherit;
-   cursor: pointer;
-}
-
-.dialog-okno button:hover:not(:disabled),
-.tabulka-vloz-tlacidla button:hover:not(:disabled),
-.tabulka-nastroje button:hover:not(:disabled),
-.otazka-formular .kat-zrus:hover:not(:disabled),
-.otazka-formular .otazka-zrus:hover:not(:disabled),
-.otazka-formular .kat-uloz:hover:not(:disabled),
-.otazka-formular .otazka-uloz:hover:not(:disabled),
-.otazka-formular .otazka-pridaj-napovedu:hover:not(:disabled),
-.otazka-formular .otazka-pridaj-odpoved:hover:not(:disabled),
-.otazka-formular .otazka-pridaj-vzor:hover:not(:disabled),
-.otazka-formular .odp-pridaj-napovedu:hover:not(:disabled),
-.otazka-formular .napoveda-odstran:hover:not(:disabled),
-.tabulka-vloz-otvor:hover:not(:disabled) {
-   background: #e9ecef;
-}
-
-.dialog-okno button[type="submit"],
-.tabulka-vloz-tlacidla .tabulka-vloz-vloz,
-.otazka-formular .kat-uloz,
-.otazka-formular .otazka-uloz {
-   background: #0d6efd;
-   border-color: #0d6efd;
-   color: white;
-}
-
-.dialog-okno button[type="submit"]:hover:not(:disabled),
-.tabulka-vloz-tlacidla .tabulka-vloz-vloz:hover:not(:disabled),
-.otazka-formular .kat-uloz:hover:not(:disabled),
-.otazka-formular .otazka-uloz:hover:not(:disabled) {
-   background: #0b5ed7;
-}
-
-.dialog-okno button:disabled,
-.tabulka-vloz-tlacidla button:disabled,
-.tabulka-nastroje button:disabled,
-.otazka-formular .kat-zrus:disabled,
-.otazka-formular .otazka-zrus:disabled,
-.otazka-formular .kat-uloz:disabled,
-.otazka-formular .otazka-uloz:disabled,
-.otazka-formular .otazka-pridaj-napovedu:disabled,
-.otazka-formular .otazka-pridaj-odpoved:disabled,
-.otazka-formular .otazka-pridaj-vzor:disabled,
-.otazka-formular .odp-pridaj-napovedu:disabled,
-.otazka-formular .napoveda-odstran:disabled,
-.tabulka-vloz-otvor:disabled {
-   opacity: 0.5;
-   cursor: not-allowed;
-}
-
-.dialog-okno button:focus-visible,
-.tabulka-vloz-tlacidla button:focus-visible,
-.tabulka-nastroje button:focus-visible,
-.otazka-formular .kat-zrus:focus-visible,
-.otazka-formular .otazka-zrus:focus-visible,
-.otazka-formular .kat-uloz:focus-visible,
-.otazka-formular .otazka-uloz:focus-visible,
-.otazka-formular .otazka-pridaj-napovedu:focus-visible,
-.otazka-formular .otazka-pridaj-odpoved:focus-visible,
-.otazka-formular .otazka-pridaj-vzor:focus-visible,
-.otazka-formular .odp-pridaj-napovedu:focus-visible,
-.otazka-formular .napoveda-odstran:focus-visible,
-.tabulka-vloz-otvor:focus-visible {
-   outline: none;
-   box-shadow: 0 0 0 0.2rem rgb(13 110 253 / 0.35);
-}
-
-.dialog-okno button.dialog-nebezpecne {
-   background: #dc3545;
-   border-color: #dc3545;
-   color: white;
-}
-
-.dialog-okno button.dialog-nebezpecne:hover:not(:disabled) {
-   background: #bb2d3b;
 }
 
 .dialog-chyba {
