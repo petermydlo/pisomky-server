@@ -38,7 +38,7 @@
    <xsl:variable name="stat" select="if ($statistika != '') then doc($statistika) else ()"/>
    <html lang="sk">
       <head>
-         <title>Prehľad otazok</title>
+         <title>Prehľad otázok</title>
          <meta name="description" content="Prehľad otázok"/>
          <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8"/>
          <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -57,8 +57,9 @@
                <xsl:for-each-group select="collection(concat('../xml/questions/', $predmet, '?select=*.xml;on-error=ignore'))" group-by="/kapitola/@id">
                   <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
                   <xsl:variable name="id_kap" select="/kapitola/@id"/>
-                  <xsl:variable name="body_kap" select="sum($stat/statistika/otazka[@id = /kapitola//otazka/@id]/@body)"/>
-                  <xsl:variable name="maxbody_kap" select="sum($stat/statistika/otazka[@id = /kapitola//otazka/@id]/@maxbody)"/>
+                  <xsl:variable name="id_otazok" select="current-group()/kapitola//otazka/@id"/>
+                  <xsl:variable name="body_kap" select="sum($stat/statistika/otazka[@id = $id_otazok]/@body)"/>
+                  <xsl:variable name="maxbody_kap" select="sum($stat/statistika/otazka[@id = $id_otazok]/@maxbody)"/>
                   <xsl:variable name="kapitola_pouzita" select="exists(current-group()/kapitola//otazka/@id[. = $pouzite_otazka_id])"/>
                   <div>
                      <a class="nav-link navbar-brand" data-bs-toggle="tab" href="#{$id_kap}">

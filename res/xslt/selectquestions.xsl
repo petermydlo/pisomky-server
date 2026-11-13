@@ -30,7 +30,7 @@
                <div class="form-group">
                   <label for="predmet" class="form-label">Predmet</label>
                   <div class="predmetRow">
-                     <select id="predmet" name="predmet" class="form-select inputW" data-deletep="{$deletep_predmety}" autofocus="on" required="required">
+                     <select id="predmet" name="predmet" class="form-select inputW" data-deletep="{$deletep_predmety}" autofocus="autofocus" required="required">
                         <xsl:for-each select="tokenize($predmety)">
                            <xsl:sort select="." data-type="text" order="ascending"/>
                            <option value="{.}"><xsl:value-of select="."/></option>

@@ -93,8 +93,6 @@
                <button type="submit" class="btn btn-outline-info odsadenieHM">Vytvoriť</button>
             </form>
          </div>
-         <xsl:call-template name="cdn-popper"/>
-         <xsl:call-template name="cdn-js"/>
          <script src="/pubres/js/selectcreate.js"><xsl:comment>MyJS</xsl:comment></script>
       </body>
    </html>
