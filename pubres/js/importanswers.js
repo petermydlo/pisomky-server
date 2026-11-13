@@ -67,9 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
    function nastavPriebeh(pct, text) {
       document.getElementById('priebehText').textContent = text;
-      const bar = document.getElementById('priebehBar');
-      bar.style.width = pct + '%';
-      bar.textContent = pct + '%';
+      document.getElementById('priebehBar').value = pct;
    }
 
    function zobrazVysledky(vysledky) {

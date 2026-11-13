@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
    document.addEventListener('change', (e) => {
       if (!e.target.matches('input.pause-check')) return;
-      e.stopPropagation();
       const cb = e.target;
       const id = cb.dataset.id;
       const typ = cb.dataset.typ;

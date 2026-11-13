@@ -13,8 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
                   const option = document.createElement('option');
                   option.value = predmet;
                   option.textContent = predmet;
-                  elPredmet.appendChild(option);
+                  //na abecedne miesto ako na serveri; opravnenie na vymazanie nechava rozhodnut server
+                  const dalsia = Array.from(elPredmet.options).find(o => o.value > predmet);
+                  elPredmet.insertBefore(option, dalsia || null);
                   elPredmet.value = predmet;
+                  elPredmet.dataset.deletep = `${elPredmet.dataset.deletep || ''} ${predmet}`.trim();
                }),
          });
       });

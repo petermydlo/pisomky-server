@@ -4,24 +4,24 @@ function terazFormatovany() {
    return teraz.getFullYear() + '-' + (teraz.getMonth()+1).toString().padStart(2, '0') + '-' + teraz.getDate().toString().padStart(2, '0') + 'T' + teraz.getHours().toString().padStart(2, '0') + ':' + teraz.getMinutes().toString().padStart(2, '0');
 }
 
+//casovac zobrazenia/skrytia aktualneho toastu; novy toast ho zrusi, aby casovac stareho neschoval novy
+let casovacToastu = null;
+
 function zobrazNotifikaciu(text, typ = 'danger', hlavicka = 'Chyba', trvanie = 5000) {
-   zabezpecToastKontajner(typ, hlavicka);
+   const toast = zabezpecToastKontajner(typ, hlavicka);
    document.getElementById('toastMessage').textContent = text;
    const feedback = document.getElementById('toastFeedback');
    feedback.classList.add('d-none');
    feedback.classList.remove('d-flex');
 
-   setTimeout(() => {
-      const el = document.getElementById('liveToast');
-      const toast = new bootstrap.Toast(el, {autohide: false});
+   casovacToastu = setTimeout(() => {
       toast.show();
-      setTimeout(() => {
-         bootstrap.Toast.getInstance(document.getElementById('liveToast'))?.hide();
-      }, trvanie);
+      casovacToastu = setTimeout(() => toast.hide(), trvanie);
    }, 50);
 }
 
 function zabezpecToastKontajner(typ = 'danger', hlavicka = 'Chyba') {
+   clearTimeout(casovacToastu);
    const staryToast = document.getElementById('liveToast');
    if (staryToast) {
       staryToast.dispatchEvent(new Event('hidden.bs.toast'));
@@ -50,7 +50,7 @@ function zabezpecToastKontajner(typ = 'danger', hlavicka = 'Chyba') {
    tpl.innerHTML = toastHTML.trim();
    const container = tpl.content.firstElementChild;
    document.body.appendChild(container);
-   return new bootstrap.Toast(container.querySelector('#liveToast'));
+   return new bootstrap.Toast(container.querySelector('#liveToast'), {autohide: false});
 }
 
 document.addEventListener('click', (e) => {
@@ -77,12 +77,15 @@ function postForm(url, params) {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: new URLSearchParams(params)
-   }).then(resp => {
-      if (!resp.ok) {
-         return resp.json().catch(() => ({})).then(d => {
-            throw new Error(typeof d.detail === 'string' ? d.detail : `Požiadavka zlyhala (HTTP ${resp.status})`);
-         });
-      }
-      return resp.json();
-   });
+   }).then(jsonAleboChyba);
+}
+
+//JSON odpovede, alebo Error so spravou servera (pozri postForm)
+function jsonAleboChyba(resp) {
+   if (!resp.ok) {
+      return resp.json().catch(() => ({})).then(d => {
+         throw new Error(typeof d.detail === 'string' ? d.detail : `Požiadavka zlyhala (HTTP ${resp.status})`);
+      });
+   }
+   return resp.json();
 }

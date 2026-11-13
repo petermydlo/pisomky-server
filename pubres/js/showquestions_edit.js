@@ -1,19 +1,20 @@
 function getJson(url) {
-   return fetch(url).then(resp => {
-      if (!resp.ok) throw new Error('Požiadavka zlyhala');
-      return resp.json();
-   });
+   return fetch(url).then(jsonAleboChyba);
 }
 
-//Odosle formular (POST) a pri chybe ukaze spravu priamo vo formulari, ktory ostane otvoreny
+//Odosle formular (POST) a pri chybe ukaze spravu priamo vo formulari, ktory ostane otvoreny; tlacidlo Ulozit je pocas
+//odosielania vypnute, aby dvojklik neposlal poziadavku dvakrat
 function odosliFormular(form, url, params) {
    const chyba = form.querySelector('.dialog-chyba');
+   const uloz = form.querySelector('.kat-uloz, .otazka-uloz');
    chyba.textContent = '';
+   uloz.disabled = true;
    return postForm(url, params)
       .then(() => reloadZachovajKapitolu())
       .catch(err => {
          chyba.textContent = err.message;
          chyba.scrollIntoView({block: 'nearest'});
+         uloz.disabled = false;
       });
 }
 
@@ -197,8 +198,8 @@ function riadokOdpoved(odp) {
 
 function aktualizujViditelnostNapovedi(riadokOdp) {
    const spravna = riadokOdp.querySelector('.odp-spravna').checked;
-   riadokOdp.querySelector('.odp-napovedy').style.display = spravna ? '' : 'none';
-   riadokOdp.querySelector('.odp-pridaj-napovedu').style.display = spravna ? '' : 'none';
+   riadokOdp.querySelector('.odp-napovedy').hidden = !spravna;
+   riadokOdp.querySelector('.odp-pridaj-napovedu').hidden = !spravna;
 }
 
 function riadokNapoveda(text) {
@@ -224,7 +225,7 @@ function zostavVzory(form) {
 }
 
 function zostavOdpovede(form) {
-   return Array.from(form.querySelectorAll('.odp-text')).map((textEl, i) => {
+   return Array.from(form.querySelectorAll('.odp-text')).map(textEl => {
       const riadok = textEl.closest('.odpoved-riadok');
       const spravna = riadok.querySelector('.odp-spravna').checked ? '1' : '0';
       const napovedy = Array.from(riadok.querySelectorAll('.napoveda-text')).map(t => t.value).filter(t => t.trim() !== '');
@@ -332,9 +333,9 @@ function vytvorFormularOtazky(data, jeMcq) {
    function aktualizujVetvu() {
       const mcq = form.querySelector('.otazka-ma-odpovede').checked;
       const tabulka = form.querySelector('.otazka-ma-tabulku').checked;
-      form.querySelector('.otazka-odpovede-fieldset').style.display = mcq ? '' : 'none';
-      form.querySelector('.otazka-tabulka-fieldset').style.display = tabulka ? '' : 'none';
-      form.querySelector('.otazka-otvorena').style.display = mcq || tabulka ? 'none' : '';
+      form.querySelector('.otazka-odpovede-fieldset').hidden = !mcq;
+      form.querySelector('.otazka-tabulka-fieldset').hidden = !tabulka;
+      form.querySelector('.otazka-otvorena').hidden = mcq || tabulka;
    }
    //otazka ma najviac jednu z vetiev (MCQ alebo tabulka); obsah vypnutej vetvy ostava vo formulari
    form.querySelector('.otazka-ma-odpovede').addEventListener('change', (e) => {
@@ -450,7 +451,6 @@ document.addEventListener('DOMContentLoaded', () => {
    document.addEventListener('click', (e) => {
       const kap = e.target.closest('.addKapitolaIcon, .editKapitolaIcon, .delKapitolaIcon');
       if (kap) {
-         e.stopPropagation();
          const predmet = kap.dataset.predmet;
          if (kap.matches('.addKapitolaIcon')) pridajKapitolu(predmet);
          else if (kap.matches('.editKapitolaIcon')) upravKapitolu(predmet, kap.dataset.id, kap.dataset.nazov);
@@ -460,14 +460,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const addKat = e.target.closest('.addKategoriaIcon');
       if (addKat) {
-         e.stopPropagation();
          pridajKategoriu(addKat.dataset.predmet);
          return;
       }
 
       const kat = e.target.closest('.editKategoriaIcon, .delKategoriaIcon, .restoreKategoriaIcon');
       if (kat) {
-         e.stopPropagation();
          const predmet = kat.dataset.predmet;
          const nazov = kat.closest('.okraj')?.querySelector('.nazov-alebo-id')?.textContent?.trim() || kat.dataset.id;
          if (kat.matches('.editKategoriaIcon')) upravKategoriu(predmet, kat.dataset.id);
@@ -478,14 +476,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const addOt = e.target.closest('.addOtazkaIcon');
       if (addOt) {
-         e.stopPropagation();
          pridajOtazku(addOt.dataset.id);
          return;
       }
 
       const ot = e.target.closest('.editOtazkaIcon, .delOtazkaIcon, .restoreOtazkaIcon');
       if (ot) {
-         e.stopPropagation();
          const nazovOt = ot.closest('.okraj')?.querySelector('.nazov-alebo-id')?.textContent?.trim() || ot.dataset.id;
          if (ot.matches('.editOtazkaIcon')) otvorFormularOtazky(ot.dataset.id);
          else if (ot.matches('.delOtazkaIcon')) zmazOtazku(ot.dataset.id, nazovOt);
