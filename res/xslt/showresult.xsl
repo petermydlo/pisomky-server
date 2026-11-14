@@ -163,7 +163,7 @@
       <div class="flex-container-table-znenie {$farba}">
          <div class="prvy">
             <xsl:if test="not(odpoved) and not(tabulka) and not($je_rating_formular)">
-               <div><input type="number" class="form-control" id="{$zaciatok}_{@id}" name="{$zaciatok}_{@id}" min="0" max="{@body}" step="any" value="{$body}"/></div>
+               <div><input type="number" inputmode="decimal" class="form-control" id="{$zaciatok}_{@id}" name="{$zaciatok}_{@id}" min="0" max="{@body}" step="any" value="{$body}"/></div>
             </xsl:if>
             <xsl:if test="odpoved or tabulka or $je_rating_formular">
                <div class="radio col-up">

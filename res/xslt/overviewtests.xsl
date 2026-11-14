@@ -69,14 +69,14 @@
                      <div class="grid-span span8"><xsl:call-template name="predmet-icon"><xsl:with-param name="predmet" select="@predmet"/></xsl:call-template><xsl:value-of select="@predmet"/> (<span class="autor"><xsl:value-of select="$autor"/></span>)</div>
                   </div>
                   <div class="grid bold bg-info bg-opacity-50 grid-header">
-                     <div><i class="bi bi-people header-icon"/>&#160;Trieda</div>
-                     <div><i class="bi bi-journal-bookmark header-icon"/>&#160;Kapitola</div>
-                     <div><i class="bi bi-calendar-plus header-icon"/>&#160;Vytvorené</div>
-                     <div><i class="bi bi-play-fill header-icon"/>&#160;Start</div>
-                     <div><i class="bi bi-stop-fill header-icon"/>&#160;Stop</div>
-                     <div><i class="bi bi-check2 header-icon"/>&#160;Odovzdané</div>
-                     <div><i class="bi bi-graph-up header-icon"/>&#160;Priemer</div>
-                     <div><i class="bi bi-lightning header-icon"/>&#160;Akcie</div>
+                     <div title="Trieda"><i class="bi bi-people header-icon"/><span class="header-popis">&#160;Trieda</span></div>
+                     <div title="Kapitola"><i class="bi bi-journal-bookmark header-icon"/><span class="header-popis">&#160;Kapitola</span></div>
+                     <div title="Vytvorené"><i class="bi bi-calendar-plus header-icon"/><span class="header-popis">&#160;Vytvorené</span></div>
+                     <div title="Start"><i class="bi bi-play-fill header-icon"/><span class="header-popis">&#160;Start</span></div>
+                     <div title="Stop"><i class="bi bi-stop-fill header-icon"/><span class="header-popis">&#160;Stop</span></div>
+                     <div title="Odovzdané"><i class="bi bi-check2 header-icon"/><span class="header-popis">&#160;Odovzdané</span></div>
+                     <div title="Priemer"><i class="bi bi-graph-up header-icon"/><span class="header-popis">&#160;Priemer</span></div>
+                     <div title="Akcie"><i class="bi bi-lightning header-icon"/><span class="header-popis">&#160;Akcie</span></div>
                   </div>
                   <xsl:for-each-group select="current-group()" group-by="@trieda">
                      <xsl:sort select="current-grouping-key()" data-type="text" order="ascending"/>
@@ -154,11 +154,11 @@
                                        <div class="neviditelny"/>
                                        <div class="neviditelny"/>
                                        <div class="bold bg-info bg-opacity-25 odhalit-bunka odhalit-hlavicka"><i class="bi bi-eye"/><input type="checkbox" class="form-check-input odhalit-vsetky" title="Odhaliť žiakom správne odpovede"/></div>
-                                       <div class="bold bg-info bg-opacity-25">Kód</div>
-                                       <div class="bold bg-info bg-opacity-25">Start</div>
-                                       <div class="bold bg-info bg-opacity-25">Stop</div>
-                                       <div class="bold bg-info bg-opacity-25">Odovzdané</div>
-                                       <div class="bold bg-info bg-opacity-25">Body</div>
+                                       <div class="bold bg-info bg-opacity-25 hlavicka-bunka" title="Kód"><i class="bi bi-key header-icon"/><span class="header-popis">&#160;Kód</span></div>
+                                       <div class="bold bg-info bg-opacity-25 hlavicka-bunka" title="Start"><i class="bi bi-play-fill header-icon"/><span class="header-popis">&#160;Start</span></div>
+                                       <div class="bold bg-info bg-opacity-25 hlavicka-bunka" title="Stop"><i class="bi bi-stop-fill header-icon"/><span class="header-popis">&#160;Stop</span></div>
+                                       <div class="bold bg-info bg-opacity-25 hlavicka-bunka" title="Odovzdané"><i class="bi bi-check2 header-icon"/><span class="header-popis">&#160;Odovzdané</span></div>
+                                       <div class="bold bg-info bg-opacity-25 hlavicka-bunka" title="Body"><i class="bi bi-123 header-icon"/><span class="header-popis">&#160;Body</span></div>
                                        <div class="neviditelny"/>
                                     <xsl:apply-templates select="$testy-el/test">
                                        <xsl:with-param name="vybtesty" select="$vybtesty"/>

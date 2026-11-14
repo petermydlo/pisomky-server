@@ -49,7 +49,7 @@ input[type="radio"] {
 }
 
 input[type="number"] {
-   width: 4rem;
+   width: 6rem;
    margin-left: 0.25rem;
 }
 
@@ -339,13 +339,24 @@ body.admin-overview {
    overflow: hidden;
 }
 
-.grid-header > div {
+.grid-header > div, .hlavicka-bunka {
    display: flex;
    align-items: center;
 }
 
-.grid-header .header-icon {
+.grid-header .header-icon, .hlavicka-bunka .header-icon {
    font-size: 1rem;
+}
+
+/* popisky stlpcov sa zmestia az od ~950 px (zmerane), pod 60rem ostanu len ikony, nazov je v title */
+@media (max-width: 60rem) {
+   .header-popis {
+      display: none;
+   }
+
+   .grid-header > div, .hlavicka-bunka {
+      justify-content: center;
+   }
 }
 
 .bi.predmet-icon {
@@ -783,7 +794,7 @@ div:hover > span.penIcon.editActions {
 }
 
 .otazka-atributy-riadok input[type="number"] {
-   width: 5rem;
+   width: 6rem;
 }
 
 /* display: flex vyssie by prebil atribut hidden (pocet riadkov miesta sa ukaze az po zaskrtnuti) */
@@ -970,7 +981,7 @@ div:hover > span.penIcon.editActions {
 
 .tabulka-vkladanie {
    width: min(80vw, 60rem);
-   max-height: 90vh;
+   max-height: 90dvh;
 }
 
 .tabulka-vkladanie[open] {
@@ -1154,6 +1165,7 @@ div:hover > span.penIcon.editActions {
 .znamka-5 { background-color: rgba(var(--bs-danger-rgb), 0.5) !important; }
 
 .prvy     { flex: 0 0 5rem; }
+.prvy input[type="number"] { width: 100%; margin-left: 0; }
 .posledny { flex-grow: 1; }
 
 .pokyny     { padding-left: 5rem; margin-top: 1rem; margin-bottom: 1rem; }
@@ -1243,6 +1255,14 @@ div:hover > span.penIcon.editActions {
 
    li {
       padding-left: 1.5rem;
+   }
+
+   /* zalozky: space-between rozťahoval posledny riadok (jedna zalozka vlavo, druha na pravom okraji) */
+   .flex-container-tab {
+      justify-content: flex-start;
+      column-gap: 0.5rem;
+      row-gap: 0.5rem;
+      margin-bottom: 1rem;
    }
 
    .flex-container-head {

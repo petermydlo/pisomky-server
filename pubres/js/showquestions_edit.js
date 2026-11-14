@@ -80,8 +80,8 @@ function vytvorFormularKategorie(data) {
          <input type="text" class="kat-nazov form-control"/>
       </label>
       <div class="otazka-atributy-riadok">
-         <label>Počet otázok na výber <input type="number" class="kat-pocet form-control" min="0"/></label>
-         <label>Body <input type="number" class="kat-body form-control" min="0" step="any"/></label>
+         <label>Počet otázok na výber <input type="number" inputmode="numeric" class="kat-pocet form-control" min="0"/></label>
+         <label>Body <input type="number" inputmode="decimal" class="kat-body form-control" min="0" step="any"/></label>
          <label><input type="checkbox" class="kat-static form-check-input"/> statická</label>
          <label><input type="checkbox" class="kat-bonus form-check-input"/> bonusová</label>
          <label class="deprecated-checkbox"><input type="checkbox" class="kat-deprecated form-check-input"/> deprecated</label>
@@ -262,7 +262,7 @@ function vytvorFormularOtazky(data, jeMcq) {
          <textarea class="otazka-znenie form-control" rows="3"></textarea>
       </label>
       <div class="otazka-atributy-riadok">
-         <label>Body <input type="number" class="otazka-body form-control" min="0" step="any"/></label>
+         <label>Body <input type="number" inputmode="decimal" class="otazka-body form-control" min="0" step="any"/></label>
          <label><input type="checkbox" class="otazka-static form-check-input"/> statická</label>
          <label><input type="checkbox" class="otazka-bonus form-check-input"/> bonusová</label>
          <label><input type="checkbox" class="otazka-rating form-check-input"/> rating</label>
@@ -277,7 +277,7 @@ function vytvorFormularOtazky(data, jeMcq) {
       <div class="otazka-atributy-riadok">
          <label><input type="checkbox" class="otazka-ma-miesto form-check-input"/> miesto na dopísanie v tlačenom teste</label>
          <label class="otazka-miesto-riadky-label">Počet riadkov
-            <input type="number" class="otazka-miesto-riadky form-control" min="1" max="30" step="1"/>
+            <input type="number" inputmode="numeric" class="otazka-miesto-riadky form-control" min="1" max="30" step="1"/>
          </label>
       </div>
       <fieldset class="otazka-tabulka-fieldset">
