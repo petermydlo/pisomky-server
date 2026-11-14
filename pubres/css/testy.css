@@ -1139,6 +1139,11 @@ div:hover > span.penIcon.editActions {
 .sive       { color: lightslategrey; }
 .zalomenie  { word-wrap: break-word; }
 .centrovane { text-align: center; text-indent: 0;}
+
+/* obrazok v zadani sa nesmie roztiahnut cez okno; vyska z atributu vyska sa pri zuzenom obrazku musi prepocitat (pozri @media nizsie) */
+.centrovane img {
+   max-width: 100%;
+}
 .vystredene { display: flex; align-items: center; }
 .dolava     { text-align: left; }
 
@@ -1250,6 +1255,11 @@ div:hover > span.penIcon.editActions {
 @media (max-width: 62rem) {
    body {
       padding-inline: 0.75rem;
+   }
+
+   /* na desktope ostava vyska z atributu vyska (autor otazky), tu sa kvoli zachovaniu pomeru stran pocita zo sirky */
+   .centrovane img {
+      height: auto;
    }
 }
 
