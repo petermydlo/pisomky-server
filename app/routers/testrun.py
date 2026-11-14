@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from app.mytypes import StringForm, StringPath, StringFormOptional, StringHeader, FileListOptional
-from app.utils import find_test, get_test_metadata, modify_test_xml, find_test_file, test_xml_path, update_category, update_question, store_mcq_scores, find_category, find_question, zaloz_subor_odpovedi
+from app.utils import find_test, get_test_metadata, modify_test_xml, find_test_file, test_xml_path, update_category, update_question, store_mcq_scores, find_category, find_chapter, find_question, zaloz_subor_odpovedi, nastav_s_napovedou, over_id_kapitoly
 from app.permissions import check_permission, predmet_from_cesta
 from app.routers import relacie
 import lxml.etree as ET
@@ -149,6 +149,32 @@ async def set_paused(request: Request, id: StringForm, typ: StringForm, paused: 
       raise
    except Exception as e:
       request.app.state.logger.error(f'chyba setpaused: {e}')
+      raise HTTPException(status_code=400, detail=str(e))
+
+@router.post('/admin/setainapoveda', response_class=JSONResponse)
+async def set_ai_napoveda(request: Request, id: StringForm, typ: StringForm, povolene: StringForm, X_Remote_User: StringHeader, predmet: StringFormOptional = None):
+   """Zapne/vypne AI napovedu otazky, vsetkych otazok kategorie alebo kapitoly (typ kapitola potrebuje predmet)."""
+   try:
+      if typ == 'kategoria':
+         _, cesta = find_category(id)
+      elif typ == 'otazka':
+         _, cesta = find_question(id)
+      elif typ == 'kapitola':
+         over_id_kapitoly(predmet or '', id)
+         _, cesta = find_chapter(id, predmet)
+      else:
+         raise HTTPException(status_code=400, detail=f'Neznámy typ: {typ}')
+      if cesta is None:
+         raise HTTPException(status_code=404, detail='Nenájdené')
+      #napoveda je atribut v banke otazok, rovnako ako pauza vyzaduje 'edit'
+      check_permission(request.app.state.perm_cache, X_Remote_User, 'edit', predmet_from_cesta(cesta))
+      if not nastav_s_napovedou(typ, id, povolene == '1', predmet):
+         raise HTTPException(status_code=404, detail='Nenájdené')
+      return JSONResponse(content={'ok': True}, status_code=200)
+   except HTTPException:
+      raise
+   except Exception as e:
+      request.app.state.logger.error(f'chyba setainapoveda: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 def nastav_cas(tree, kluc: str | None, start: str | None, stop: str | None) -> None:

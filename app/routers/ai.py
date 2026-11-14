@@ -15,7 +15,7 @@ from lxml import etree as ET
 import anyio
 import ollama
 from dotenv import load_dotenv
-from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, normalizuj_vzor, test_xml_path, xquery_to_string, xslt_to_string
+from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, normalizuj_vzor, otazky_s_napovedou, test_xml_path, xquery_to_string, xslt_to_string
 from app.mytypes import StringQuery, StringQueryOptional, StringFormOptional, IntForm, StringForm
 from app.routers import relacie
 from anyio.streams.memory import MemoryObjectSendStream
@@ -77,6 +77,12 @@ def _spocitaj_napovedy_testu(subor: str, test_id: str) -> int:
       return len(tree.xpath('.//zapis[@test_id=$id]', id=test_id))  # type: ignore[arg-type]
    except Exception:
       return 0
+
+
+def pocet_otazok_s_napovedou(xp, test_node, povolene: set[str]) -> int:
+   """Number of questions of the test whose hint is enabled; it is the hint limit of the test."""
+   xp.set_context(xdm_item=test_node)
+   return sum(1 for o in (xp.evaluate('otazka') or []) if o.get_attribute_value('id') in povolene)
 
 
 def _nacitaj_predchadzajuce(subor: str, otazka_id: str, limit: int = 3) -> list[dict]:
@@ -403,6 +409,11 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
    if not znenie_text.strip():
       return JSONResponse({'error': 'Prázdne znenie otázky'}, status_code=400)
 
+   predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, test_node)
+   povolene = otazky_s_napovedou(predmet, kapitola)
+   if otazka_id not in povolene:  #skryte tlacidlo je len kozmetika, vynutenie je tu
+      return JSONResponse({'error': 'Pre túto otázku nie je nápoveda'}, status_code=403)
+
    zamok = _zamok_napovede(test_id)
    if zamok:
       zaciatok_zamku = time.monotonic()
@@ -421,10 +432,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
 
    predany = zamok is None
    try:
-      predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, test_node)
-
-      xsltpath.set_context(xdm_item=test_node)
-      pocet_otazok = int(xsltpath.evaluate_single('count(otazka)') or 0)
+      pocet_otazok = pocet_otazok_s_napovedou(xsltpath, test_node, povolene)
 
       subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
       pouzite = _spocitaj_napovedy_testu(subor, test_id)

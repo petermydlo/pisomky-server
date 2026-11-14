@@ -921,7 +921,7 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
       if otazka is None:
          return False
       # atributy
-      for attr in ('body', 'static', 'bonus', 'rating', 'nazov', 'paused', 'deprecated'):
+      for attr in ('body', 'static', 'bonus', 'rating', 'nazov', 'paused', 's_napovedou', 'deprecated'):
          if attr in nove_data:
             if nove_data[attr] is None:
                if attr in otazka.attrib:
@@ -983,6 +983,46 @@ def update_question(otazka_id: str, nove_data: dict, cache: dict | None = None) 
       ET.indent(tree, space='   ')
       tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
    return True
+
+def nastav_s_napovedou(typ: str, id_: str, povolene: bool, predmet: str | None = None, cache: dict | None = None) -> bool:
+   """Zapne ('s_napovedou="1"') alebo vypne (atribut sa odstrani) AI napovedu otazky, vsetkych otazok
+   kategorie, alebo vsetkych otazok kapitoly (typ 'otazka' | 'kategoria' | 'kapitola'; pre kapitolu je
+   potrebny predmet). Archivovane otazky a otazky s tabulkou (nemaju napovedu) sa pri hromadnej zmene
+   preskocia. Kapitola je jeden subor, takze zmena je jeden zapis pod zamkom. Vracia False, ak sa
+   cielovy prvok nenasiel."""
+   if typ == 'otazka':
+      prvok, cesta = find_question(id_, cache)
+   elif typ == 'kategoria':
+      prvok, cesta = find_category(id_, cache)
+   else:
+      prvok, cesta = find_chapter(id_, predmet, cache)
+   if prvok is None or cesta is None:
+      return False
+   lock = FileLock(cesta + '.lock')
+   with lock:
+      tree = ET.parse(cesta, ET.XMLParser(remove_blank_text=True))
+      if typ == 'otazka':
+         otazky = tree.xpath('.//otazka[@id=$id]', id=id_)
+      elif typ == 'kategoria':
+         otazky = tree.xpath('.//kategoria[@id=$id and not(@deprecated)]/otazka[not(@deprecated) and not(tabulka)]', id=id_)
+      else:
+         otazky = tree.xpath('.//kategoria[not(@deprecated)]/otazka[not(@deprecated) and not(tabulka)]')
+      for otazka in otazky:  # type: ignore[union-attr]
+         if povolene:
+            otazka.set('s_napovedou', '1')  # type: ignore[union-attr]
+         elif 's_napovedou' in otazka.attrib:  # type: ignore[union-attr]
+            del otazka.attrib['s_napovedou']  # type: ignore[union-attr]
+      ET.indent(tree, space='   ')
+      tree.write(cesta, encoding='utf-8', xml_declaration=True, pretty_print=True)
+   return True
+
+def otazky_s_napovedou(predmet: str, kapitola: str) -> set[str]:
+   """Id otazok kapitoly s povolenou AI napovedou (zivo z banky, ako vzory a klucove slova)."""
+   cesta = f'./res/xml/questions/{predmet}/{predmet}_{kapitola}.xml'
+   try:
+      return {str(i) for i in ET.parse(cesta).xpath('.//otazka[@s_napovedou="1" and not(tabulka)]/@id')}  # type: ignore[union-attr]
+   except (OSError, ET.XMLSyntaxError):
+      return set()
 
 def delete_question(otazka_id: str, cache: dict | None = None) -> bool:
    """Vymaze otazku z questions XML podla @id.
@@ -1058,6 +1098,10 @@ def add_question(kategoria_id: str, nova_otazka: dict, za_otazka_id: str | None 
       if kategoria is None:
          return None, False
       el = _zostav_otazka_element(nova_otazka)
+      #nova otazka zdedi AI napovedu, ak ju maju vsetky existujuce otazky kategorie; prazdna alebo zmiesana kategoria = vypnuta
+      existujuce = kategoria.xpath('otazka[not(@deprecated) and not(tabulka)]')
+      if existujuce and el.find('tabulka') is None and all(o.get('s_napovedou') == '1' for o in existujuce):  # type: ignore[union-attr]
+         el.set('s_napovedou', '1')
       if za_otazka_id:
          ref = _xfind(kategoria, "otazka[@id=$id]", id=za_otazka_id)
          if ref is not None:
@@ -1107,6 +1151,8 @@ def fork_question(otazka_id: str, nova_data: dict, cache: dict | None = None) ->
       riadky = riadky_miesta(stara)      # formular bez pola miesto (stary JS v keši) ho necha zo starej otazky
       if riadky is not None and 'miesto' not in nova_data:
          _vloz_miesto(nova, riadky)
+      if stara.get('s_napovedou') == '1' and nova.find('tabulka') is None:  # fork nesmie potichu vypnut napovedu
+         nova.set('s_napovedou', '1')
       kategoria.append(nova)
       stara.set('deprecated', '1')
       ET.indent(tree, space='   ')

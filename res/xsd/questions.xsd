@@ -172,6 +172,8 @@
       <xs:attribute name="nazov" type="xs:string"/>
       <xs:attribute name="deprecated" type="Flag"/>
       <xs:attribute name="paused" type="Flag"/>
+      <!-- s_napovedou: AI nápoveda povolená (chýba = zakázaná) -->
+      <xs:attribute name="s_napovedou" type="Flag"/>
       <xs:attribute name="static" type="Flag"/>
       <xs:attribute name="body" type="Body"/>
       <!-- pomer: napr. "1:4" pre partial scoring -->

@@ -64,9 +64,22 @@ def backend(request):
    return request.param
 
 
+BANKA_XML = f"""\
+<?xml version='1.0' encoding='utf-8'?>
+<kapitola id="{KAPITOLA}" predmet="{PREDMET}">
+   <kategoria id="k1" pocet="1">
+      <otazka id="q1" s_napovedou="1"><znenie>x</znenie></otazka>
+      <otazka id="q2" s_napovedou="1"><znenie>x</znenie></otazka>
+   </kategoria>
+</kapitola>
+"""
+
+
 @pytest.fixture(autouse=True)
 def workdir(tmp_path, monkeypatch):
    (tmp_path / 'res/xml/tests' / PREDMET).mkdir(parents=True)
+   (tmp_path / 'res/xml/questions' / PREDMET).mkdir(parents=True)
+   (tmp_path / 'res/xml/questions' / PREDMET / f'{PREDMET}_{KAPITOLA}.xml').write_text(BANKA_XML, encoding='utf-8')
    adresar = tmp_path / 'napovedy'
    adresar.mkdir(mode=0o700)
    monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(adresar))

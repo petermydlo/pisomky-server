@@ -90,7 +90,7 @@ def test_readonly_blokuje_zapisove_cesty(perm_file):
    cache = {}
    for metoda, cesta in [('POST', '/admin/createtests'), ('DELETE', '/admin/deletetests'), ('POST', '/admin/savemarks/abc'),
                          ('POST', '/admin/process_question'), ('POST', '/admin/ai/evaluate-open'),
-                         ('POST', '/admin/setrevealed')]:
+                         ('POST', '/admin/setrevealed'), ('POST', '/admin/setainapoveda')]:
       assert permissions.readonly_blokuje(cache, 'ctenar', metoda, cesta) is True, (metoda, cesta)
 
 

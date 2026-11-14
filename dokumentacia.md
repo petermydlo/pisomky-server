@@ -213,6 +213,7 @@ Atribúty a elementy otázky (`questions.xsd`, typ `Otazka`):
 **Voliteľné atribúty:**
 - `deprecated="1"` — vyradená otázka (viď vyššie)
 - `paused="1"` — dočasne pozastavená (nebude sa žrebovať)
+- `s_napovedou="1"` — žiak smie pri otázke použiť AI nápovedu (chýba = zakázaná, viď 4.6)
 - `static="1"` — otázka sa do testu zaraďuje vždy (nie je súčasťou náhodného výberu
   v rámci kategórie)
 - `body` — počet bodov
@@ -347,6 +348,23 @@ na pozastavenie — volá `POST /admin/setpaused` (`typ=kategoria|otazka`,
 `paused=1|0`). Pozastavená kategória/otázka sa nebude žrebovať do nových testov, ale
 zostáva v databáze (na rozdiel od `deprecated`, ktoré je nevratné/trvalé
 označenie nahradenej otázky).
+
+### 4.6 AI nápoveda pri otázke (`s_napovedou`)
+
+V editore sú pred každou kategóriou a otázkou dva stĺpce checkboxov: vľavo **AI nápoveda**
+(zaškrtnuté = povolená), vpravo pauza (4.5). Hlavička stĺpcov nad kapitolou má
+hromadný checkbox celej kapitoly; checkbox kategórie a kapitoly je pri zmiešanom stave
+neurčitý. Volá `POST /admin/setainapoveda` (`typ=kapitola|kategoria|otazka`, `id`,
+`povolene=1|0`, pre kapitolu aj `predmet`), vyžaduje oprávnenie `edit`. Povolenie zapíše
+`s_napovedou="1"` na otázky, zákaz atribút odstráni; archivované otázky a otázky s
+tabuľkou sa pri hromadnej zmene preskočia.
+
+Predvolene je nápoveda **vypnutá**: nová otázka ju zdedí, len ak ju majú všetky
+existujúce otázky jej kategórie. Fork použitej otázky ju zachová. Atribút sa číta
+živo z banky (nezamŕza sa do testu), takže zmena platí aj pre už vygenerované testy.
+Bez povolenia sa žiakovi nevykreslí tlačidlo, `/ai/napoveda` vráti 403 a predgenerovanie
+(`ainapovedy.py`) otázku preskočí. Limit nápovied v teste sa počíta len z otázok s
+povolenou nápovedou.
 
 ---
 
@@ -554,8 +572,10 @@ appka:
    plus všetky kľúčované podľa toho, ktorú možnosť žiak práve zvolil, ak je väzba
    cez `pre`/`napoveda_key` — jedna odpoveď môže mať aj viac priradených nápovedí),
    vzorovú odpoveď (`<vzor>`) a kľúčové slová.
-2. Skontroluje limit: appka počíta **celkový počet už použitých nápovied v rámci
-   celého testu** (naprieč všetkými otázkami) a porovná ho s počtom otázok v teste —
+2. Skontroluje, že otázka má povolenú nápovedu (`s_napovedou`, viď 4.6; inak 403), a
+   potom limit: appka počíta **celkový počet už použitých nápovied v rámci
+   celého testu** (naprieč všetkými otázkami) a porovná ho s počtom otázok s povolenou
+   nápovedou v teste —
    ide teda o spoločný rozpočet ("počet otázok" nápovied na celý test), nie o strop
    na jednu otázku; žiak tak môže minúť viac nápovied na jednu otázku a menej na iné.
    Ak je rozpočet vyčerpaný, appka pošle `napoveda_limit` event namiesto textu

@@ -12,6 +12,7 @@
 
 <xsl:param name="admin" as="xs:boolean"/>
 <xsl:param name="napovedy_zostatok" as="xs:integer" required="yes"/>
+<xsl:param name="napovedy_povolene" as="xs:string" required="yes"/>
 <xsl:param name="token" as="xs:string" select="''"/>
 
 <xsl:template match="test">
@@ -174,7 +175,7 @@
                   <xsl:if test="not(@bonus)"><xsl:number count="otazka" format="01. "/></xsl:if>
                   <xsl:apply-templates select="znenie"/>
                </span>
-               <xsl:if test="not($je_rating_formular) and not(tabulka)">
+               <xsl:if test="not($je_rating_formular) and not(tabulka) and @id = tokenize($napovedy_povolene, ' ')">
                   <span class="ai-napoveda-btn{if ($napovedy_zostatok le 0) then ' hint-vycerpany' else ''}">
                      <xsl:attribute name="data-otazka-id">
                         <xsl:value-of select="@id"/>

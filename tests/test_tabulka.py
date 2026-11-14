@@ -131,13 +131,13 @@ def test_createtests_kopiruje_tabulku_aj_so_spravnymi_hodnotami(proc):
 
 @pytest.mark.parametrize('stylesheet', ['writetest.xsl', 'showtest.xsl'])
 def test_vodoznak_je_len_pre_ziaka(proc, stylesheet):
-   zak = _html(proc, stylesheet, {'admin': False, 'napovedy_zostatok': 3})
+   zak = _html(proc, stylesheet, {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''})
    assert 'id="vodoznak"' in zak and 'data-kluc="' in zak and '/pubres/js/vodoznak.js' in zak
-   assert 'id="vodoznak"' not in _html(proc, stylesheet, {'admin': True, 'napovedy_zostatok': 3})
+   assert 'id="vodoznak"' not in _html(proc, stylesheet, {'admin': True, 'napovedy_zostatok': 3, 'napovedy_povolene': ''})
 
 
 def test_formular_ma_polia_skryte_pole_a_nema_napovedu(proc):
-   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})
+   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''})
    assert html.count('class="bunka-vstup form-control"') == 4 + 16 + 4
    assert 'tabulka-hodnota' in html
    assert 'ai-napoveda-btn' not in html
@@ -145,22 +145,22 @@ def test_formular_ma_polia_skryte_pole_a_nema_napovedu(proc):
 
 
 def test_pole_bez_povolene_je_siroke(proc):
-   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})
+   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''})
    assert html.count('bunka-siroka') == 0
    zdroj = (TESTY_DIR / TEST_SUBOR).read_text(encoding='utf-8').replace(' povolene="01"', '')
    (TESTY_DIR / TEST_SUBOR).write_text(zdroj, encoding='utf-8')
-   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})
+   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''})
    assert html.count('bunka-vstup form-control bunka-siroka') == 24
    assert 'data-povolene' not in html
 
 
 def test_formular_predvyplni_ulozenu_odpoved(proc):
-   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})
+   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''})
    assert 'value="0|1|0|"' in html
 
 
 def test_formular_neprezradza_spravne_hodnoty(proc):
-   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})
+   html = _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''})
    assert 'odpoved="' not in html.replace('class="odpoved', '')
 
 
@@ -448,7 +448,10 @@ def test_test_moze_mixovat_mcq_a_tabulku(proc):
    assert (skore.get('ziskane'), skore.get('maximum'), skore.get('neuplne')) == ('5', '6', 'false')     # MCQ 2 + tabulka 3 zo 4 poli
    assert 'Hodnotenie: 5/6' in _html(proc, 'showresult_student.xsl')
    assert 'id="pocetbodov">5</span>/6' in _html(proc, 'showresult.xsl')     # pohlad ucitela
-   assert 'ai-napoveda-btn' in _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3})      # nápoveda ostáva pri MCQ
+   assert 'ai-napoveda-btn' in _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': 'o1'})      # nápoveda ostáva pri MCQ s povolenou nápovedou
+   for xsl in ('writetest.xsl', 'showtest.xsl'):
+      assert 'ai-napoveda-btn' not in _html(proc, xsl, {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': 'ina'})      # bez povolenia (s_napovedou v banke) sa tlačidlo nevykreslí
+   assert 'odpovedane' in _html(proc, 'writetest.xsl', {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''})      # značka "odpovedané" ostáva aj bez nápovedy
 
 
 def test_vyhodnotenie_odovzda_skriptu_body_automatickych_otazok(proc):
@@ -475,7 +478,7 @@ def test_hlavicka_otazky_vypisuje_body_naformatovane(proc):
    <test id="k1"><otazka id="o1" body="6.50"><znenie>Tabulka</znenie>{TABULKA_2X1}</otazka></test></testy>
 """, encoding='utf-8')
    (ANSWERS_DIR / TEST_SUBOR).write_text('<odpovede><test id="k1" dat="2026-01-02T10:00:00"/></odpovede>', encoding='utf-8')
-   for xsl, parametre in (('writetest.xsl', {'admin': False, 'napovedy_zostatok': 3}), ('showtest.xsl', {'admin': False, 'napovedy_zostatok': 3}),
+   for xsl, parametre in (('writetest.xsl', {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''}), ('showtest.xsl', {'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''}),
                           ('showresult.xsl', None), ('downloadresult.xsl', {'kluc': 'k1'})):
       vystup = _html(proc, xsl, parametre)
       assert '(6.5b)' in vystup and '6.50b' not in vystup, xsl

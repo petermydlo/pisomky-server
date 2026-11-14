@@ -51,11 +51,18 @@ TESTY_XML = f"""\
 """
 
 
+def _zapis_banku(tmp_path, otazky_xml):
+   """Banka otazok kapitoly kap1, z ktorej trasa cita povolenie AI napovede (s_napovedou)."""
+   (tmp_path / f'res/xml/questions/{PREDMET}/{PREDMET}_kap1.xml').write_text(
+      f'<kapitola id="kap1" predmet="{PREDMET}"><kategoria id="k1" pocet="1">{otazky_xml}</kategoria></kapitola>', encoding='utf-8')
+
+
 @pytest.fixture(autouse=True)
 def pracovny_adresar(tmp_path, monkeypatch):
    for cesta in ('res/xml/tests', 'res/xml/feedback', 'res/xml/questions'):
       (tmp_path / cesta / PREDMET).mkdir(parents=True)
    (tmp_path / f'res/xml/tests/{PREDMET}/{PREDMET}_1A_kap1_ab12.xml').write_text(TESTY_XML, encoding='utf-8')
+   _zapis_banku(tmp_path, '<otazka id="q1" s_napovedou="1"><znenie>x</znenie></otazka><otazka id="qprazdna" s_napovedou="1"><znenie>x</znenie></otazka>')
    cache = tmp_path / 'napovedy'
    cache.mkdir(mode=0o700)
    monkeypatch.setattr(ai, 'CACHE_ADRESAR', str(cache))
@@ -94,6 +101,13 @@ def _pocet_zapisov():
 def test_neznamy_test_je_404(backend):
    status, telo = _zavolaj(backend, test_id='NEEXISTUJE')
    assert status == 404 and telo == {'error': 'Test nenájdený'}
+
+
+def test_otazka_bez_povolenej_napovedy_je_403_a_nezapise(backend, tmp_path):
+   _zapis_banku(tmp_path, '<otazka id="q1"><znenie>x</znenie></otazka>')
+   status, telo = _zavolaj(backend)
+   assert status == 403 and telo == {'error': 'Pre túto otázku nie je nápoveda'}
+   assert _pocet_zapisov() == 0
 
 
 def test_neznama_otazka_je_404(backend):
@@ -140,7 +154,7 @@ def test_napoveda_z_cache_vytvori_zapis_a_zapocita_sa(backend):
    status, udalosti = _zavolaj(backend)
    assert status == 200
    assert [typ for typ, _ in udalosti] == ['meta', 'chunk', 'done']
-   assert udalosti[0][1]['remaining'] == 2     # test ma 3 otazky, jedna napoveda sa prave spotrebovala
+   assert udalosti[0][1]['remaining'] == 1     # napovedu maju 2 z 3 otazok (tabulka nie), jedna sa prave spotrebovala
    assert udalosti[2][1] == {'hint': 'Zamysli sa nad menovateľom'}
    zapis = ET.parse(FEEDBACK).find('.//zapis')
    assert zapis is not None

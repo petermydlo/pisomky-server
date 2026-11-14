@@ -30,6 +30,8 @@ from app.utils import (
    delete_question,
    restore_question,
    fork_question,
+   nastav_s_napovedou,
+   otazky_s_napovedou,
    zmenene_zamrznute_polia,
    is_used,
    find_test_file,
@@ -916,3 +918,62 @@ def test_riadky_miesta_chybajuci_atribut_je_jeden():
    assert riadky_miesta(ET.fromstring('<otazka><miesto/></otazka>')) == '1'
    assert riadky_miesta(ET.fromstring('<otazka><miesto riadky="4"/></otazka>')) == '4'
    assert riadky_miesta(ET.fromstring('<otazka/>')) is None
+
+
+# --- AI napoveda (s_napovedou) ---
+
+def _napovedy(questions_file):
+   return {o.get('id'): o.get('s_napovedou') for o in ET.parse(str(questions_file)).iter('otazka')}
+
+def test_nastav_s_napovedou_otazka(questions_file):
+   assert nastav_s_napovedou('otazka', 'otq1', True) is True
+   assert _napovedy(questions_file) == {'otq1': '1', 'otq2': None}
+   assert nastav_s_napovedou('otazka', 'otq1', False) is True
+   assert _napovedy(questions_file) == {'otq1': None, 'otq2': None}
+
+def test_nastav_s_napovedou_kategoria_preskoci_archivovane_a_tabulky(questions_file):
+   xml = questions_file.read_text(encoding='utf-8').replace('<otazka id="otq2" body="1">', '<otazka id="otq2" body="1" deprecated="1">')
+   xml = xml.replace('</kategoria>', '<otazka id="otq3"><znenie>t</znenie><tabulka><riadok><bunka odpoved="1"/></riadok></tabulka></otazka></kategoria>')
+   questions_file.write_text(xml, encoding='utf-8')
+   assert nastav_s_napovedou('kategoria', 'kat1', True) is True
+   assert _napovedy(questions_file) == {'otq1': '1', 'otq2': None, 'otq3': None}
+
+def test_nastav_s_napovedou_kapitola_jeden_zapis(questions_file):
+   assert nastav_s_napovedou('kapitola', 'kap1', True, PREDMET) is True
+   assert _napovedy(questions_file) == {'otq1': '1', 'otq2': '1'}
+   assert otazky_s_napovedou(PREDMET, 'kap1') == {'otq1', 'otq2'}
+   assert nastav_s_napovedou('kapitola', 'kap1', False, PREDMET) is True
+   assert otazky_s_napovedou(PREDMET, 'kap1') == set()
+
+def test_nastav_s_napovedou_nenajde(questions_file):
+   assert nastav_s_napovedou('otazka', 'nie', True) is False
+   assert nastav_s_napovedou('kategoria', 'nie', True) is False
+   assert nastav_s_napovedou('kapitola', 'nie', True, PREDMET) is False
+
+def test_otazky_s_napovedou_bez_banky_je_prazdna(tmp_path):
+   assert otazky_s_napovedou(PREDMET, 'nie') == set()
+
+def test_add_question_zdedi_napovedu_ak_ju_maju_vsetky_otazky_kategorie(questions_file):
+   nastav_s_napovedou('kategoria', 'kat1', True)
+   qid, _ = add_question('kat1', {'znenie': '<znenie>Nová?</znenie>'})
+   assert _napovedy(questions_file)[qid] == '1'
+
+def test_add_question_zmiesana_alebo_prazdna_kategoria_napovedu_nezdedi(questions_file):
+   nastav_s_napovedou('otazka', 'otq1', True)
+   qid, _ = add_question('kat1', {'znenie': '<znenie>Nová?</znenie>'})
+   assert _napovedy(questions_file)[qid] is None
+   prazdna = questions_file.read_text(encoding='utf-8').replace('</kapitola>', '<kategoria id="kat2" pocet="1"/></kapitola>')
+   questions_file.write_text(prazdna, encoding='utf-8')
+   qid, _ = add_question('kat2', {'znenie': '<znenie>Nová?</znenie>'})
+   assert _napovedy(questions_file)[qid] is None
+
+def test_fork_question_zachova_napovedu(questions_file, tests_file):
+   nastav_s_napovedou('otazka', 'otq1', True)
+   nova_id = fork_question('otq1', {'znenie': '<znenie>Opravené</znenie>', 'odpovede': [{'text': 'x', 'spravna': '1'}]})
+   assert _napovedy(questions_file)[nova_id] == '1'
+
+def test_update_question_bez_s_napovedou_v_datach_ho_nezmeni(questions_file):
+   nastav_s_napovedou('otazka', 'otq1', True)
+   update_question('otq1', {'body': '2'})
+   assert _napovedy(questions_file)['otq1'] == '1'
+

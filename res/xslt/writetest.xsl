@@ -11,6 +11,7 @@
 
 <xsl:param name="admin" as="xs:boolean"/>
 <xsl:param name="napovedy_zostatok" as="xs:integer" required="yes"/>
+<xsl:param name="napovedy_povolene" as="xs:string" required="yes"/>
 <xsl:param name="token" as="xs:string" select="''"/>
 
 <xsl:template match="test">
@@ -187,18 +188,20 @@
                         <xsl:variable name="vyb" select="normalize-space($rtest/otazka[@id = $idotazky])"/>
                         <i class="bi bi-circle-fill text-success odpovedane{if ($vyb = ('', '-')) then ' skryte' else ''}" title="Odpovedané"/>
                      </xsl:if>
-                     <span class="ai-napoveda-btn{if ($napovedy_zostatok le 0) then ' hint-vycerpany' else ''}">
-                        <xsl:attribute name="data-otazka-id">
-                           <xsl:value-of select="@id"/>
-                        </xsl:attribute>
-                        <xsl:attribute name="data-test-id">
-                           <xsl:value-of select="ancestor::test/@id"/>
-                        </xsl:attribute>
-                        <xsl:attribute name="title">
-                           <xsl:value-of select="concat('AI help (zostatok: ', $napovedy_zostatok, ')')"/>
-                        </xsl:attribute>
-                        <i class="bi bi-lightbulb text-warning text-opacity-50"/>
-                     </span>
+                     <xsl:if test="@id = tokenize($napovedy_povolene, ' ')">
+                        <span class="ai-napoveda-btn{if ($napovedy_zostatok le 0) then ' hint-vycerpany' else ''}">
+                           <xsl:attribute name="data-otazka-id">
+                              <xsl:value-of select="@id"/>
+                           </xsl:attribute>
+                           <xsl:attribute name="data-test-id">
+                              <xsl:value-of select="ancestor::test/@id"/>
+                           </xsl:attribute>
+                           <xsl:attribute name="title">
+                              <xsl:value-of select="concat('AI help (zostatok: ', $napovedy_zostatok, ')')"/>
+                           </xsl:attribute>
+                           <i class="bi bi-lightbulb text-warning text-opacity-50"/>
+                        </span>
+                     </xsl:if>
                   </span>
                </xsl:if>
             </div>

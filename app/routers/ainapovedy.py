@@ -21,7 +21,7 @@ from app.routers.ai import (
    _sukromny_adresar,
 )
 from app.mytypes import StringForm, StringQuery
-from app.utils import test_xml_path
+from app.utils import otazky_s_napovedou, test_xml_path
 
 router = APIRouter()
 
@@ -53,11 +53,12 @@ def _kluce_sady(templates, predmet: str, kapitola: str, subor: str, logger) -> d
       return zaznam[1]
    kluce: dict[str, tuple[str, list[dict]]] = {}
    videne: set[tuple] = set()
+   povolene = otazky_s_napovedou(predmet, kapitola)
    for otazka in ET.parse(subor).getroot().iterfind('test/otazka'):
       znenie = str(otazka.xpath('string(znenie)'))
-      if not znenie or otazka.find('tabulka') is not None:
-         continue
       otazka_id = otazka.get('id', '')
+      if not znenie or otazka.find('tabulka') is not None or otazka_id not in povolene:
+         continue
       moznosti = [str(o.xpath('string(.)')).strip() for o in otazka.iterfind('odpoved')]
       spravna = otazka.find('odpoved[@spravna="1"]')
       spravna_odpoved = str(spravna.xpath('string(.)')).strip() if spravna is not None else None

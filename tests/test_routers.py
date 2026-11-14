@@ -14,7 +14,7 @@ from saxonche import PySaxonProcessor
 
 from app.utils import modify_test_xml
 from datetime import datetime
-from app.routers.testrun import write_answers, saveanswers, nastav_stop, nastav_cas, changetime, stoptime, set_paused, ocisti_odpovede, MAX_DLZKA_ODPOVEDE
+from app.routers.testrun import write_answers, saveanswers, nastav_stop, nastav_cas, changetime, stoptime, set_paused, set_ai_napoveda, ocisti_odpovede, MAX_DLZKA_ODPOVEDE
 from app.routers.results import write_marks, write_odhalene, over_body
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
 from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
@@ -682,6 +682,31 @@ def test_setpaused_neexistujuce_je_404(banka):
    with pytest.raises(HTTPException) as exc:
       asyncio.run(set_paused(_banka_request(), id='nie', typ='otazka', paused='1', X_Remote_User='petrik'))  # type: ignore[arg-type]
    assert exc.value.status_code == 404
+
+
+@pytest.mark.parametrize('typ, id_', [('kategoria', 'katM'), ('otazka', 'otM'), ('kapitola', '01')])
+def test_setainapoveda_bez_opravnenia_je_403_a_nic_nezmeni(banka, typ, id_):
+   povodny = _kategoria_xml(banka, 'MAT')
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(set_ai_napoveda(_banka_request(), id=id_, typ=typ, povolene='1', X_Remote_User='petrik', predmet='MAT'))  # type: ignore[arg-type]
+   assert exc.value.status_code == 403
+   assert _kategoria_xml(banka, 'MAT') == povodny
+
+@pytest.mark.parametrize('typ, id_', [('kategoria', 'katA'), ('otazka', 'otA'), ('kapitola', '01')])
+def test_setainapoveda_s_opravnenim_zapne_a_vypne(banka, typ, id_):
+   asyncio.run(set_ai_napoveda(_banka_request(), id=id_, typ=typ, povolene='1', X_Remote_User='petrik', predmet='AUT3'))  # type: ignore[arg-type]
+   assert 's_napovedou="1"' in _kategoria_xml(banka, 'AUT3')
+   asyncio.run(set_ai_napoveda(_banka_request(), id=id_, typ=typ, povolene='0', X_Remote_User='petrik', predmet='AUT3'))  # type: ignore[arg-type]
+   assert 's_napovedou' not in _kategoria_xml(banka, 'AUT3')
+
+@pytest.mark.parametrize('typ, id_, predmet, status', [
+   ('otazka', 'nie', None, 404), ('kategoria', 'nie', None, 404), ('kapitola', 'nie', 'AUT3', 404),
+   ('nieco', 'otA', None, 400), ('kapitola', '../x', 'AUT3', 400), ('kapitola', '01', '../x', 400), ('kapitola', '01', None, 400),
+])
+def test_setainapoveda_chybne_vstupy(banka, typ, id_, predmet, status):
+   with pytest.raises(HTTPException) as exc:
+      asyncio.run(set_ai_napoveda(_banka_request(), id=id_, typ=typ, povolene='1', X_Remote_User='petrik', predmet=predmet))  # type: ignore[arg-type]
+   assert exc.value.status_code == status
 
 
 # --- importmanual ---

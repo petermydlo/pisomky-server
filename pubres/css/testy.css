@@ -436,14 +436,38 @@ body.admin-overview {
    display: flex;
    align-items: center;
    gap: 0.5rem;
-   margin-left: -1.5rem;
+   margin-left: -3rem;
 }
 
 .pause-row-otazka {
    display: flex;
    align-items: flex-start;
    gap: 0.5rem;
-   margin-left: -1.5rem;
+   margin-left: -3rem;
+}
+
+/* hlavicka stlpcov checkboxov v riadku predmetu: ikona a pod nou checkbox, stlpce lezia nad checkboxami napovede a pauzy */
+.stlpce-hlavicka {
+   position: absolute;
+   left: -3rem;
+   top: 50%;
+   transform: translateY(-50%);
+   display: flex;
+   align-items: flex-start;
+   gap: 0.5rem;
+}
+
+.stlpec-hlavicka {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 0.125rem;
+   width: 1rem;
+}
+
+.stlpec-hlavicka .bi {
+   font-size: 1rem;
+   line-height: 1;
 }
 
 .flex-container-table-otazka {
@@ -715,6 +739,8 @@ div:hover > span.penIcon.editActions {
 }
 
 .predmet-row {
+   position: relative;
+   min-height: 3.5rem;
    display: flex;
    align-items: center;
    justify-content: space-between;

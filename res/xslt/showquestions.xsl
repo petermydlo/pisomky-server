@@ -100,6 +100,19 @@
             </div>
          </div>
          <div class="okraj bold bg-info predmet-row">
+            <div class="stlpce-hlavicka">
+               <div class="stlpec-hlavicka">
+                  <i class="bi bi-lightbulb" title="AI nápoveda povolená (zaškrtnuté) alebo zakázaná"/>
+                  <input type="checkbox" class="napoveda-check form-check-input" id="napoveda-kapitola" data-typ="kapitola" data-predmet="{$predmet}" title="AI nápoveda všetkých otázok aktívnej kapitoly">
+                     <xsl:if test="not($can_edit)">
+                        <xsl:attribute name="disabled">disabled</xsl:attribute>
+                     </xsl:if>
+                  </input>
+               </div>
+               <div class="stlpec-hlavicka">
+                  <i class="bi bi-pause-circle" title="Žrebuje sa (zaškrtnuté) alebo je pozastavené"/>
+               </div>
+            </div>
             <span>Predmet: <xsl:call-template name="predmet-icon"><xsl:with-param name="predmet" select="$predmet"/></xsl:call-template><xsl:value-of select="$predmet"/></span>
             <div class="addKategoriaWrap">
                <xsl:if test="$can_create">
@@ -129,6 +142,15 @@
                      </xsl:if>
                      <xsl:for-each select="current-group()/kapitola/kategoria">
                         <div class="pause-row">
+                           <xsl:variable name="vhodne" select="otazka[not(@deprecated) and not(tabulka)]"/>
+                           <input type="checkbox" class="napoveda-check form-check-input flex-shrink-0" data-id="{@id}" data-typ="kategoria" title="AI nápoveda všetkých otázok kategórie">
+                              <xsl:if test="@deprecated='1' or empty($vhodne) or not($can_edit)">
+                                 <xsl:attribute name="disabled">disabled</xsl:attribute>
+                              </xsl:if>
+                              <xsl:if test="not(@deprecated='1') and exists($vhodne) and empty($vhodne[not(@s_napovedou='1')])">
+                                 <xsl:attribute name="checked">checked</xsl:attribute>
+                              </xsl:if>
+                           </input>
                            <xsl:choose>
                               <xsl:when test="@deprecated='1'">
                                  <input type="checkbox" class="pause-check form-check-input flex-shrink-0" data-id="{@id}" data-typ="kategoria" disabled="disabled"/>
@@ -250,6 +272,14 @@
          <xsl:attribute name="class">collapse flex-container-table-otazka <xsl:value-of select="$id"/> mb-2</xsl:attribute>
       </xsl:if>
       <div class="pause-row-otazka">
+         <input type="checkbox" class="napoveda-check form-check-input flex-shrink-0" data-id="{@id}" data-typ="otazka" data-kategoria="{../@id}">
+            <xsl:if test="@deprecated='1' or ../@deprecated='1' or tabulka or not($can_edit)">
+               <xsl:attribute name="disabled">disabled</xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@s_napovedou='1' and not(tabulka)">
+               <xsl:attribute name="checked">checked</xsl:attribute>
+            </xsl:if>
+         </input>
          <xsl:choose>
             <xsl:when test="@deprecated='1' or ../@deprecated='1'">
                <input type="checkbox" class="pause-check form-check-input flex-shrink-0" data-id="{@id}" data-typ="otazka" disabled="disabled"/>

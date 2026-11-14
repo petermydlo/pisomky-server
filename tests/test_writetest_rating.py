@@ -47,7 +47,7 @@ def html(tmp_path):
       xp.set_context(xdm_item=proc.parse_xml(xml_file_name=str(testy)))
       vysledok = xslt_to_string(
          proc, stylesheet_file=str(tmp_path / 'res/xslt/writetest.xsl'), xdm_node=xp.evaluate_single('/testy/test'),
-         params={'admin': False, 'napovedy_zostatok': 3},
+         params={'admin': False, 'napovedy_zostatok': 3, 'napovedy_povolene': ''},
       )
    return lxml.html.fromstring(vysledok)
 

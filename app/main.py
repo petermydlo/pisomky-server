@@ -10,8 +10,8 @@ from saxonche import PySaxonProcessor
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
-from app.utils import find_test, xslt_to_string, get_test_metadata, get_time_state, get_score, store_mcq_scores, je_odhalene
-from app.routers.ai import OLLAMA_RUNNER_OPTIONS, _spocitaj_napovedy_testu
+from app.utils import find_test, xslt_to_string, get_test_metadata, get_time_state, get_score, store_mcq_scores, je_odhalene, otazky_s_napovedou
+from app.routers.ai import OLLAMA_RUNNER_OPTIONS, _spocitaj_napovedy_testu, pocet_otazok_s_napovedou
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -162,14 +162,15 @@ async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
       token = await run_in_threadpool(relacie.otvor, kluc)
       if token is None:  #test pisu na inom mieste; obsah testu sa nevracia
          return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'occupied'}, status_code=423)
-      pocet_otazok = int(xp.evaluate_single('count(otazka)') or 0)
       predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, node)
+      povolene = otazky_s_napovedou(predmet, kapitola)
+      pocet_otazok = pocet_otazok_s_napovedou(xp, node, povolene)
       subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
       napovedy_zostatok = max(0, pocet_otazok - _spocitaj_napovedy_testu(subor, kluc))
       if edit:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'token': token}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=request.app.state.xslt_pools)
       else:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'token': token}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=request.app.state.xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
       #zaciatok citania chyby (cesty, Saxon) nema vidiet ziak; ucitel ma podrobnosti v logu
@@ -187,15 +188,16 @@ async def adminview(request: Request, _: Annotated[str, Header(alias='X-Remote-U
    try:
       xp = proc.new_xpath_processor()
       xp.set_context(xdm_item=node)
-      pocet_otazok = int(xp.evaluate_single('count(otazka)') or 0)
       predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, node)
+      povolene = otazky_s_napovedou(predmet, kapitola)
+      pocet_otazok = pocet_otazok_s_napovedou(xp, node, povolene)
       subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
       napovedy_zostatok = max(0, pocet_otazok - _spocitaj_napovedy_testu(subor, kluc))
       token = relacie.vydaj_ucitelsky_token(kluc)  #ucitel prenajom nevyzaduje ani neblokuje
       if edit:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'token': token}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=request.app.state.xslt_pools)
       else:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'token': token}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=request.app.state.xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
       request.app.state.logger.error(f'chyba adminview: {e}')
