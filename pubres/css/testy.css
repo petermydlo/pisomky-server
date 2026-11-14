@@ -1272,6 +1272,11 @@ div:hover > span.penIcon.editActions {
       padding-left: 1.5rem;
    }
 
+   /* odpovede jedna pod druhou (zaciatok ostava pod znenim otazky, nie pod stlpcom s radiami) */
+   .flex-container-table-odpoved > div {
+      flex: 100%;
+   }
+
    /* zalozky: space-between rozťahoval posledny riadok (jedna zalozka vlavo, druha na pravom okraji) */
    .flex-container-tab {
       justify-content: flex-start;
