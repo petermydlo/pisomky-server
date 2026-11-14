@@ -128,29 +128,29 @@
             </xsl:choose>
          </div>
          <xsl:if test="@spravne or @nespravne">
-            <span class="tooltip-wrap gs-ikona">
-               <span><i class="bi bi-bar-chart"/></span>
-               <span class="tooltip-text">
-                  <span class="bold"><xsl:value-of select="@spravne"/></span>
+            <span class="ikona-title gs-ikona">
+               <xsl:attribute name="title">
+                  <xsl:value-of select="@spravne"/>
                   <xsl:text> / </xsl:text>
-                  <span class="bold"><xsl:value-of select="xs:integer(@spravne) + xs:integer(@nespravne)"/></span>
+                  <xsl:value-of select="xs:integer(@spravne) + xs:integer(@nespravne)"/>
                   <xsl:text> (</xsl:text>
                   <xsl:value-of select="my:percent-text(@percento)"/>
                   <xsl:text>%)</xsl:text>
-               </span>
+               </xsl:attribute>
+               <i class="bi bi-bar-chart"/>
             </span>
          </xsl:if>
          <xsl:if test="not(@spravne) and not(@nespravne) and xs:decimal(@maxbody) > 0">
-            <span class="tooltip-wrap gs-ikona">
-               <span><i class="bi bi-bar-chart"/></span>
-               <span class="tooltip-text">
+            <span class="ikona-title gs-ikona">
+               <xsl:attribute name="title">
                   <xsl:value-of select="my:body-text(@body)"/>
                   <xsl:text>b / </xsl:text>
                   <xsl:value-of select="my:body-text(@maxbody)"/>
                   <xsl:text>b (</xsl:text>
                   <xsl:value-of select="my:percent-text(@percento)"/>
                   <xsl:text>%)</xsl:text>
-               </span>
+               </xsl:attribute>
+               <i class="bi bi-bar-chart"/>
             </span>
          </xsl:if>
       </div>

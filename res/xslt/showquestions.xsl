@@ -373,40 +373,41 @@
             </xsl:apply-templates>
          </div>
          <xsl:if test="not(odpoved) and (vzor or klucove_slova/slovo)">
-            <span class="tooltip-wrap">
-               <span><i class="bi bi-mortarboard"></i></span>
-               <span class="tooltip-text">
+            <span class="ikona-title">
+               <xsl:attribute name="title">
                   <xsl:if test="vzor">
-                     <span class="bold">Vzor: </span>
+                     <xsl:text>Vzor:</xsl:text>
                      <xsl:for-each select="vzor">
-                        <pre class="tooltip-vzor"><xsl:value-of select="my:normalizuj-vzor(.)"/></pre>
+                        <xsl:text>&#10;</xsl:text>
+                        <xsl:if test="position() gt 1"><xsl:text>---&#10;</xsl:text></xsl:if>
+                        <xsl:value-of select="my:normalizuj-vzor(.)"/>
                      </xsl:for-each>
                   </xsl:if>
-                  <xsl:if test="vzor and klucove_slova/slovo"><br/></xsl:if>
+                  <xsl:if test="vzor and klucove_slova/slovo"><xsl:text>&#10;&#10;</xsl:text></xsl:if>
                   <xsl:if test="klucove_slova/slovo">
-                     <span class="bold">Kľúčové slová: </span>
+                     <xsl:text>Kľúčové slová: </xsl:text>
                      <xsl:value-of select="string-join(klucove_slova/slovo, ', ')"/>
                   </xsl:if>
-               </span>
+               </xsl:attribute>
+               <i class="bi bi-mortarboard"></i>
             </span>
          </xsl:if>
          <xsl:if test="not(odpoved) and napoveda[not(@pre)]">
-            <span class="tooltip-wrap">
-               <span><i class="bi bi-lightbulb"/></span>
-               <span class="tooltip-text">
-                  <span class="bold">Nápoveda: </span>
+            <span class="ikona-title">
+               <xsl:attribute name="title">
+                  <xsl:text>Nápoveda:&#10;</xsl:text>
                   <xsl:value-of select="napoveda[not(@pre)]"/>
-               </span>
+               </xsl:attribute>
+               <i class="bi bi-lightbulb"/>
             </span>
          </xsl:if>
          <xsl:if test="$stat_otazka">
-            <span class="tooltip-wrap">
-               <span><i class="bi bi-bar-chart"/></span>
-               <span class="tooltip-text">
+            <span class="ikona-title">
+               <xsl:attribute name="title">
                   <xsl:if test="$stat_otazka/@spravne">
-                     <span class="bold"><xsl:value-of select="round($stat_otazka/@spravne)"/></span>
+                     <xsl:value-of select="round($stat_otazka/@spravne)"/>
                      <xsl:text> / </xsl:text>
-                     <span class="bold"><xsl:value-of select="round($stat_otazka/@spravne) + round($stat_otazka/@nespravne)"/></span>
+                     <xsl:value-of select="round($stat_otazka/@spravne) + round($stat_otazka/@nespravne)"/>
                      <xsl:text> (</xsl:text>
                      <xsl:value-of select="my:percent-text($stat_otazka/@percento)"/>
                      <xsl:text>%)</xsl:text>
@@ -415,18 +416,19 @@
                      <xsl:value-of select="my:percent-text($stat_otazka/@percento)"/>
                      <xsl:text>%</xsl:text>
                   </xsl:if>
-               </span>
+               </xsl:attribute>
+               <i class="bi bi-bar-chart"/>
             </span>
          </xsl:if>
          <xsl:if test="$stat_otazka/@vyber">
-            <span class="tooltip-wrap">
-               <span><i class="bi bi-bullseye"/></span>
-               <span class="tooltip-text">
+            <span class="ikona-title">
+               <xsl:attribute name="title">
                   <xsl:value-of select="round($stat_otazka/@vyber)"/>
                   <xsl:text> (</xsl:text>
                   <xsl:value-of select="my:percent-text($stat_otazka/@vyber_kat_percento)"/>
                   <xsl:text>%)</xsl:text>
-               </span>
+               </xsl:attribute>
+               <i class="bi bi-bullseye"/>
             </span>
          </xsl:if>
          </div>
@@ -477,17 +479,18 @@
       <xsl:if test="@spravna = 1">
          <xsl:variable name="klic" select="@napoveda_key"/>
          <xsl:if test="(@napoveda_key and ../napoveda[@pre = $klic]) or ../napoveda[not(@pre)]">
-            <span class="tooltip-wrap">
-               <span><i class="bi bi-lightbulb"/></span>
-               <span class="tooltip-text">
+            <span class="ikona-title">
+               <xsl:attribute name="title">
+                  <xsl:text>Nápoveda:&#10;</xsl:text>
                   <xsl:if test="@napoveda_key and ../napoveda[@pre = $klic]">
                      <xsl:value-of select="../napoveda[@pre = $klic]"/>
                   </xsl:if>
                   <xsl:if test="../napoveda[not(@pre)]">
-                     <xsl:if test="@napoveda_key and ../napoveda[@pre = $klic]"><br/></xsl:if>
+                     <xsl:if test="@napoveda_key and ../napoveda[@pre = $klic]"><xsl:text>&#10;</xsl:text></xsl:if>
                      <xsl:value-of select="../napoveda[not(@pre)]"/>
                   </xsl:if>
-               </span>
+               </xsl:attribute>
+               <i class="bi bi-lightbulb"/>
             </span>
          </xsl:if>
       </xsl:if>

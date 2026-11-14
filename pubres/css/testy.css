@@ -218,44 +218,9 @@ button {
 }
 
 
-.tooltip-text {
-   display: none;
-   position: absolute;
-   background: var(--bs-gray-800);
-   color: var(--bs-white);
-   padding: 6px 10px;
-   border-radius: 4px;
-   width: auto;
-   white-space: nowrap;
-   z-index: 100;
-   bottom: 125%;
-   left: 50%;
-   transform: translateX(-50%);
-   font-weight: normal;
-   font-size: 0.9em;
-}
-
-/* <pre>, lebo Saxon (indent="yes") inak zalamuje a odsadzuje dlhy text */
-.tooltip-vzor {
-   margin: 0;
-   font-size: inherit;
-   color: inherit;
-}
-
-.tooltip-vzor + .tooltip-vzor {
-   border-top: 1px solid var(--bs-gray-600);
-}
-
-.tooltip-wrap {
-   position: relative;
+.ikona-title {
    display: inline-block;
    margin-left: 4px;
-   cursor: pointer;
-}
-
-.tooltip-wrap:hover .tooltip-text {
-   display: block;
-   margin-left: 0.5rem;
 }
 
 .kval-hviezdicky {
