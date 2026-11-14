@@ -1251,6 +1251,15 @@ div:hover > span.penIcon.editActions {
    }
 }
 
+/* editor otazok: stlpce checkboxov (napoveda, pauza) lezia 3rem vlavo od obsahu a bez volneho miesta by boli orezane
+   (volne miesto vlavo je 3rem az od 66rem okna); posuva sa len riadok predmetu a obsah pod nim, nie hlavicka a zoznam kapitol */
+@media (max-width: 66rem) {
+   .predmet-row,
+   .tab-content:has(.pause-row) {
+      margin-left: 3rem;
+   }
+}
+
 /* uzsie okno ako body (60rem): obsah nesmie lepit na okraj displeja */
 @media (max-width: 62rem) {
    body {
