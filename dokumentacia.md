@@ -352,9 +352,9 @@ označenie nahradenej otázky).
 ### 4.6 AI nápoveda pri otázke (`s_napovedou`)
 
 V editore sú pred každou kategóriou a otázkou dva stĺpce checkboxov: vľavo **AI nápoveda**
-(zaškrtnuté = povolená), vpravo pauza (4.5). Hlavička stĺpcov nad kapitolou má
-hromadný checkbox celej kapitoly; checkbox kategórie a kapitoly je pri zmiešanom stave
-neurčitý. Volá `POST /admin/setainapoveda` (`typ=kapitola|kategoria|otazka`, `id`,
+(zaškrtnuté = povolená), vpravo pauza (4.5). V riadku s názvom predmetu je pod ikonou
+žiarovky hromadný checkbox aktívnej kapitoly (mení sa s prepnutím záložky); checkbox
+kategórie a kapitoly je pri zmiešanom stave neurčitý. Volá `POST /admin/setainapoveda` (`typ=kapitola|kategoria|otazka`, `id`,
 `povolene=1|0`, pre kapitolu aj `predmet`), vyžaduje oprávnenie `edit`. Povolenie zapíše
 `s_napovedou="1"` na otázky, zákaz atribút odstráni; archivované otázky a otázky s
 tabuľkou sa pri hromadnej zmene preskočia.
