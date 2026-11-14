@@ -19,12 +19,14 @@
 <xsl:template match="tabulka">
    <xsl:param name="rezim" select="'zadanie'"/>
    <xsl:param name="hodnoty" as="xs:string*" select="()"/>
-   <table class="tabulka">
-      <xsl:apply-templates select="hlavicka | riadok">
-         <xsl:with-param name="rezim" select="$rezim" tunnel="yes"/>
-         <xsl:with-param name="hodnoty" select="$hodnoty" tunnel="yes"/>
-      </xsl:apply-templates>
-   </table>
+   <div class="tabulka-scroll">
+      <table class="tabulka">
+         <xsl:apply-templates select="hlavicka | riadok">
+            <xsl:with-param name="rezim" select="$rezim" tunnel="yes"/>
+            <xsl:with-param name="hodnoty" select="$hodnoty" tunnel="yes"/>
+         </xsl:apply-templates>
+      </table>
+   </div>
 </xsl:template>
 
 <xsl:template match="hlavicka | riadok">

@@ -1309,6 +1309,12 @@ div:hover > span.penIcon.editActions {
    padding: 0 2px;
 }
 
+/* siroka tabulka sa v obale posuva do strany, stranka ostava na mieste */
+.tabulka-scroll {
+   max-width: 100%;
+   overflow-x: auto;
+}
+
 table.tabulka {
    margin: 0.5rem auto;
    border-collapse: collapse;
@@ -1346,6 +1352,7 @@ table.tabulka input.bunka-siroka {
 .flex-container-table-odpoved > div.tabulka-obal {
    flex-direction: column;
    justify-content: center;
+   min-width: 0;
 }
 
 .tabulka-body {
