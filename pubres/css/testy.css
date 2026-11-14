@@ -24,7 +24,8 @@ footer {
    right: 0;
    margin-left: auto;
    margin-right: auto;
-   width: 60rem;
+   width: 100%;
+   max-width: 60rem;
    text-align: center;
 }
 
@@ -1228,9 +1229,24 @@ div:hover > span.penIcon.editActions {
    }
 }
 
+/* uzsie okno ako body (60rem): obsah nesmie lepit na okraj displeja */
+@media (max-width: 62rem) {
+   body {
+      padding-inline: 0.75rem;
+   }
+}
+
 @media (max-width: 576px) {
    .ai-napoveda-btn {
       font-size: 1rem;
+   }
+
+   li {
+      padding-left: 1.5rem;
+   }
+
+   .flex-container-head {
+      padding-left: 1.5rem;
    }
 }
 
