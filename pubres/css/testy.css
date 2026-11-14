@@ -354,6 +354,11 @@ body.admin-overview {
       display: none;
    }
 
+   /* bunky mriezky sa nezalamuju, text sa len odstrihne (bunky uz maju overflow: hidden) */
+   .grid > div {
+      white-space: nowrap;
+   }
+
    .grid-header > div, .hlavicka-bunka {
       justify-content: center;
    }
