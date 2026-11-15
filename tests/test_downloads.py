@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from handler_volanie import volaj
 from fastapi import BackgroundTasks
 from fastapi.exceptions import HTTPException
 
@@ -34,7 +35,7 @@ def prostredie(tmp_path, monkeypatch):
 
 def _stiahni(background_tasks):
    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(proc=None, xslt_pools={}, logger=logging.getLogger('pisomky'))))
-   return asyncio.run(downloads.downloadtests(request, background_tasks, 'MAT', '1A', 'kap1', 'ab12', ''))  # type: ignore[arg-type]
+   return asyncio.run(volaj(downloads.downloadtests, request, background_tasks, 'MAT', '1A', 'kap1', 'ab12', ''))  # type: ignore[arg-type]
 
 
 def test_downloadtests_pri_chybe_pdf_sa_qr_adresar_zmaze_hned(prostredie, monkeypatch):

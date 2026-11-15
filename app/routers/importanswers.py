@@ -10,8 +10,9 @@ from fastapi import APIRouter, Request
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.concurrency import run_in_threadpool
-from app.mytypes import StringForm, StringPath
-from app.utils import find_test_file, test_xml_path, zaloz_subor_odpovedi
+from app.sada import SadaTestov
+from app.mytypes import StringPath, Logger, KlucCache, Templates, AiProvider
+from app.utils import find_test_file, zaloz_subor_odpovedi
 
 load_dotenv()
 
@@ -95,16 +96,13 @@ def precitaj_qr_kody(obsah: bytes, mime_type: str) -> list[str]:
 
 
 @router.get('/admin/ai/importanswers', response_class=HTMLResponse)
-async def importanswers_page(request: Request):
-   return request.app.state.templates.TemplateResponse(request, 'importanswers.html')
+async def importanswers_page(request: Request, templates: Templates):
+   return templates.TemplateResponse(request, 'importanswers.html')
 
 
 @router.post('/admin/ai/importmanual/{kluc}')
-async def importmanual(request: Request, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
-   try:
-      test_xml_path(predmet, trieda, skupina, kapitola, fileid)
-   except ValueError as e:
-      raise HTTPException(status_code=400, detail=str(e))
+async def importmanual(request: Request, logger: Logger, kluc: StringPath, sada: SadaTestov):
+   predmet, trieda, skupina, kapitola, fileid = sada
    adresar = f'./res/xml/answers/{predmet}'
    Path(adresar).mkdir(parents=True, exist_ok=True)
    cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
@@ -114,7 +112,7 @@ async def importmanual(request: Request, kluc: StringPath, predmet: StringForm, 
    try:
       await run_in_threadpool(write_answers_import, lock, cesta, form_data, kluc, predmet, trieda, skupina, kapitola, fileid)
    except Exception as e:
-      request.app.state.logger.error(f'chyba importmanual: {e}')
+      logger.error(f'chyba importmanual: {e}')
       raise HTTPException(status_code=400, detail=str(e))
    return JSONResponse(content={'ok': True})
 
@@ -197,14 +195,14 @@ async def _spracuj_subor(subor, cache, provider, vysledky):
 
 
 @router.post('/admin/ai/importanswers')
-async def importanswers(request: Request):
+async def importanswers(request: Request, kluc_cache: KlucCache, ai_provider: AiProvider):
    async with request.form() as form:
       subory = form.getlist('obrazky')
    if not subory:
       raise HTTPException(status_code=400, detail='Žiadne súbory neboli nahrané.')
 
-   cache = request.app.state.kluc_cache
-   provider = request.app.state.ai_provider
+   cache = kluc_cache
+   provider = ai_provider
    vysledky: list[dict] = []
 
    async with anyio.create_task_group() as tg:

@@ -162,12 +162,18 @@ def stranka(tmp_path, monkeypatch, zapnute):
    main.app.state.mcq_hotove.clear()
    monkeypatch.setattr(main, 'xslt_to_string', lambda proc, **kw: f'<div id="hlavicka" token="{kw["params"]["token"]}"></div>')
    povodny = main.app.state.proc
+   #TestClient bez `with` nespusta lifespan, takze task_group (nastavuje ho lifespan) by chybal; zavislost TaskGroupDep sa vyhodnoti vzdy
+   mal_task_group = hasattr(main.app.state, 'task_group')
+   if not mal_task_group:
+      main.app.state.task_group = None
    with PySaxonProcessor(license=False) as proc:
       main.app.state.proc = proc
       try:
          yield TestClient(main.app, base_url='http://pisomky.ternac.net')
       finally:
          main.app.state.proc = povodny
+         if not mal_task_group:
+            del main.app.state.task_group
 
 
 def _token(odpoved) -> str:

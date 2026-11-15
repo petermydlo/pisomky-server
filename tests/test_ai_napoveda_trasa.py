@@ -12,6 +12,7 @@ import pytest
 from jinja2 import Environment, FileSystemLoader
 from saxonche import PySaxonProcessor
 
+from handler_volanie import volaj
 from app.routers import ai
 from app.routers.ai import napoveda, _priprav_prompt, _cache_subor, _cache_uloz, _uloz_zapis, _zamok_napovede
 
@@ -83,7 +84,7 @@ def _zavolaj(backend, test_id=KLUC, otazka_id='q1'):
       with PySaxonProcessor(license=False) as proc:
          state = SimpleNamespace(proc=proc, kluc_cache={}, logger=logging.getLogger('test'), templates=SABLONY, task_group=None)
          request = SimpleNamespace(app=SimpleNamespace(state=state), is_disconnected=disconnected)
-         odpoved = await napoveda(request, otazka_id, test_id)  # type: ignore[arg-type]
+         odpoved = await volaj(napoveda, request, otazka_id, test_id)  # type: ignore[arg-type]
          if hasattr(odpoved, 'body_iterator'):
             text = ''.join([c if isinstance(c, str) else c.decode() async for c in odpoved.body_iterator])  # type: ignore[union-attr]
             return odpoved.status_code, [(blok.split('\n')[0][len('event: '):], json.loads(blok.split('\n')[1][len('data: '):])) for blok in text.strip().split('\n\n')]

@@ -2,8 +2,9 @@
 
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from app.mytypes import StringForm, StringFormOptional, StringPath, StringHeader
-from app.utils import find_test, xslt_to_string, xquery_to_string, test_xml_path, get_time_state
+from app.sada import SadaTestov, SadaOdpovedi
+from app.mytypes import StringForm, StringFormOptional, StringPath, Proc, Logger, KlucCache, XsltPools, Templates, User
+from app.utils import find_test, xslt_to_string, xquery_to_string, get_time_state
 import lxml.etree as ET
 from fastapi.concurrency import run_in_threadpool
 from filelock import FileLock
@@ -18,33 +19,28 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 @router.get('/admin/showresult/{kluc}', response_class=HTMLResponse)
-async def showresult(request: Request, kluc: StringPath):
-   proc = request.app.state.proc
-   node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
+async def showresult(request: Request, proc: Proc, logger: Logger, kluc_cache: KlucCache, xslt_pools: XsltPools, templates: Templates, kluc: StringPath):
+   node = find_test(proc, kluc, True, cache=kluc_cache)
    if node is None:
-      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
+      return templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
    try:
-      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showresult.xsl', xdm_node=node, xslt_pools=request.app.state.xslt_pools)
+      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showresult.xsl', xdm_node=node, xslt_pools=xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
-      request.app.state.logger.error(f'chyba showresult: {e}')
+      logger.error(f'chyba showresult: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 @router.post('/admin/savemarks/{kluc}')
-async def savemarks(request: Request, response: Response, kluc: StringPath, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, dat: StringForm, skupina: StringForm = ''):
-   try:
-      test_xml_path(predmet, trieda, skupina, kapitola, fileid)
-   except ValueError as e:
-      raise HTTPException(status_code=400, detail=str(e))
-   adresar = f'./res/xml/answers/{predmet}'
-   cesta = Path(f'{adresar}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml')
+async def savemarks(request: Request, logger: Logger, response: Response, kluc: StringPath, sada: SadaOdpovedi, dat: StringForm):
+   predmet, trieda, skupina, kapitola, fileid = sada
+   cesta = Path(sada.cesta_odpovedi)
    async with request.form() as form:
       form_data = {k: v for k, v in form.items() if k not in {'kluc', 'predmet', 'trieda', 'skupina', 'kapitola', 'fileid', 'dat'}}
    lock = FileLock(f'{cesta}.lock')
    try:
       await run_in_threadpool(write_marks, lock, cesta, form_data, kluc, dat)
    except Exception as e:
-      request.app.state.logger.error(f'chyba savemarks: {e}')
+      logger.error(f'chyba savemarks: {e}')
       raise HTTPException(status_code=400, detail='chyba znamky: ' + str(e))
    response.status_code = 201
    return
@@ -93,24 +89,19 @@ def write_marks(lock: FileLock, cesta: Path, form_data: dict, kluc: str, dat: st
          raise Exception('chyba znamky: ' + str(e))
 
 @router.post('/admin/setrevealed', response_class=JSONResponse)
-async def setrevealed(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, odhalene: StringForm, skupina: StringForm = '', kluc: StringFormOptional = None):
+async def setrevealed(proc: Proc, logger: Logger, sada: SadaOdpovedi, odhalene: StringForm, kluc: StringFormOptional = None):
    """Odhali (odhalene=1) alebo skryje (odhalene=0) zakom spravne odpovede; bez kluca pre celu sadu testov."""
-   try:
-      cesta_testov = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
-   except ValueError as e:
-      raise HTTPException(status_code=400, detail=str(e))
-   cesta = Path(cesta_testov.replace('/tests/', '/answers/', 1))
-   if not cesta.is_file():
-      raise HTTPException(status_code=404, detail='Súbor odpovedí nenájdený')
+   cesta_testov = sada.cesta
+   cesta = Path(sada.cesta_odpovedi)
    odhalit = odhalene == '1'
-   skoncene = skoncene_testy(request.app.state.proc, cesta_testov) if odhalit else set()
+   skoncene = skoncene_testy(proc, cesta_testov) if odhalit else set()
    lock = FileLock(f'{cesta}.lock')
    try:
       zmenene = await run_in_threadpool(write_odhalene, lock, cesta, odhalit, skoncene, kluc)
    except HTTPException:
       raise
    except Exception as e:
-      request.app.state.logger.error(f'chyba setrevealed: {e}')
+      logger.error(f'chyba setrevealed: {e}')
       raise HTTPException(status_code=400, detail='chyba setrevealed: ' + str(e))
    return JSONResponse(content={'zmenene': zmenene}, status_code=200)
 
@@ -146,12 +137,8 @@ def write_odhalene(lock: FileLock, cesta: Path, odhalit: bool, skoncene: set[str
       return zmenene
 
 @router.post('/admin/groupstatistics', response_class=HTMLResponse)
-async def groupstatistics(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', X_Remote_User: StringHeader = ''):
-   try:
-      test_xml_path(predmet, trieda, skupina, kapitola, fileid)
-   except ValueError as e:
-      raise HTTPException(status_code=400, detail=str(e))
-   proc = request.app.state.proc
+async def groupstatistics(proc: Proc, logger: Logger, xslt_pools: XsltPools, user: User, sada: SadaTestov):
+   predmet, trieda, skupina, kapitola, fileid = sada
    try:
       params = {
          'predmet': predmet,
@@ -159,12 +146,12 @@ async def groupstatistics(request: Request, predmet: StringForm, trieda: StringF
          'skupina': skupina,
          'kapitola': kapitola,
          'fileid': fileid,
-         'autor': X_Remote_User
+         'autor': user
       }
       xml_data = xquery_to_string(proc, './res/xquery/groupstatistics.xq', params=params)
       xml_node = proc.parse_xml(xml_text=xml_data)
-      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/groupstatistics.xsl', xdm_node=xml_node, xslt_pools=request.app.state.xslt_pools)
+      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/groupstatistics.xsl', xdm_node=xml_node, xslt_pools=xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
-      request.app.state.logger.error(f'chyba groupstatistics: {e}')
+      logger.error(f'chyba groupstatistics: {e}')
       raise HTTPException(status_code=400, detail=str(e))

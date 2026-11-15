@@ -5,7 +5,7 @@ import json
 import os
 import tempfile
 import lxml.etree as ET
-from app.mytypes import StringForm, StringFormOptional, StringHeader, StringQuery
+from app.mytypes import StringForm, StringFormOptional, StringQuery, Proc, Logger, PermCache, XsltPools, User
 from app.utils import (
    xslt_to_string, xquery_to_string, ensure_ids, is_used, pouzite_otazky,
    add_category, delete_category, update_category, restore_category, find_category,
@@ -24,33 +24,31 @@ router = APIRouter()
 _AKCIA_PODLA_OPERACIE = {'create': 'create', 'update': 'edit', 'delete': 'delete', 'restore': 'edit'}
 
 @router.get('/admin/selectquestions', response_class=HTMLResponse)
-async def selectquestions(request: Request, X_Remote_User: StringHeader):
-   proc = request.app.state.proc
+async def selectquestions(proc: Proc, logger: Logger, perm_cache: PermCache, user: User):
    nazvy = sorted(os.listdir('./res/xml/questions'))
    predmety = ' '.join(nazvy)
-   perm_cache = request.app.state.perm_cache
-   can_createp = has_permission(perm_cache, X_Remote_User, 'createp', 'ALL')
-   deletep_predmety = ' '.join(p for p in nazvy if has_permission(perm_cache, X_Remote_User, 'deletep', p))
+   can_createp = has_permission(perm_cache, user, 'createp', 'ALL')
+   deletep_predmety = ' '.join(p for p in nazvy if has_permission(perm_cache, user, 'deletep', p))
    try:
       vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/selectquestions.xsl', params={
          'predmety': predmety, 'can_createp': can_createp, 'deletep_predmety': deletep_predmety,
       })
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
-      request.app.state.logger.error(f'chyba selectquestions: {e}')
+      logger.error(f'chyba selectquestions: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 @router.post('/admin/process_predmet', response_class=JSONResponse)
-async def process_predmet(request: Request, predmet: StringForm, operacia: StringForm, X_Remote_User: StringHeader):
+async def process_predmet(logger: Logger, perm_cache: PermCache, predmet: StringForm, operacia: StringForm, user: User):
    try:
       if operacia == 'create':
-         check_permission(request.app.state.perm_cache, X_Remote_User, 'createp', predmet)
+         check_permission(perm_cache, user, 'createp', predmet)
          ok = create_predmet(predmet)
          if not ok:
             raise HTTPException(status_code=400, detail='Predmet sa nedal vytvoriť (neplatná skratka alebo už existuje)')
          return JSONResponse(content={'ok': True}, status_code=200)
       elif operacia == 'delete':
-         check_permission(request.app.state.perm_cache, X_Remote_User, 'deletep', predmet)
+         check_permission(perm_cache, user, 'deletep', predmet)
          ok, dovod = delete_predmet(predmet)
          if not ok:
             raise HTTPException(status_code=400, detail=dovod or 'Predmet sa nedal vymazať')
@@ -60,51 +58,49 @@ async def process_predmet(request: Request, predmet: StringForm, operacia: Strin
    except HTTPException:
       raise
    except Exception as e:
-      request.app.state.logger.error(f'chyba predmet: {e}')
+      logger.error(f'chyba predmet: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 @router.post('/admin/showquestions', response_class=HTMLResponse)
-async def showquestions(request: Request, predmet: StringForm, X_Remote_User: StringHeader):
+async def showquestions(proc: Proc, logger: Logger, perm_cache: PermCache, xslt_pools: XsltPools, predmet: StringForm, user: User):
    try:
       over_predmet(predmet)
    except ValueError as e:
       raise HTTPException(status_code=400, detail=str(e))
-   proc = request.app.state.proc
    tmp_path = None
    try:
       for cesta in glob.iglob(f'./res/xml/questions/{predmet}/*.xml'):
          ensure_ids(cesta)
-      xml_data = xquery_to_string(proc, './res/xquery/statistics.xq', params={'predmet': predmet, 'autor': X_Remote_User})
+      xml_data = xquery_to_string(proc, './res/xquery/statistics.xq', params={'predmet': predmet, 'autor': user})
       with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False, encoding='utf-8') as f:
          f.write(xml_data)
          tmp_path = f.name
-      perm_cache = request.app.state.perm_cache
       opravnenia_params = {
-         'can_create': has_permission(perm_cache, X_Remote_User, 'create', predmet),
-         'can_edit': has_permission(perm_cache, X_Remote_User, 'edit', predmet),
-         'can_delete': has_permission(perm_cache, X_Remote_User, 'delete', predmet),
+         'can_create': has_permission(perm_cache, user, 'create', predmet),
+         'can_edit': has_permission(perm_cache, user, 'edit', predmet),
+         'can_delete': has_permission(perm_cache, user, 'delete', predmet),
       }
-      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showquestions.xsl', params={'predmet': predmet, 'statistika': tmp_path, **opravnenia_params}, xslt_pools=request.app.state.xslt_pools)
+      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showquestions.xsl', params={'predmet': predmet, 'statistika': tmp_path, **opravnenia_params}, xslt_pools=xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
-      request.app.state.logger.error(f'chyba showquestions: {e}')
+      logger.error(f'chyba showquestions: {e}')
       raise HTTPException(status_code=400, detail=str(e))
    finally:
       if tmp_path is not None and os.path.exists(tmp_path):
          os.remove(tmp_path)
 
 @router.post('/admin/process_chapter', response_class=JSONResponse)
-async def process_chapter(request: Request, predmet: StringForm, kapitola_id: StringForm, operacia: StringForm, X_Remote_User: StringHeader, nazov: StringFormOptional = None):
+async def process_chapter(logger: Logger, perm_cache: PermCache, predmet: StringForm, kapitola_id: StringForm, operacia: StringForm, user: User, nazov: StringFormOptional = None):
    try:
       over_id_kapitoly(predmet, kapitola_id)
    except ValueError as e:
-      request.app.state.logger.warning(f'neplatný vstup kapitola: {e}')
+      logger.warning(f'neplatný vstup kapitola: {e}')
       raise HTTPException(status_code=400, detail=str(e))
    try:
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
          raise HTTPException(status_code=400, detail=f'Neznáma operácia: {operacia}')
-      check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet)
+      check_permission(perm_cache, user, akcia, predmet)
       if operacia == 'create':
          nova_id, ok = create_chapter(predmet, kapitola_id, nazov)
          if not ok:
@@ -125,11 +121,11 @@ async def process_chapter(request: Request, predmet: StringForm, kapitola_id: St
    except HTTPException:
       raise
    except Exception as e:
-      request.app.state.logger.error(f'chyba kapitola: {e}')
+      logger.error(f'chyba kapitola: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 @router.post('/admin/process_category', response_class=JSONResponse)
-async def process_category(request: Request, predmet: StringForm, operacia: StringForm, X_Remote_User: StringHeader, kategoria_id: StringFormOptional = None, kapitola_id: StringFormOptional = None, za_kategoria_id: StringFormOptional = None, pocet: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None):
+async def process_category(logger: Logger, perm_cache: PermCache, predmet: StringForm, operacia: StringForm, user: User, kategoria_id: StringFormOptional = None, kapitola_id: StringFormOptional = None, za_kategoria_id: StringFormOptional = None, pocet: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None):
    try:
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
@@ -140,7 +136,7 @@ async def process_category(request: Request, predmet: StringForm, operacia: Stri
       nazov = nazov or None
       deprecated = deprecated or None
       if operacia == 'create':
-         check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet)
+         check_permission(perm_cache, user, akcia, predmet)
          if not kapitola_id:
             raise HTTPException(status_code=400, detail='kapitola_id je povinné pre vytvor')
          data = {k: v for k, v in {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated}.items() if v is not None}
@@ -154,7 +150,7 @@ async def process_category(request: Request, predmet: StringForm, operacia: Stri
       _, kat_cesta = find_category(kategoria_id)
       if kat_cesta is None:
          raise HTTPException(status_code=400, detail='Kategória nenájdená')
-      check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet_from_cesta(kat_cesta))
+      check_permission(perm_cache, user, akcia, predmet_from_cesta(kat_cesta))
       if operacia == 'update':
          update_data: dict[str, str | None] = {'pocet': pocet, 'body': body, 'static': static, 'bonus': bonus, 'nazov': nazov, 'deprecated': deprecated}
          ok = update_category(kategoria_id, update_data)
@@ -176,7 +172,7 @@ async def process_category(request: Request, predmet: StringForm, operacia: Stri
    except HTTPException:
       raise
    except Exception as e:
-      request.app.state.logger.error(f'chyba kategoria: {e}')
+      logger.error(f'chyba kategoria: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 @router.get('/admin/category', response_class=JSONResponse)
@@ -200,7 +196,7 @@ async def _poslane_polia(request: Request) -> set[str]:
       return set(form.keys())
 
 @router.post('/admin/process_question', response_class=JSONResponse)
-async def process_question(request: Request, operacia: StringForm, X_Remote_User: StringHeader, otazka_id: StringFormOptional = None, kategoria_id: StringFormOptional = None, za_otazka_id: StringFormOptional = None, znenie: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, rating: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None, odpovede: StringFormOptional = None, napovede: StringFormOptional = None, vzory: StringFormOptional = None, klucove_slova: StringFormOptional = None, tabulka: StringFormOptional = None, miesto: StringFormOptional = None):
+async def process_question(request: Request, logger: Logger, perm_cache: PermCache, operacia: StringForm, user: User, otazka_id: StringFormOptional = None, kategoria_id: StringFormOptional = None, za_otazka_id: StringFormOptional = None, znenie: StringFormOptional = None, body: StringFormOptional = None, static: StringFormOptional = None, bonus: StringFormOptional = None, rating: StringFormOptional = None, nazov: StringFormOptional = None, deprecated: StringFormOptional = None, odpovede: StringFormOptional = None, napovede: StringFormOptional = None, vzory: StringFormOptional = None, klucove_slova: StringFormOptional = None, tabulka: StringFormOptional = None, miesto: StringFormOptional = None):
    try:
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
@@ -226,7 +222,7 @@ async def process_question(request: Request, operacia: StringForm, X_Remote_User
          _, kat_cesta = find_category(kategoria_id)
          if kat_cesta is None:
             raise HTTPException(status_code=400, detail='Kategória sa nedala vytvoriť')
-         check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet_from_cesta(kat_cesta))
+         check_permission(perm_cache, user, akcia, predmet_from_cesta(kat_cesta))
          data = {k: v for k, v in {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'rating': rating, 'nazov': nazov, 'deprecated': deprecated, 'vzory': vzory_list, 'klucove_slova': klucove_slova_list, 'tabulka': tabulka, 'miesto': miesto_riadky}.items() if v is not None}
          data['odpovede'] = odpovede_list
          data['napovede'] = napovede_list
@@ -239,7 +235,7 @@ async def process_question(request: Request, operacia: StringForm, X_Remote_User
       otazka_el, otazka_cesta = find_question(otazka_id)
       if otazka_el is None or otazka_cesta is None:
          raise HTTPException(status_code=400, detail='Otázka nenájdená')
-      check_permission(request.app.state.perm_cache, X_Remote_User, akcia, predmet_from_cesta(otazka_cesta))
+      check_permission(perm_cache, user, akcia, predmet_from_cesta(otazka_cesta))
       if operacia == 'update':
          poslane = await _poslane_polia(request)
          data = {'znenie': znenie, 'body': body, 'static': static, 'bonus': bonus, 'rating': rating, 'nazov': nazov, 'deprecated': deprecated, 'odpovede': odpovede_list, 'napovede': napovede_list, 'klucove_slova': klucove_slova_list}
@@ -273,7 +269,7 @@ async def process_question(request: Request, operacia: StringForm, X_Remote_User
    except HTTPException:
       raise
    except Exception as e:
-      request.app.state.logger.error(f'chyba otazka: {e}')
+      logger.error(f'chyba otazka: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 def _serializuj_znenie(otazka_el) -> str | None:

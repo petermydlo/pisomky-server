@@ -6,32 +6,31 @@ import secrets
 import lxml.etree as ET
 from pathlib import Path
 from app.utils import xslt_to_string, ensure_ids, test_xml_path, get_testy_autor
-from app.mytypes import StringForm, StringListForm, StringHeader, BoolForm
-from fastapi import APIRouter, Request
+from app.sada import SadaTestov, SadaFormat
+from app.mytypes import StringForm, StringListForm, BoolForm, Proc, Logger, User
+from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse
 from fastapi.exceptions import HTTPException
 
 router = APIRouter()
 
 @router.get('/admin/selectcreate', response_class=HTMLResponse)
-async def selectcreate(request: Request):
-   proc = request.app.state.proc
+async def selectcreate(proc: Proc, logger: Logger):
    predmety = ' '.join([name for name in os.listdir('./res/xml/questions')])
    try:
       vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/selectcreate.xsl', params={'predmety': predmety})
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
-      request.app.state.logger.error(f'chyba selectcreate: {e}')
+      logger.error(f'chyba selectcreate: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 @router.post('/admin/createtests', response_class=RedirectResponse)
-async def createtests(request: Request, predmet: StringForm, trieda: StringListForm, kapitola: StringForm, X_Remote_User: StringHeader, skupina: StringForm = '', start: StringForm = '', stop: StringForm = '', anonymne: BoolForm = False, identita: BoolForm = False, stupnica: StringForm = 'default'):
+async def createtests(proc: Proc, logger: Logger, predmet: StringForm, trieda: StringListForm, kapitola: StringForm, user: User, skupina: StringForm = '', start: StringForm = '', stop: StringForm = '', anonymne: BoolForm = False, identita: BoolForm = False, stupnica: StringForm = 'default'):
    try:
       test_xml_path(predmet, ','.join(trieda), '' if skupina == '-' else skupina, kapitola, '')  #pred mkdir a skladanim ciest
    except ValueError as e:
       raise HTTPException(status_code=400, detail=str(e))
    try:
-      proc = request.app.state.proc
       if stupnica not in [el.get('id') for el in ET.parse('./res/xml/lists/scales.xml').getroot()]:
          raise HTTPException(status_code=400, detail='neznáma stupnica: ' + stupnica)
       trieda_str = ','.join(trieda)
@@ -46,7 +45,7 @@ async def createtests(request: Request, predmet: StringForm, trieda: StringListF
       xsltproc.set_parameter('stop', proc.make_string_value(stop))
       xsltproc.set_parameter('anonymne', proc.make_boolean_value(anonymne))
       xsltproc.set_parameter('identita', proc.make_boolean_value(identita))
-      xsltproc.set_parameter('autor', proc.make_string_value(X_Remote_User))
+      xsltproc.set_parameter('autor', proc.make_string_value(user))
       xsltproc.set_parameter('stupnica', proc.make_string_value(stupnica))
       try:
          fileid = secrets.token_hex(2)
@@ -58,17 +57,17 @@ async def createtests(request: Request, predmet: StringForm, trieda: StringListF
          executable.transform_to_file(source_file='./res/xml/lists/roster.xml')
          return RedirectResponse(url='/admin#' + predmet, status_code=302)
       except Exception as e:
-         request.app.state.logger.error(f'chyba createtests1: {e}')
+         logger.error(f'chyba createtests1: {e}')
          raise HTTPException(status_code=400, detail=str(e))
    except Exception as e:
-      request.app.state.logger.error(f'chyba createtests2: {e}')
+      logger.error(f'chyba createtests2: {e}')
       raise HTTPException(status_code=400, detail='chyba createtests2: ' + str(e))
 
 @router.post('/admin/regeneratetests', response_class=PlainTextResponse)
-async def regeneratetests(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
+async def regeneratetests(proc: Proc, logger: Logger, sada: SadaTestov):
+   predmet, trieda, skupina, kapitola, fileid = sada
    try:
-      proc = request.app.state.proc
-      subor = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
+      subor = sada.cesta
       if ma_odpovede(Path(subor)):
          raise HTTPException(status_code=409, detail='Testy už majú odovzdané odpovede, nie je možné ich regenerovať')
       xsltproc = proc.new_xslt30_processor()
@@ -85,12 +84,12 @@ async def regeneratetests(request: Request, predmet: StringForm, trieda: StringF
          novy_gendat = ET.parse(subor).getroot().get('gendat')
          return PlainTextResponse(content=novy_gendat)
       except Exception as e:
-         request.app.state.logger.error(f'chyba regeneratetests1: {e}')
+         logger.error(f'chyba regeneratetests1: {e}')
          raise HTTPException(status_code=400, detail='chyba regenerates1: ' + str(e))
    except HTTPException:
       raise
    except Exception as e:
-      request.app.state.logger.error(f'chyba regeneratetests2: {e}')
+      logger.error(f'chyba regeneratetests2: {e}')
       raise HTTPException(status_code=400, detail='chyba regeneratetests2: ' + str(e))
 
 def ma_odpovede(cesta_test: Path) -> bool:
@@ -121,8 +120,9 @@ def vymaz_testy(cesta_test: Path, del_test: bool, del_answers: bool, del_feedbac
       _vymaz_s_lockom(cesta_feedback)
 
 @router.delete('/admin/deletetests', response_class=PlainTextResponse)
-async def delete(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = '', del_test: BoolForm = True, del_answers: BoolForm = False, del_feedback: BoolForm = False):
-   cesta_test = test_xml_path(predmet, trieda, skupina, kapitola, fileid)
+async def delete(logger: Logger, sada: SadaFormat, del_test: BoolForm = True, del_answers: BoolForm = False, del_feedback: BoolForm = False):
+   predmet = sada.predmet
+   cesta_test = sada.cesta
    if del_test and not os.path.exists(cesta_test):
       raise HTTPException(status_code=404, detail='Súbor nenájdený!')
    try:
@@ -133,5 +133,5 @@ async def delete(request: Request, predmet: StringForm, trieda: StringForm, kapi
       else:
          return PlainTextResponse(content='', status_code=200)
    except Exception as e:
-      request.app.state.logger.error(f'chyba deletetests: {e}')
+      logger.error(f'chyba deletetests: {e}')
       raise HTTPException(status_code=400, detail='chyba deletetests: ' + str(e))

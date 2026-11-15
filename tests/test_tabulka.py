@@ -19,6 +19,7 @@ import xmlschema
 from fastapi.exceptions import HTTPException
 from saxonche import PySaxonProcessor
 
+from handler_volanie import volaj
 from app.routers.questions import process_question
 from app.utils import (
    add_question, body_tabulka, fork_question, format_body, format_percent, over_tabulku, serializuj_tabulku,
@@ -420,14 +421,14 @@ def test_fork_s_novou_tabulkou_pouzije_novu():
 
 def test_process_question_odmieta_mcq_aj_tabulku_naraz():
    with pytest.raises(HTTPException) as chyba:
-      asyncio.run(process_question(_request(), operacia='create', X_Remote_User='x', kategoria_id='kat1',
+      asyncio.run(volaj(process_question, _request(), operacia='create', X_Remote_User='x', kategoria_id='kat1',
                                    znenie='<znenie>a</znenie>', odpovede='[{"text": "a", "spravna": "1"}]', tabulka=NOVA_TABULKA))
    assert chyba.value.status_code == 400 and 'MCQ' in chyba.value.detail
 
 
 def test_process_question_vrati_chybu_neplatnej_tabulky():
    with pytest.raises(HTTPException) as chyba:
-      asyncio.run(process_question(_request(), operacia='create', X_Remote_User='x', kategoria_id='kat1',
+      asyncio.run(volaj(process_question, _request(), operacia='create', X_Remote_User='x', kategoria_id='kat1',
                                    znenie='<znenie>a</znenie>', tabulka='<tabulka><riadok><bunka></bunka></riadok></tabulka>'))
    assert chyba.value.status_code == 400 and 'aspoň jedno pole' in chyba.value.detail
 

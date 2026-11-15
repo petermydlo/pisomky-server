@@ -7,7 +7,7 @@ import unicodedata
 from pathlib import Path
 from typing import cast
 import lxml.etree as ET
-from app.mytypes import StringForm
+from app.mytypes import StringForm, Proc, Logger
 from app.utils import find_test_file, normalizuj_vzor, test_xml_path, xquery_to_string
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
@@ -152,6 +152,8 @@ Question {i} (id: {ot['id']}, max points: {ot['body']}):
 @router.post('/admin/ai/evaluate-open')
 async def evaluate_open(
    request: Request,
+   proc: Proc,
+   logger: Logger,
    test_id: StringForm,
    predmet: StringForm,
    trieda: StringForm,
@@ -164,7 +166,6 @@ async def evaluate_open(
    except ValueError as e:
       return {'ok': False, 'error': str(e)}
    try:
-      proc = request.app.state.proc
       cesta_tst = find_test_file(test_id) or ''
       ziak = await run_in_threadpool(_nacitaj_udaje_ziaka, cesta_tst, test_id, trieda)
       otazky = await run_in_threadpool(_nacitaj_otvorene_otazky, proc, cesta_tst, test_id, predmet, kapitola)
@@ -176,5 +177,5 @@ async def evaluate_open(
       return {'ok': True, 'vysledky': vysledky}
 
    except Exception as e:
-      request.app.state.logger.error(f'chyba aievaluate: {e}')
+      logger.error(f'chyba aievaluate: {e}')
       return {'ok': False, 'error': str(e)}

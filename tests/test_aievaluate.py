@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from saxonche import PySaxonProcessor
 
+from handler_volanie import volaj
 from app.routers.aievaluate import (
    _normalizuj,
    _nahrad_placeholder,
@@ -268,5 +269,5 @@ def test_evaluate_open_odmietne_neplatne_parametre_pred_pristupom_k_suborom(monk
    parametre = {'test_id': TEST_ID, 'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': 'kap1', 'skupina': ''}
    parametre[pole] = hodnota
    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(proc=None, logger=logging.getLogger('pisomky'))))
-   vysledok = asyncio.run(aievaluate.evaluate_open(request, **parametre))  # type: ignore[arg-type]
+   vysledok = asyncio.run(volaj(aievaluate.evaluate_open, request, **parametre))  # type: ignore[arg-type]
    assert vysledok['ok'] is False and 'Neplatný parameter' in vysledok['error']

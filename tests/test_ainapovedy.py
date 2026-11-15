@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any
 import anyio
 import pytest
+from handler_volanie import volaj
 from fastapi.exceptions import HTTPException
 from jinja2 import Environment, FileSystemLoader
 from saxonche import PySaxonProcessor
@@ -342,10 +343,10 @@ def test_endpoint_stav_neplatny_parameter_je_400():
 
 def test_endpoint_pregeneruj_spusti_ulohu_len_raz(subor):
    request = _request()
-   prvy = anyio.run(napovedy_pregeneruj, request, PREDMET, TRIEDA, KAPITOLA, FILEID, '')
+   prvy = anyio.run(lambda: volaj(napovedy_pregeneruj, request, PREDMET, TRIEDA, KAPITOLA, FILEID, ''))
    assert prvy == {'hotove': 0, 'celkom': 3, 'bezi': True, 'spusteny': True}
    assert len(request.app.state.task_group.ulohy) == 1
-   druhy = anyio.run(napovedy_pregeneruj, request, PREDMET, TRIEDA, KAPITOLA, FILEID, '')
+   druhy = anyio.run(lambda: volaj(napovedy_pregeneruj, request, PREDMET, TRIEDA, KAPITOLA, FILEID, ''))
    assert druhy == {'hotove': 0, 'celkom': 3, 'bezi': True, 'spusteny': False}
    assert len(request.app.state.task_group.ulohy) == 1
    zamok = request.app.state.task_group.ulohy[0][3]

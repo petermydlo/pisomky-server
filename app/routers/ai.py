@@ -15,8 +15,9 @@ from lxml import etree as ET
 import anyio
 import ollama
 from dotenv import load_dotenv
-from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, normalizuj_vzor, otazky_s_napovedou, test_xml_path, xquery_to_string, xslt_to_string
-from app.mytypes import StringQuery, StringQueryOptional, StringFormOptional, IntForm, StringForm
+from app.utils import find_test, find_question, get_test_metadata, get_testy_autor, normalizuj_vzor, otazky_s_napovedou, xquery_to_string, xslt_to_string
+from app.sada import SadaFormat
+from app.mytypes import StringQuery, StringQueryOptional, StringFormOptional, IntForm, StringForm, Proc, Logger, KlucCache, XsltPools, Templates, TaskGroupDep
 from app.routers import relacie
 from anyio.streams.memory import MemoryObjectSendStream
 from fastapi import APIRouter, Request
@@ -383,10 +384,9 @@ def _priprav_prompt(templates, predmet: str, otazka_id: str, znenie_text: str, m
 
 
 @router.get('/ai/napoveda')
-async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuery, token: StringQueryOptional = None):
-   proc = request.app.state.proc
+async def napoveda(request: Request, proc: Proc, logger: Logger, kluc_cache: KlucCache, templates: Templates, task_group: TaskGroupDep, otazka_id: StringQuery, test_id: StringQuery, token: StringQueryOptional = None):
    xsltpath = proc.new_xpath_processor()
-   test_node = find_test(proc, test_id, admin=True, cache=request.app.state.kluc_cache)
+   test_node = find_test(proc, test_id, admin=True, cache=kluc_cache)
    if not test_node:
       return JSONResponse({'error': 'Test nenájdený'}, status_code=404)
    if not await run_in_threadpool(relacie.over, test_id, token):
@@ -420,7 +420,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       ziskany = await _zamok_ziskaj(zamok)
       cakanie_zamok = time.monotonic() - zaciatok_zamku
       if cakanie_zamok >= 1:
-         request.app.state.logger.info(f'napoveda test={test_id} cakanie na zamok={cakanie_zamok:.1f}s {"ok" if ziskany else "obsadena"}')
+         logger.info(f'napoveda test={test_id} cakanie na zamok={cakanie_zamok:.1f}s {"ok" if ziskany else "obsadena"}')
       if not ziskany:
          async def obsadene_stream():
             yield 'event: napoveda_obsadena\ndata: {}\n\n'
@@ -447,8 +447,8 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       helped = [p['hint'] for p in predchadzajuce if p['val'] == '1']
       not_helped = [p['hint'] for p in predchadzajuce if p['val'] == '0']
 
-      messages, cache_kluc = _priprav_prompt(request.app.state.templates, predmet, otazka_id, znenie_text, moznosti,
-                                             spravna_odpoved, helped, not_helped, request.app.state.logger)
+      messages, cache_kluc = _priprav_prompt(templates, predmet, otazka_id, znenie_text, moznosti,
+                                             spravna_odpoved, helped, not_helped, logger)
 
       zapis_id = secrets.token_hex(8)
       remaining = pocet_otazok - pouzite - 1
@@ -458,7 +458,7 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
 
       cache_subor = _cache_subor(predmet, kapitola)
       if not cache_subor:
-         request.app.state.logger.warning('cache napoved vypnuta: adresar nie je sukromny')
+         logger.warning('cache napoved vypnuta: adresar nie je sukromny')
       z_cache = _cache_ziskaj(cache_subor, otazka_id, cache_kluc)
       if z_cache:
          _aktualizuj_zapis(subor, zapis_id, z_cache['hint'])
@@ -473,10 +473,10 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
       send, receive = anyio.create_memory_object_stream[tuple[str, dict]](max_buffer_size=float('inf'))
       prvy_chunk = anyio.Event()
       zrusenie = anyio.CancelScope()
-      request.app.state.task_group.start_soon(_generuj_napovedu, messages, subor, zapis_id, send, request.app.state.logger,
+      task_group.start_soon(_generuj_napovedu, messages, subor, zapis_id, send, logger,
                                               prvy_chunk, cache_subor, otazka_id, cache_kluc, zrusenie, zamok)
       predany = True
-      request.app.state.task_group.start_soon(_hlas_cakanie, send, prvy_chunk)
+      task_group.start_soon(_hlas_cakanie, send, prvy_chunk)
 
       async def generate():
          try:
@@ -494,13 +494,12 @@ async def napoveda(request: Request, otazka_id: StringQuery, test_id: StringQuer
          zamok.release()
 
 @router.post('/ai/feedback')
-async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis_id: StringForm, token: StringFormOptional = None):
+async def ai_feedback(proc: Proc, logger: Logger, kluc_cache: KlucCache, test_id: StringForm, val: IntForm, zapis_id: StringForm, token: StringFormOptional = None):
    if val not in (0, 1):  #do feedback XML (val 1/0/'') sa nesmie dostat ina hodnota
       raise HTTPException(status_code=400, detail='Neplatné hodnotenie')
    await run_in_threadpool(relacie.over_alebo_403, test_id, token)
    try:
-      proc = request.app.state.proc
-      test_node = find_test(proc=proc, kluc=test_id, admin=True, cache=request.app.state.kluc_cache)
+      test_node = find_test(proc=proc, kluc=test_id, admin=True, cache=kluc_cache)
       if not test_node:
          return {'ok': False, 'error': 'Test nenájdený'}
 
@@ -529,16 +528,12 @@ async def ai_feedback(request: Request, test_id: StringForm, val: IntForm, zapis
       _cache_ohodnot(_cache_subor(predmet, kapitola), otazka_id, hint, zmena)
       return {'ok': True}
    except Exception as e:
-      request.app.state.logger.error(f'chyba feedback: {e}')
+      logger.error(f'chyba feedback: {e}')
       return {'ok': False, 'error': 'Hodnotenie sa nepodarilo uložiť.'}
 
 @router.post('/admin/feedbackreport', response_class=HTMLResponse)
-async def feedbackreport(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
-   try:
-      test_xml_path(predmet, trieda, skupina, kapitola, fileid)
-   except ValueError as e:
-      raise HTTPException(status_code=400, detail=str(e))
-   proc = request.app.state.proc
+async def feedbackreport(proc: Proc, logger: Logger, xslt_pools: XsltPools, sada: SadaFormat):
+   predmet, trieda, skupina, kapitola, fileid = sada
    try:
       params = {
          'predmet': predmet,
@@ -553,8 +548,8 @@ async def feedbackreport(request: Request, predmet: StringForm, trieda: StringFo
       else:
          xml_data = xquery_to_string(proc, './res/xquery/feedback.xq', params=params)
       xml_node = proc.parse_xml(xml_text=xml_data)
-      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/feedbackreport.xsl', xdm_node=xml_node, xslt_pools=request.app.state.xslt_pools)
+      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/feedbackreport.xsl', xdm_node=xml_node, xslt_pools=xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
-      request.app.state.logger.error(f'chyba feedbackreport: {e}')
+      logger.error(f'chyba feedbackreport: {e}')
       raise HTTPException(status_code=400, detail=str(e))

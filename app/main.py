@@ -4,8 +4,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 import anyio
-from typing import Annotated
-from fastapi import FastAPI, Header, Request
+from fastapi import FastAPI, Request
 from saxonche import PySaxonProcessor
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.concurrency import run_in_threadpool
@@ -15,7 +14,7 @@ from app.routers.ai import OLLAMA_RUNNER_OPTIONS, _spocitaj_napovedy_testu, poce
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from app.mytypes import BoolQuery, StringPath, StringHeader
+from app.mytypes import BoolQuery, StringPath, Proc, Logger, KlucCache, McqHotove, XsltPools, Templates, User
 from app.routers import tests
 from app.routers import testrun
 from app.routers import results
@@ -122,69 +121,66 @@ app.mount('/pubres', StaticFiles(directory='./pubres'), name='pubres')
 
 
 @app.get('/', response_class=HTMLResponse)
-async def index(request: Request):
-   return request.app.state.templates.TemplateResponse(request, 'index.html')
+async def index(request: Request, templates: Templates):
+   return templates.TemplateResponse(request, 'index.html')
 
 @app.get('/admin', response_class=HTMLResponse)
-async def admin(request: Request, X_Remote_User: StringHeader):
-   proc = request.app.state.proc
+async def admin(proc: Proc, logger: Logger, xslt_pools: XsltPools, user: User):
    try:
-      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/overviewtests.xsl', params={'autor': X_Remote_User}, xslt_pools=request.app.state.xslt_pools)
+      vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/overviewtests.xsl', params={'autor': user}, xslt_pools=xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
-      request.app.state.logger.error(f'chyba admin: {e}')
+      logger.error(f'chyba admin: {e}')
       raise HTTPException(status_code=400, detail=str(e))
 
 @app.get('/{kluc}', response_class=HTMLResponse)
-async def view(request: Request, kluc: StringPath, edit: BoolQuery = False):
+async def view(request: Request, proc: Proc, logger: Logger, kluc_cache: KlucCache, mcq_hotove: McqHotove, xslt_pools: XsltPools, templates: Templates, kluc: StringPath, edit: BoolQuery = False):
    if not (kluc := kluc.strip()): #ked uzivatel zada kluc z prazdnych znakov
-      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'wrongKey'}, status_code=400)
-   proc = request.app.state.proc
-   node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
+      return templates.TemplateResponse(request, 'index.html', {'detail': 'wrongKey'}, status_code=400)
+   node = find_test(proc, kluc, True, cache=kluc_cache)
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
-      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
+      return templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
    token: str | None = ''
    try:
       stav = get_time_state(node, node.get_parent())
       if stav == 'before':
-         return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'beforeTime'})
+         return templates.TemplateResponse(request, 'index.html', {'detail': 'beforeTime'})
       if stav == 'after':
-         await run_in_threadpool(store_mcq_scores, kluc, request.app.state.kluc_cache, request.app.state.mcq_hotove)
-         if je_odhalene(kluc, request.app.state.kluc_cache):
-            vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showresult_student.xsl', xdm_node=node, xslt_pools=request.app.state.xslt_pools)
+         await run_in_threadpool(store_mcq_scores, kluc, kluc_cache, mcq_hotove)
+         if je_odhalene(kluc, kluc_cache):
+            vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showresult_student.xsl', xdm_node=node, xslt_pools=xslt_pools)
             return HTMLResponse(content=vysledok, status_code=200)
-         score = get_score(proc, kluc, request.app.state.kluc_cache)
+         score = get_score(proc, kluc, kluc_cache)
          if score:
-            return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'scored', 'score': score})
-         return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'pending'})
+            return templates.TemplateResponse(request, 'index.html', {'detail': 'scored', 'score': score})
+         return templates.TemplateResponse(request, 'index.html', {'detail': 'pending'})
       xp = proc.new_xpath_processor()
       xp.set_context(xdm_item=node)
       token = await run_in_threadpool(relacie.otvor, kluc)
       if token is None:  #test pisu na inom mieste; obsah testu sa nevracia
-         return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'occupied'}, status_code=423)
+         return templates.TemplateResponse(request, 'index.html', {'detail': 'occupied'}, status_code=423)
       predmet, trieda, skupina, kapitola, fileid = get_test_metadata(proc, node)
       povolene = otazky_s_napovedou(predmet, kapitola)
       pocet_otazok = pocet_otazok_s_napovedou(xp, node, povolene)
       subor = f'./res/xml/feedback/{predmet}/{predmet}_{trieda}{skupina}_{kapitola}_{fileid}.xml'
       napovedy_zostatok = max(0, pocet_otazok - _spocitaj_napovedy_testu(subor, kluc))
       if edit:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=xslt_pools)
       else:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': False, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
       #zaciatok citania chyby (cesty, Saxon) nema vidiet ziak; ucitel ma podrobnosti v logu
-      request.app.state.logger.error(f'chyba view: {e}')
+      logger.error(f'chyba view: {e}')
       if token:  #stranku sa nepodarilo vyrobit, ziak token nedostal, prenajom by ho zbytocne zdrzal
          await run_in_threadpool(relacie.uvolni, kluc, token)
-      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'error'}, status_code=500)
+      return templates.TemplateResponse(request, 'index.html', {'detail': 'error'}, status_code=500)
 
 @app.get('/admin/{kluc}', response_class=HTMLResponse)
-async def adminview(request: Request, _: Annotated[str, Header(alias='X-Remote-User')], kluc: StringPath, edit: BoolQuery = False):
-   proc = request.app.state.proc
-   node = find_test(proc, kluc, True, cache=request.app.state.kluc_cache)
+async def adminview(request: Request, proc: Proc, logger: Logger, kluc_cache: KlucCache, xslt_pools: XsltPools, templates: Templates, kluc: StringPath, edit: BoolQuery = False):
+   node = find_test(proc, kluc, True, cache=kluc_cache)
    if node is None: #ked nenajdem test prisluchajuci danemu klucu
-      return request.app.state.templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
+      return templates.TemplateResponse(request, 'index.html', {'detail': 'missingTest'}, status_code=404)
    try:
       xp = proc.new_xpath_processor()
       xp.set_context(xdm_item=node)
@@ -195,10 +191,10 @@ async def adminview(request: Request, _: Annotated[str, Header(alias='X-Remote-U
       napovedy_zostatok = max(0, pocet_otazok - _spocitaj_napovedy_testu(subor, kluc))
       token = relacie.vydaj_ucitelsky_token(kluc)  #ucitel prenajom nevyzaduje ani neblokuje
       if edit:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/writetest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=xslt_pools)
       else:
-         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=request.app.state.xslt_pools)
+         vysledok = xslt_to_string(proc, stylesheet_file='./res/xslt/showtest.xsl', xdm_node=node, params={'admin': True, 'napovedy_zostatok': napovedy_zostatok, 'napovedy_povolene': ' '.join(povolene), 'token': token}, xslt_pools=xslt_pools)
       return HTMLResponse(content=vysledok, status_code=200)
    except Exception as e:
-      request.app.state.logger.error(f'chyba adminview: {e}')
+      logger.error(f'chyba adminview: {e}')
       raise HTTPException(status_code=400, detail=str(e))

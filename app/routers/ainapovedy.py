@@ -20,7 +20,7 @@ from app.routers.ai import (
    _priprav_prompt,
    _sukromny_adresar,
 )
-from app.mytypes import StringForm, StringQuery
+from app.mytypes import StringForm, StringQuery, Logger, TaskGroupDep
 from app.utils import otazky_s_napovedou, test_xml_path
 
 router = APIRouter()
@@ -200,7 +200,7 @@ async def napovedy_stav(request: Request, predmet: StringQuery, trieda: StringQu
 
 
 @router.post('/admin/napovedy/pregeneruj')
-async def napovedy_pregeneruj(request: Request, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
+async def napovedy_pregeneruj(request: Request, logger: Logger, task_group: TaskGroupDep, predmet: StringForm, trieda: StringForm, kapitola: StringForm, fileid: StringForm, skupina: StringForm = ''):
    _, cache_subor, kluce, zamok = _sada(request, predmet, trieda, skupina, kapitola, fileid)
    if not zamok or not cache_subor:
       raise HTTPException(status_code=503, detail='Cache nápovedí nie je dostupná')
@@ -208,7 +208,7 @@ async def napovedy_pregeneruj(request: Request, predmet: StringForm, trieda: Str
    try:
       zamok.acquire(timeout=0)
       _zapis_beat(_beat_cesta(zamok))  #so the response below already says the job runs
-      request.app.state.task_group.start_soon(_pregeneruj, kluce, cache_subor, zamok, request.app.state.logger)
+      task_group.start_soon(_pregeneruj, kluce, cache_subor, zamok, logger)
       spusteny = True
    except Timeout:
       pass
