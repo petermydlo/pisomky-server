@@ -7,9 +7,9 @@ import shutil
 from pathlib import Path
 
 import pytest
+from http_klient import http
 from saxonche import PySaxonProcessor
 
-from handler_volanie import volaj
 from app.routers.aievaluate import (
    _normalizuj,
    _nahrad_placeholder,
@@ -257,8 +257,6 @@ def test_evaluate_test_viacriadkovy_vzor_zachova_riadky(monkeypatch):
    ('skupina', 'a b'),
 ])
 def test_evaluate_open_odmietne_neplatne_parametre_pred_pristupom_k_suborom(monkeypatch, pole, hodnota):
-   import asyncio
-   import logging
    from app.routers import aievaluate
 
    def nesmie_sa_zavolat(*args, **kwargs):
@@ -268,6 +266,8 @@ def test_evaluate_open_odmietne_neplatne_parametre_pred_pristupom_k_suborom(monk
    monkeypatch.setattr(aievaluate, '_nacitaj_otvorene_otazky', nesmie_sa_zavolat)
    parametre = {'test_id': TEST_ID, 'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': 'kap1', 'skupina': ''}
    parametre[pole] = hodnota
-   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(proc=None, logger=logging.getLogger('pisomky'))))
-   vysledok = asyncio.run(volaj(aievaluate.evaluate_open, request, **parametre))  # type: ignore[arg-type]
+   with http() as klient:
+      odpoved = klient.post('/admin/ai/evaluate-open', data=parametre)
+   assert odpoved.status_code == 200
+   vysledok = odpoved.json()
    assert vysledok['ok'] is False and 'Neplatný parameter' in vysledok['error']

@@ -4,23 +4,19 @@ Tabuľka na vyplnenie (otazka/tabulka): kopírovanie do testu, formulár žiaka,
 (res/xslt/grading.xsl, res/xquery/score.xq) a pohľad na vyhodnotený test.
 """
 
-import asyncio
 import logging
 import re
 import shutil
 from decimal import Decimal
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 import lxml.etree as ET
 import pytest
+from http_klient import http
 import xmlschema
-from fastapi.exceptions import HTTPException
 from saxonche import PySaxonProcessor
 
-from handler_volanie import volaj
-from app.routers.questions import process_question
 from app.utils import (
    add_question, body_tabulka, fork_question, format_body, format_percent, over_tabulku, serializuj_tabulku,
    store_mcq_scores, update_question, xslt_to_string, xquery_to_string, zmenene_zamrznute_polia,
@@ -339,10 +335,6 @@ def _xp(uzol: Any, vyraz: str, **parametre: Any) -> list[Any]:
    return uzol.xpath(vyraz, **parametre)
 
 
-def _request() -> Any:
-   return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(logger=logging.getLogger('test'))))
-
-
 def _otazka(id_otazky):
    return _xp(ET.parse(QUESTIONS_FILE).getroot(), '//otazka[@id=$id]', id=id_otazky)[0]
 
@@ -420,17 +412,17 @@ def test_fork_s_novou_tabulkou_pouzije_novu():
 
 
 def test_process_question_odmieta_mcq_aj_tabulku_naraz():
-   with pytest.raises(HTTPException) as chyba:
-      asyncio.run(volaj(process_question, _request(), operacia='create', X_Remote_User='x', kategoria_id='kat1',
-                                   znenie='<znenie>a</znenie>', odpovede='[{"text": "a", "spravna": "1"}]', tabulka=NOVA_TABULKA))
-   assert chyba.value.status_code == 400 and 'MCQ' in chyba.value.detail
+   with http(user='x') as klient:
+      odpoved = klient.post('/admin/process_question', data={'operacia': 'create', 'kategoria_id': 'kat1', 'znenie': '<znenie>a</znenie>',
+                                                             'odpovede': '[{"text": "a", "spravna": "1"}]', 'tabulka': NOVA_TABULKA})
+   assert odpoved.status_code == 400 and 'MCQ' in odpoved.json()['detail']
 
 
 def test_process_question_vrati_chybu_neplatnej_tabulky():
-   with pytest.raises(HTTPException) as chyba:
-      asyncio.run(volaj(process_question, _request(), operacia='create', X_Remote_User='x', kategoria_id='kat1',
-                                   znenie='<znenie>a</znenie>', tabulka='<tabulka><riadok><bunka></bunka></riadok></tabulka>'))
-   assert chyba.value.status_code == 400 and 'aspoň jedno pole' in chyba.value.detail
+   with http(user='x') as klient:
+      odpoved = klient.post('/admin/process_question', data={'operacia': 'create', 'kategoria_id': 'kat1', 'znenie': '<znenie>a</znenie>',
+                                                             'tabulka': '<tabulka><riadok><bunka></bunka></riadok></tabulka>'})
+   assert odpoved.status_code == 400 and 'aspoň jedno pole' in odpoved.json()['detail']
 
 
 def test_test_moze_mixovat_mcq_a_tabulku(proc):

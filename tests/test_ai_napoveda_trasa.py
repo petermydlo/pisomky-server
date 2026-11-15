@@ -4,17 +4,15 @@
 import json
 import logging
 from pathlib import Path
-from types import SimpleNamespace
 
-import anyio
 import lxml.etree as ET
 import pytest
+from http_klient import http
 from jinja2 import Environment, FileSystemLoader
 from saxonche import PySaxonProcessor
 
-from handler_volanie import volaj
 from app.routers import ai
-from app.routers.ai import napoveda, _priprav_prompt, _cache_subor, _cache_uloz, _uloz_zapis, _zamok_napovede
+from app.routers.ai import _priprav_prompt, _cache_subor, _cache_uloz, _uloz_zapis, _zamok_napovede
 
 PREDMET = 'MAT'
 KLUC = 'TEST01'
@@ -77,19 +75,12 @@ def backend(request):
 
 def _zavolaj(backend, test_id=KLUC, otazka_id='q1'):
    """Zavola trasu a vrati (status, udalosti SSE alebo JSON telo)."""
-   async def disconnected():
-      return False
-
-   async def run():
-      with PySaxonProcessor(license=False) as proc:
-         state = SimpleNamespace(proc=proc, kluc_cache={}, logger=logging.getLogger('test'), templates=SABLONY, task_group=None)
-         request = SimpleNamespace(app=SimpleNamespace(state=state), is_disconnected=disconnected)
-         odpoved = await volaj(napoveda, request, otazka_id, test_id)  # type: ignore[arg-type]
-         if hasattr(odpoved, 'body_iterator'):
-            text = ''.join([c if isinstance(c, str) else c.decode() async for c in odpoved.body_iterator])  # type: ignore[union-attr]
-            return odpoved.status_code, [(blok.split('\n')[0][len('event: '):], json.loads(blok.split('\n')[1][len('data: '):])) for blok in text.strip().split('\n\n')]
-         return odpoved.status_code, json.loads(bytes(odpoved.body))
-   return anyio.run(run, backend=backend)
+   with PySaxonProcessor(license=False) as proc:
+      with http(user=None, backend=backend, proc=proc, logger=logging.getLogger('test'), templates=SABLONY) as klient:
+         odpoved = klient.get('/ai/napoveda', params={'otazka_id': otazka_id, 'test_id': test_id})
+   if odpoved.headers['content-type'].startswith('text/event-stream'):
+      return odpoved.status_code, [(blok.split('\n')[0][len('event: '):], json.loads(blok.split('\n')[1][len('data: '):])) for blok in odpoved.text.strip().split('\n\n')]
+   return odpoved.status_code, odpoved.json()
 
 
 def _pocet_zapisov():

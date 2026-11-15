@@ -7,13 +7,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
 from saxonche import PySaxonProcessor
 
 import app.main as main
+from http_klient import http
 from app.routers import relacie
 
-PROJECT_ROOT = Path(__file__).parent.parent
 KLUC = 'K1'
 
 TESTY_XML = """<?xml version='1.0' encoding='utf-8'?>
@@ -154,26 +153,13 @@ def test_ucitelsky_token_prenajom_ani_nevyzaduje_ani_neblokuje(zapnute, hodiny):
 
 @pytest.fixture
 def stranka(tmp_path, monkeypatch, zapnute):
-   shutil.copytree(PROJECT_ROOT / 'app/templates', tmp_path / 'app/templates')
    (tmp_path / 'res/xml/tests/MAT').mkdir(parents=True)
    (tmp_path / 'res/xml/tests/MAT/MAT_1A_kap1_ab12.xml').write_text(TESTY_XML, encoding='utf-8')
    monkeypatch.chdir(tmp_path)
-   main.app.state.kluc_cache.clear()
-   main.app.state.mcq_hotove.clear()
    monkeypatch.setattr(main, 'xslt_to_string', lambda proc, **kw: f'<div id="hlavicka" token="{kw["params"]["token"]}"></div>')
-   povodny = main.app.state.proc
-   #TestClient bez `with` nespusta lifespan, takze task_group (nastavuje ho lifespan) by chybal; zavislost TaskGroupDep sa vyhodnoti vzdy
-   mal_task_group = hasattr(main.app.state, 'task_group')
-   if not mal_task_group:
-      main.app.state.task_group = None
    with PySaxonProcessor(license=False) as proc:
-      main.app.state.proc = proc
-      try:
-         yield TestClient(main.app, base_url='http://pisomky.ternac.net')
-      finally:
-         main.app.state.proc = povodny
-         if not mal_task_group:
-            del main.app.state.task_group
+      with http(user=None, proc=proc) as klient:
+         yield klient
 
 
 def _token(odpoved) -> str:

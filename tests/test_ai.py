@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from types import SimpleNamespace
 import os
 from pathlib import Path
 import anyio
 import pytest
-from handler_volanie import volaj
+from http_klient import http
 import lxml.etree as ET
 from jinja2 import Environment, FileSystemLoader
 
@@ -589,7 +588,5 @@ def test_priprav_prompt_kluc_sa_meni_so_znenim_a_moznostami():
 
 @pytest.mark.parametrize('val', [2, -1, 99])
 def test_ai_feedback_odmietne_neplatne_hodnotenie(val):
-   from fastapi.exceptions import HTTPException
-   with pytest.raises(HTTPException) as exc:
-      anyio.run(lambda: volaj(ai.ai_feedback, SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace())), TEST_ID, val, 'zap1'))
-   assert exc.value.status_code == 400
+   with http(user=None) as klient:
+      assert klient.post('/ai/feedback', data={'test_id': TEST_ID, 'val': val, 'zapis_id': 'zap1'}).status_code == 400

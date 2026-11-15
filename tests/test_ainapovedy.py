@@ -4,12 +4,9 @@ import logging
 import os
 import time
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any
 import anyio
 import pytest
-from handler_volanie import volaj
-from fastapi.exceptions import HTTPException
+from http_klient import http
 from jinja2 import Environment, FileSystemLoader
 from saxonche import PySaxonProcessor
 
@@ -25,8 +22,6 @@ from app.routers.ainapovedy import (
    _zamok_drzany,
    _zamok_pregen,
    _ziaci_generuju,
-   napovedy_pregeneruj,
-   napovedy_stav,
 )
 
 PREDMET = 'MAT'
@@ -319,35 +314,36 @@ class _TaskGroup:
       self.ulohy.append(args)
 
 
-def _request() -> Any:
-   state = SimpleNamespace(templates=SABLONY, logger=LOGGER, task_group=_TaskGroup())
-   return SimpleNamespace(app=SimpleNamespace(state=state))
+def _http_stav(fileid=FILEID, kapitola=KAPITOLA):
+   with http() as klient:
+      return klient.get('/admin/napovedy/stav', params={'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': kapitola, 'fileid': fileid})
+
+
+def _http_pregeneruj(task_group):
+   with http(task_group=task_group) as klient:
+      return klient.post('/admin/napovedy/pregeneruj', data={'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': KAPITOLA, 'fileid': FILEID})
 
 
 def test_endpoint_stav_vrati_postup(subor):
-   vysledok = anyio.run(napovedy_stav, _request(), PREDMET, TRIEDA, KAPITOLA, FILEID, '')
-   assert vysledok == {'hotove': 0, 'celkom': 3, 'bezi': False}
+   odpoved = _http_stav()
+   assert odpoved.status_code == 200 and odpoved.json() == {'hotove': 0, 'celkom': 3, 'bezi': False}
 
 
 def test_endpoint_stav_neexistujuca_sada_je_404():
-   with pytest.raises(HTTPException) as e:
-      anyio.run(napovedy_stav, _request(), PREDMET, TRIEDA, KAPITOLA, 'nic', '')
-   assert e.value.status_code == 404
+   assert _http_stav(fileid='nic').status_code == 404
 
 
 def test_endpoint_stav_neplatny_parameter_je_400():
-   with pytest.raises(HTTPException) as e:
-      anyio.run(napovedy_stav, _request(), PREDMET, TRIEDA, '../x', FILEID, '')
-   assert e.value.status_code == 400
+   assert _http_stav(kapitola='../x').status_code == 400
 
 
 def test_endpoint_pregeneruj_spusti_ulohu_len_raz(subor):
-   request = _request()
-   prvy = anyio.run(lambda: volaj(napovedy_pregeneruj, request, PREDMET, TRIEDA, KAPITOLA, FILEID, ''))
+   task_group = _TaskGroup()
+   prvy = _http_pregeneruj(task_group).json()
    assert prvy == {'hotove': 0, 'celkom': 3, 'bezi': True, 'spusteny': True}
-   assert len(request.app.state.task_group.ulohy) == 1
-   druhy = anyio.run(lambda: volaj(napovedy_pregeneruj, request, PREDMET, TRIEDA, KAPITOLA, FILEID, ''))
+   assert len(task_group.ulohy) == 1
+   druhy = _http_pregeneruj(task_group).json()
    assert druhy == {'hotove': 0, 'celkom': 3, 'bezi': True, 'spusteny': False}
-   assert len(request.app.state.task_group.ulohy) == 1
-   zamok = request.app.state.task_group.ulohy[0][3]
+   assert len(task_group.ulohy) == 1
+   zamok = task_group.ulohy[0][3]
    zamok.release()

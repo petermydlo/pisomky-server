@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """Dočasné súbory pri sťahovaní PDF: QR kódy a PDF sa upratujú aj pri chybe."""
 
-import asyncio
-import logging
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from handler_volanie import volaj
-from fastapi import BackgroundTasks
-from fastapi.exceptions import HTTPException
+from http_klient import http
 
 import app.routers.downloads as downloads
 
@@ -33,9 +29,10 @@ def prostredie(tmp_path, monkeypatch):
    return docasne
 
 
-def _stiahni(background_tasks):
-   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(proc=None, xslt_pools={}, logger=logging.getLogger('pisomky'))))
-   return asyncio.run(volaj(downloads.downloadtests, request, background_tasks, 'MAT', '1A', 'kap1', 'ab12', ''))  # type: ignore[arg-type]
+def _stiahni():
+   """POST /admin/downloadtests; TestClient vrati odpoved az po spusteni background tasks, ako server po odoslani odpovede."""
+   with http() as klient:
+      return klient.post('/admin/downloadtests', data={'predmet': 'MAT', 'trieda': '1A', 'kapitola': 'kap1', 'fileid': 'ab12'})
 
 
 def test_downloadtests_pri_chybe_pdf_sa_qr_adresar_zmaze_hned(prostredie, monkeypatch):
@@ -43,12 +40,8 @@ def test_downloadtests_pri_chybe_pdf_sa_qr_adresar_zmaze_hned(prostredie, monkey
       raise RuntimeError('fop spadol')
 
    monkeypatch.setattr(downloads, 'xslt_to_pdf', zlyhaj)
-   tasks = BackgroundTasks()
-   with pytest.raises(HTTPException) as exc:
-      _stiahni(tasks)
-   assert exc.value.status_code == 400
+   assert _stiahni().status_code == 400
    assert list(prostredie.iterdir()) == []     # background tasks sa pri vynimke nespustia, preto sa maze hned
-   assert tasks.tasks == []
 
 
 def test_generuj_qr_kody_pri_chybe_zmaze_adresar(prostredie, monkeypatch):
@@ -64,17 +57,14 @@ def test_generuj_qr_kody_pri_chybe_zmaze_adresar(prostredie, monkeypatch):
 def test_downloadtests_uspech_upratanie_ostava_na_pozadi(prostredie, monkeypatch):
    pdf = prostredie / 'vysledok.pdf'
    pdf.write_bytes(b'%PDF-')
-   qr_adresare = []
+   qr_subory = []
 
    def falosne_pdf(proc, stylesheet, source_file=None, params=None, xslt_pools=None, **_):
-      qr_adresare.append((params or {})['qrdir'].removeprefix('file://'))
+      qr_subory.append(sorted(p.name for p in Path((params or {})['qrdir'].removeprefix('file://')).iterdir()))
       return SimpleNamespace(name=str(pdf))
 
    monkeypatch.setattr(downloads, 'xslt_to_pdf', falosne_pdf)
-   tasks = BackgroundTasks()
-   odpoved = _stiahni(tasks)
+   odpoved = _stiahni()
    assert odpoved.status_code == 200
-   assert len(tasks.tasks) == 2
-   assert sorted(p.name for p in Path(qr_adresare[0]).iterdir()) == ['K1.svg', 'K2.svg']
-   asyncio.run(tasks())
+   assert qr_subory == [['K1.svg', 'K2.svg']]
    assert list(prostredie.iterdir()) == []     # po odoslani odpovede sa QR adresar aj PDF zmazu

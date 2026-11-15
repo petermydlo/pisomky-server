@@ -8,25 +8,15 @@ import pytest
 import lxml.etree as ET
 from pathlib import Path
 from filelock import FileLock
-from fastapi import Response
-from fastapi import BackgroundTasks
 from fastapi.exceptions import HTTPException
 from saxonche import PySaxonProcessor
 
-from handler_volanie import volaj
-from app.utils import modify_test_xml
+from http_klient import http
 from datetime import datetime
-from app.routers.testrun import write_answers, saveanswers, nastav_stop, nastav_cas, changetime, stoptime, set_paused, set_ai_napoveda, ocisti_odpovede, MAX_DLZKA_ODPOVEDE
+from app.routers.testrun import write_answers, nastav_stop, nastav_cas, ocisti_odpovede, MAX_DLZKA_ODPOVEDE
 from app.routers.results import write_marks, write_odhalene, over_body
 from app.routers.importanswers import write_answers_import, nacitaj_tests_xml, ziskaj_metadata
-from app.routers.tests import vymaz_testy, ma_odpovede, regeneratetests
-from app.main import app as fastapi_app
-from app.routers.questions import process_chapter, showquestions, process_category, process_predmet, process_question
-from app.routers.results import savemarks, groupstatistics, setrevealed
-from app.routers.downloads import downloadtests, downloadresults, downloadcodes
-from app.routers.importanswers import importmanual
-from app.routers.ai import feedbackreport
-from app.routers.tests import createtests, delete as deletetests
+from app.routers.tests import vymaz_testy, ma_odpovede
 
 PREDMET = 'MAT'
 TRIEDA = '1A'
@@ -224,7 +214,8 @@ def test_nastav_cas_test_nenajdeny(tests_file):
 
 def _changetime(**parametre):
    zaklad = {'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': KAPITOLA, 'fileid': FILEID, 'skupina': SKUPINA}
-   return asyncio.run(volaj(changetime, SimpleNamespace(), **{**zaklad, **parametre}))  # type: ignore[arg-type]
+   with http() as klient:
+      return klient.post('/admin/changetime', data={**zaklad, **parametre})
 
 def test_changetime_trasa_zapise_cas_do_suboru(tests_file):
    odpoved = _changetime(start='2026-01-01T08:00', stop='2026-01-01T10:00')
@@ -237,22 +228,16 @@ def test_changetime_trasa_jeden_test(tests_file):
    assert _test_el(ET.parse(str(tests_file))).get('stop') == '2026-01-01T09:30'
 
 def test_changetime_trasa_neznamy_test_je_404(tests_file):
-   with pytest.raises(HTTPException) as exc:
-      _changetime(kluc='NEEXISTUJE', stop='2026-01-01T09:30')
-   assert exc.value.status_code == 404
+   assert _changetime(kluc='NEEXISTUJE', stop='2026-01-01T09:30').status_code == 404
 
 def test_changetime_trasa_neplatna_cesta_je_400_a_nic_nezapise(tests_file, tmp_path):
    povodny = tests_file.read_text(encoding='utf-8')
-   with pytest.raises(HTTPException) as exc:
-      _changetime(trieda='../../x', stop='2026-01-01T09:30')
-   assert exc.value.status_code == 400
+   assert _changetime(trieda='../../x', stop='2026-01-01T09:30').status_code == 400
    assert tests_file.read_text(encoding='utf-8') == povodny
    assert {p.relative_to(tmp_path).parts[0] for p in tmp_path.rglob('*')} == {'res'}
 
 def test_changetime_trasa_chybajuci_subor_je_404(tmp_path):
-   with pytest.raises(HTTPException) as exc:
-      _changetime(stop='2026-01-01T09:30')
-   assert exc.value.status_code == 404
+   assert _changetime(stop='2026-01-01T09:30').status_code == 404
 
 
 # --- stoptime ---
@@ -293,9 +278,9 @@ def test_nastav_stop_nenajdeny(tests_file):
    assert exc.value.status_code == 404
 
 def test_stoptime_trasa_zapise_serverovy_cas_nie_cas_z_formulara(tests_file):
-   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(kluc_cache={}, mcq_hotove={})))
    pred = datetime.now().replace(second=0, microsecond=0)
-   asyncio.run(volaj(stoptime, request, KLUC))  # type: ignore[arg-type]
+   with http() as klient:
+      assert klient.post(f'/stoptime/{KLUC}', data={'stop': '2000-01-01T00:00'}).status_code == 204   #cas z formulara sa ignoruje
    zapisany = datetime.fromisoformat(_stop_testu(tests_file) or '')
    assert pred <= zapisany <= datetime.now()
 
@@ -441,30 +426,19 @@ def test_ma_odpovede_bez_test_dat(tests_file, answers_file):
 
 def test_regeneratetests_odmietne_ak_su_odpovede(tests_file, answers_file):
    povodny = tests_file.read_text(encoding='utf-8')
-   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(proc=None, logger=None)))
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volaj(regeneratetests, request, PREDMET, TRIEDA, KAPITOLA, FILEID, SKUPINA))  # type: ignore[arg-type]
-   assert exc.value.status_code == 409
+   with http() as klient:
+      odpoved = klient.post('/admin/regeneratetests', data={'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': KAPITOLA, 'fileid': FILEID, 'skupina': SKUPINA})
+   assert odpoved.status_code == 409
    assert tests_file.read_text(encoding='utf-8') == povodny
 
 
 # --- saveanswers ---
 
-class _FormaStub:
-   def __init__(self, data):
-      self._data = data
-   async def __aenter__(self):
-      return self
-   async def __aexit__(self, *args):
-      return False
-   def items(self):
-      return self._data.items()
-   def keys(self):
-      return self._data.keys()
-
-def _saveanswers_request(proc, data):
-   state = SimpleNamespace(proc=proc, kluc_cache={}, logger=logging.getLogger('pisomky'))
-   return SimpleNamespace(app=SimpleNamespace(state=state), form=lambda: _FormaStub(data))
+def _saveanswers(data, subory=None, kluc=KLUC):
+   """POST /saveanswers/{kluc} so skutocnym Saxon procesorom; `subory` su dvojice (nazov, obsah)."""
+   with PySaxonProcessor(license=False) as proc:
+      with http(user=None, proc=proc) as klient:
+         return klient.post(f'/saveanswers/{kluc}', data=data, files=[('subory', (nazov, obsah)) for nazov, obsah in subory or []] or None)
 
 def _subor(filename, obsah):
    async def citaj():
@@ -474,8 +448,7 @@ def _subor(filename, obsah):
 def test_saveanswers_cesty_su_z_testu_nie_z_formulara(tests_file, tmp_path):
    podvrhnute = {'predmet': '../../../../utok', 'trieda': '/../../x', 'skupina': 'a', 'kapitola': '..', 'fileid': 'zz', 'q1': 'a'}
    okolie_pred = set(os.listdir(tmp_path.parent))
-   with PySaxonProcessor(license=False) as proc:
-      asyncio.run(volaj(saveanswers, _saveanswers_request(proc, podvrhnute), Response(), KLUC, subory=[_subor('../../dir/evil.txt', b'obsah')]))  # type: ignore[arg-type]
+   assert _saveanswers(podvrhnute, [('../../dir/evil.txt', b'obsah')]).status_code == 201
    odpovede = tmp_path / 'res/xml/answers' / PREDMET
    stem = f'{PREDMET}_{TRIEDA}{SKUPINA}_{KAPITOLA}_{FILEID}'
    xml = ET.parse(str(odpovede / f'{stem}.xml')).getroot()
@@ -491,10 +464,7 @@ def test_saveanswers_cesty_su_z_testu_nie_z_formulara(tests_file, tmp_path):
 def test_saveanswers_skonceny_test_je_403_a_nic_nezapise(tmp_path):
    cesta = tmp_path / 'res/xml/tests' / PREDMET / f'{PREDMET}_{TRIEDA}{SKUPINA}_{KAPITOLA}_{FILEID}.xml'
    cesta.write_text(TESTS_XML.replace('<testy ', '<testy stop="2020-01-01T08:00" '), encoding='utf-8')
-   with PySaxonProcessor(license=False) as proc:
-      with pytest.raises(HTTPException) as exc:
-         asyncio.run(volaj(saveanswers, _saveanswers_request(proc, {'q1': 'a'}), Response(), KLUC, subory=None))  # type: ignore[arg-type]
-   assert exc.value.status_code == 403
+   assert _saveanswers({'q1': 'a'}).status_code == 403
    assert list((tmp_path / 'res/xml/answers' / PREDMET).iterdir()) == []
 
 
@@ -512,8 +482,7 @@ def test_ocisti_odpovede_ignoruje_subor_pod_klucom_otazky():
 
 def test_saveanswers_zapise_len_otazky_testu_a_znak_nezhodi_ulozenie(tests_file, tmp_path):
    udaje = {'q1': 'a\x0bb', 'cudzia_otazka': 'x', 'q9': 'y'}
-   with PySaxonProcessor(license=False) as proc:
-      asyncio.run(volaj(saveanswers, _saveanswers_request(proc, udaje), Response(), KLUC, subory=None))  # type: ignore[arg-type]
+   assert _saveanswers(udaje).status_code == 201
    xml = ET.parse(str(tmp_path / 'res/xml/answers' / PREDMET / f'{PREDMET}_{TRIEDA}{SKUPINA}_{KAPITOLA}_{FILEID}.xml')).getroot()
    assert [(o.get('id'), o.text) for o in xml.findall('test/otazka')] == [('q1', 'ab')]
 
@@ -521,70 +490,65 @@ def test_saveanswers_zapise_len_otazky_testu_a_znak_nezhodi_ulozenie(tests_file,
 # --- process_chapter ---
 
 def test_process_chapter_neplatne_id_je_400_a_len_varovanie(caplog):
-   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(logger=logging.getLogger('pisomky'))))
    with caplog.at_level(logging.DEBUG, logger='pisomky'):
-      with pytest.raises(HTTPException) as exc:
-         asyncio.run(volaj(process_chapter, request, 'PIT3', '../x', 'create', user='nikto'))  # type: ignore[arg-type]
-   assert exc.value.status_code == 400
-   assert 'ID kapitoly' in exc.value.detail
+      odpoved = _kapitola('create', kapitola_id='../x', predmet='PIT3', user='nikto')
+   assert odpoved.status_code == 400
+   assert 'ID kapitoly' in odpoved.json()['detail']
    assert [r.levelno for r in caplog.records] == [logging.WARNING]
 
 
 # --- trasy skladajuce cesty z parametrov: zle hodnoty sa odmietnu pred akymkolvek zapisom ---
 
-def _request_bez_proc():
-   return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(proc=None, logger=logging.getLogger('pisomky'))))
-
-#trasy, ktore pracuju s jednou sadou testov (dependency app/sada.py): cez volaj() sa spusti ta ista dependency ako v aplikacii
-def _trasy_sady(request, predmet, trieda):
+#trasy, ktore pracuju s jednou sadou testov (dependency app/sada.py), ako (metoda, url, formular)
+def _trasy_sady(predmet, trieda):
    zaklad = {'predmet': predmet, 'trieda': trieda, 'kapitola': KAPITOLA, 'fileid': FILEID}
    return {
-      'savemarks': lambda: volaj(savemarks, request, Response(), KLUC, dat=DAT, **zaklad),
-      'importmanual': lambda: volaj(importmanual, request, KLUC, **zaklad),
-      'groupstatistics': lambda: volaj(groupstatistics, request, user='ucitel', **zaklad),
-      'setrevealed': lambda: volaj(setrevealed, request, odhalene='1', **zaklad),
-      'regeneratetests': lambda: volaj(regeneratetests, request, **zaklad),
-      'changetime': lambda: volaj(changetime, request, **zaklad),
-      'downloadtests': lambda: volaj(downloadtests, request, BackgroundTasks(), **zaklad),
-      'downloadresults': lambda: volaj(downloadresults, request, BackgroundTasks(), **zaklad),
-      'downloadcodes': lambda: volaj(downloadcodes, request, BackgroundTasks(), **zaklad),
+      'savemarks': ('POST', f'/admin/savemarks/{KLUC}', {**zaklad, 'dat': DAT}),
+      'importmanual': ('POST', f'/admin/ai/importmanual/{KLUC}', zaklad),
+      'groupstatistics': ('POST', '/admin/groupstatistics', zaklad),
+      'setrevealed': ('POST', '/admin/setrevealed', {**zaklad, 'odhalene': '1'}),
+      'regeneratetests': ('POST', '/admin/regeneratetests', zaklad),
+      'changetime': ('POST', '/admin/changetime', zaklad),
+      'downloadtests': ('POST', '/admin/downloadtests', zaklad),
+      'downloadresults': ('POST', '/admin/downloadresults', zaklad),
+      'downloadcodes': ('POST', '/admin/downloadcodes', zaklad),
    }
 
 @pytest.mark.parametrize('trasa', ['savemarks', 'importmanual', 'feedbackreport', 'groupstatistics', 'createtests', 'setrevealed', 'regeneratetests', 'changetime', 'downloadtests', 'downloadresults', 'downloadcodes', 'deletetests'])
 @pytest.mark.parametrize('predmet, trieda', [('../../../../utok', TRIEDA), (PREDMET, '/../x'), (PREDMET + '\n', TRIEDA)])
 def test_trasy_odmietnu_neplatne_parametre_pred_zapisom(trasa, predmet, trieda, tmp_path):
-   request = _request_bez_proc()
-   volanie = {
-      **_trasy_sady(request, predmet, trieda),
-      'deletetests': lambda: volaj(deletetests, request, predmet, trieda, KAPITOLA, FILEID),
-      'feedbackreport': lambda: volaj(feedbackreport, request, predmet, trieda, KAPITOLA, FILEID),  # type: ignore[arg-type]
-      'createtests': lambda: volaj(createtests, request, predmet, [trieda], KAPITOLA, user='ucitel'),  # type: ignore[arg-type]
+   zaklad = {'predmet': predmet, 'trieda': trieda, 'kapitola': KAPITOLA, 'fileid': FILEID}
+   metoda, url, data = {
+      **_trasy_sady(predmet, trieda),
+      'deletetests': ('DELETE', '/admin/deletetests', zaklad),
+      'feedbackreport': ('POST', '/admin/feedbackreport', zaklad),
+      'createtests': ('POST', '/admin/createtests', {**zaklad, 'trieda': [trieda]}),
    }[trasa]
    okolie_pred = set(os.listdir(tmp_path.parent))
    strom_pred = sorted(tmp_path.rglob('*'))
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volanie())
-   assert exc.value.status_code == 400
-   assert 'Neplatný parameter' in exc.value.detail
+   with http() as klient:
+      odpoved = klient.request(metoda, url, data=data)
+   assert odpoved.status_code == 400
+   assert 'Neplatný parameter' in odpoved.json()['detail']
    assert set(os.listdir(tmp_path.parent)) == okolie_pred
    assert sorted(tmp_path.rglob('*')) == strom_pred
 
 @pytest.mark.parametrize('trasa', ['savemarks', 'importmanual', 'groupstatistics', 'setrevealed', 'regeneratetests', 'changetime', 'downloadtests', 'downloadresults', 'downloadcodes'])
-def test_trasy_sady_neexistujucu_sadu_odmietnu_404_a_nic_nevytvoria(trasa, tmp_path, monkeypatch):
-   monkeypatch.chdir(tmp_path)
+def test_trasy_sady_neexistujucu_sadu_odmietnu_404_a_nic_nevytvoria(trasa, tmp_path):
+   metoda, url, data = _trasy_sady(PREDMET, TRIEDA)[trasa]
    strom_pred = sorted(tmp_path.rglob('*'))
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(_trasy_sady(_request_bez_proc(), PREDMET, TRIEDA)[trasa]())
-   assert exc.value.status_code == 404
+   with http() as klient:
+      odpoved = klient.request(metoda, url, data=data)
+   assert odpoved.status_code == 404
    assert sorted(tmp_path.rglob('*')) == strom_pred
 
 @pytest.mark.parametrize('predmet', ['../../../../utok', 'pit3', 'MAT\n', '*'])
 def test_showquestions_odmietne_neplatny_predmet(predmet, tmp_path):
    okolie_pred = set(os.listdir(tmp_path.parent))
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volaj(showquestions, _request_bez_proc(), predmet, user='ucitel'))  # type: ignore[arg-type]
-   assert exc.value.status_code == 400
-   assert 'Skratka predmetu' in exc.value.detail
+   with http(user='ucitel') as klient:
+      odpoved = klient.post('/admin/showquestions', data={'predmet': predmet})
+   assert odpoved.status_code == 400
+   assert 'Skratka predmetu' in odpoved.json()['detail']
    assert set(os.listdir(tmp_path.parent)) == okolie_pred
 
 
@@ -668,8 +632,10 @@ def banka(tmp_path):
    (tmp_path / '.perm').write_text('petrik: create:AUT3 edit:AUT3 delete:AUT3\n', encoding='utf-8')
    return tmp_path
 
-def _banka_request():
-   return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(perm_cache={}, logger=logging.getLogger('pisomky'))))
+def _post(url, user='sef', **polia):
+   """POST formulara ako dany ucitel cez skutocnu aplikaciu; polia s hodnotou None sa neposlu (ako chybajuce pole)."""
+   with http(user=user) as klient:
+      return klient.post(url, data={k: v for k, v in polia.items() if v is not None})
 
 def _kategoria_xml(banka, predmet):
    return (banka / f'res/xml/questions/{predmet}/{predmet}_01.xml').read_text(encoding='utf-8')
@@ -677,52 +643,43 @@ def _kategoria_xml(banka, predmet):
 @pytest.mark.parametrize('operacia', ['update', 'delete', 'restore'])
 def test_process_category_opravnenie_podla_predmetu_kategorie_nie_formulara(banka, operacia):
    povodny = _kategoria_xml(banka, 'MAT')
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volaj(process_category, _banka_request(), predmet='AUT3', operacia=operacia, X_Remote_User='petrik', kategoria_id='katM', pocet='5'))  # type: ignore[arg-type]
-   assert exc.value.status_code == 403
+   odpoved = _post('/admin/process_category', user='petrik', predmet='AUT3', operacia=operacia, kategoria_id='katM', pocet='5')
+   assert odpoved.status_code == 403
    assert _kategoria_xml(banka, 'MAT') == povodny
 
 def test_process_category_vlastny_predmet_prejde(banka):
-   asyncio.run(volaj(process_category, _banka_request(), predmet='AUT3', operacia='update', X_Remote_User='petrik', kategoria_id='katA', pocet='5'))  # type: ignore[arg-type]
+   assert _post('/admin/process_category', user='petrik', predmet='AUT3', operacia='update', kategoria_id='katA', pocet='5').status_code == 200
    assert 'pocet="5"' in _kategoria_xml(banka, 'AUT3')
 
 def test_process_category_neexistujuca_kategoria_je_400(banka):
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volaj(process_category, _banka_request(), predmet='AUT3', operacia='update', X_Remote_User='petrik', kategoria_id='nie'))  # type: ignore[arg-type]
-   assert exc.value.status_code == 400
+   assert _post('/admin/process_category', user='petrik', predmet='AUT3', operacia='update', kategoria_id='nie').status_code == 400
 
 @pytest.mark.parametrize('typ, id_', [('kategoria', 'katM'), ('otazka', 'otM')])
 def test_setpaused_bez_opravnenia_je_403_a_nic_nezmeni(banka, typ, id_):
    povodny = _kategoria_xml(banka, 'MAT')
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volaj(set_paused, _banka_request(), id=id_, typ=typ, paused='1', X_Remote_User='petrik'))  # type: ignore[arg-type]
-   assert exc.value.status_code == 403
+   assert _post('/admin/setpaused', user='petrik', id=id_, typ=typ, paused='1').status_code == 403
    assert _kategoria_xml(banka, 'MAT') == povodny
 
 @pytest.mark.parametrize('typ, id_', [('kategoria', 'katA'), ('otazka', 'otA')])
 def test_setpaused_s_opravnenim_pozastavi(banka, typ, id_):
-   asyncio.run(volaj(set_paused, _banka_request(), id=id_, typ=typ, paused='1', X_Remote_User='petrik'))  # type: ignore[arg-type]
+   assert _post('/admin/setpaused', user='petrik', id=id_, typ=typ, paused='1').status_code == 200
    assert 'paused="1"' in _kategoria_xml(banka, 'AUT3')
 
 def test_setpaused_neexistujuce_je_404(banka):
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volaj(set_paused, _banka_request(), id='nie', typ='otazka', paused='1', X_Remote_User='petrik'))  # type: ignore[arg-type]
-   assert exc.value.status_code == 404
+   assert _post('/admin/setpaused', user='petrik', id='nie', typ='otazka', paused='1').status_code == 404
 
 
 @pytest.mark.parametrize('typ, id_', [('kategoria', 'katM'), ('otazka', 'otM'), ('kapitola', '01')])
 def test_setainapoveda_bez_opravnenia_je_403_a_nic_nezmeni(banka, typ, id_):
    povodny = _kategoria_xml(banka, 'MAT')
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volaj(set_ai_napoveda, _banka_request(), id=id_, typ=typ, povolene='1', X_Remote_User='petrik', predmet='MAT'))  # type: ignore[arg-type]
-   assert exc.value.status_code == 403
+   assert _post('/admin/setainapoveda', user='petrik', id=id_, typ=typ, povolene='1', predmet='MAT').status_code == 403
    assert _kategoria_xml(banka, 'MAT') == povodny
 
 @pytest.mark.parametrize('typ, id_', [('kategoria', 'katA'), ('otazka', 'otA'), ('kapitola', '01')])
 def test_setainapoveda_s_opravnenim_zapne_a_vypne(banka, typ, id_):
-   asyncio.run(volaj(set_ai_napoveda, _banka_request(), id=id_, typ=typ, povolene='1', X_Remote_User='petrik', predmet='AUT3'))  # type: ignore[arg-type]
+   assert _post('/admin/setainapoveda', user='petrik', id=id_, typ=typ, povolene='1', predmet='AUT3').status_code == 200
    assert 's_napovedou="1"' in _kategoria_xml(banka, 'AUT3')
-   asyncio.run(volaj(set_ai_napoveda, _banka_request(), id=id_, typ=typ, povolene='0', X_Remote_User='petrik', predmet='AUT3'))  # type: ignore[arg-type]
+   assert _post('/admin/setainapoveda', user='petrik', id=id_, typ=typ, povolene='0', predmet='AUT3').status_code == 200
    assert 's_napovedou' not in _kategoria_xml(banka, 'AUT3')
 
 @pytest.mark.parametrize('typ, id_, predmet, status', [
@@ -730,16 +687,14 @@ def test_setainapoveda_s_opravnenim_zapne_a_vypne(banka, typ, id_):
    ('nieco', 'otA', None, 400), ('kapitola', '../x', 'AUT3', 400), ('kapitola', '01', '../x', 400), ('kapitola', '01', None, 400),
 ])
 def test_setainapoveda_chybne_vstupy(banka, typ, id_, predmet, status):
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volaj(set_ai_napoveda, _banka_request(), id=id_, typ=typ, povolene='1', X_Remote_User='petrik', predmet=predmet))  # type: ignore[arg-type]
-   assert exc.value.status_code == status
+   assert _post('/admin/setainapoveda', user='petrik', id=id_, typ=typ, povolene='1', predmet=predmet).status_code == status
 
 
 # --- importmanual ---
 
 def _importmanual(data, kluc=KLUC, **parametre):
    zaklad = {'predmet': PREDMET, 'trieda': TRIEDA, 'kapitola': KAPITOLA, 'fileid': FILEID, 'skupina': SKUPINA}
-   return asyncio.run(volaj(importmanual, _saveanswers_request(None, data), kluc, **{**zaklad, **parametre}))  # type: ignore[arg-type]
+   return _post(f'/admin/ai/importmanual/{kluc}', **{**data, **zaklad, **parametre})
 
 def _odpovede_cesta(tmp_path):
    return tmp_path / 'res/xml/answers' / PREDMET / f'{PREDMET}_{TRIEDA}{SKUPINA}_{KAPITOLA}_{FILEID}.xml'
@@ -763,9 +718,7 @@ def test_importmanual_nezapisuje_polia_tykajuce_sa_cesty_do_odpovedi(tests_file,
    assert [o.get('id') for o in xml.findall(f'test[@id="{KLUC}"]/otazka')] == ['q1']
 
 def test_importmanual_neplatna_cesta_je_400_a_nic_nevytvori(tests_file, tmp_path):
-   with pytest.raises(HTTPException) as exc:
-      _importmanual({'q1': 'a'}, predmet='../x')
-   assert exc.value.status_code == 400
+   assert _importmanual({'q1': 'a'}, predmet='../x').status_code == 400
    assert not _odpovede_cesta(tmp_path).exists()
 
 
@@ -851,23 +804,20 @@ def test_saveanswers_chyba_zapisu_vrati_obecnu_hlasku(tests_file, monkeypatch):
       raise OSError(TAJNE)
 
    monkeypatch.setattr(testrun, 'write_answers', zlyhaj)
-   with PySaxonProcessor(license=False) as proc:
-      with pytest.raises(HTTPException) as exc:
-         asyncio.run(volaj(saveanswers, _saveanswers_request(proc, {'q1': 'a'}), Response(), KLUC, subory=None))  # type: ignore[arg-type]
-   assert exc.value.status_code == 400
-   assert exc.value.detail == 'Odpovede sa nepodarilo uložiť.' and TAJNE not in exc.value.detail
+   odpoved = _saveanswers({'q1': 'a'})
+   assert odpoved.status_code == 400
+   assert odpoved.json()['detail'] == 'Odpovede sa nepodarilo uložiť.' and TAJNE not in odpoved.text
 
 def test_saveanswers_chyba_suboru_vrati_obecnu_hlasku(tests_file, monkeypatch):
-   class Zly:
-      filename = 'x.txt'
+   from starlette.datastructures import UploadFile
 
-      async def read(self):
-         raise OSError(TAJNE)
+   async def zle_citanie(self, size=-1):
+      raise OSError(TAJNE)
 
-   with PySaxonProcessor(license=False) as proc:
-      with pytest.raises(HTTPException) as exc:
-         asyncio.run(volaj(saveanswers, _saveanswers_request(proc, {}), Response(), KLUC, subory=[Zly()]))  # type: ignore[arg-type,list-item]
-   assert exc.value.detail == 'Súbor sa nepodarilo uložiť.'
+   monkeypatch.setattr(UploadFile, 'read', zle_citanie)
+   odpoved = _saveanswers({}, [('x.txt', b'obsah')])
+   assert odpoved.status_code == 400
+   assert odpoved.json()['detail'] == 'Súbor sa nepodarilo uložiť.' and TAJNE not in odpoved.text
 
 def test_stoptime_chyba_vrati_obecnu_hlasku_a_zaloguje_podrobnosti(tests_file, monkeypatch, caplog):
    import app.routers.testrun as testrun
@@ -876,11 +826,11 @@ def test_stoptime_chyba_vrati_obecnu_hlasku_a_zaloguje_podrobnosti(tests_file, m
       raise OSError(TAJNE)
 
    monkeypatch.setattr(testrun, 'modify_test_xml', zlyhaj)
-   request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(kluc_cache={}, mcq_hotove={}, logger=logging.getLogger('pisomky'))))
    with caplog.at_level(logging.ERROR, logger='pisomky'):
-      with pytest.raises(HTTPException) as exc:
-         asyncio.run(volaj(stoptime, request, KLUC))  # type: ignore[arg-type]
-   assert exc.value.detail == 'Test sa nepodarilo ukončiť.' and TAJNE not in exc.value.detail
+      with http() as klient:
+         odpoved = klient.post(f'/stoptime/{KLUC}')
+   assert odpoved.status_code == 400
+   assert odpoved.json()['detail'] == 'Test sa nepodarilo ukončiť.' and TAJNE not in odpoved.text
    assert TAJNE in caplog.text
 
 
@@ -892,7 +842,7 @@ def ucitelia(tmp_path):
    (tmp_path / '.perm').write_text('sef: createp:ALL deletep:MAT create:MAT edit:MAT delete:MAT\npetrik: edit:AUT3\n', encoding='utf-8')
 
 def _predmet(operacia, predmet, user='sef'):
-   return asyncio.run(volaj(process_predmet, _banka_request(), predmet=predmet, operacia=operacia, X_Remote_User=user))  # type: ignore[arg-type]
+   return _post('/admin/process_predmet', user=user, predmet=predmet, operacia=operacia)
 
 def _kod(odpoved):
    return odpoved.status_code
@@ -903,23 +853,17 @@ def test_process_predmet_vytvori_adresar(ucitelia, tmp_path):
 
 @pytest.mark.parametrize('user', ['petrik', 'neznamy'])
 def test_process_predmet_vytvorenie_bez_opravnenia_je_403(ucitelia, tmp_path, user):
-   with pytest.raises(HTTPException) as exc:
-      _predmet('create', 'NOV4', user)
-   assert exc.value.status_code == 403
+   assert _predmet('create', 'NOV4', user).status_code == 403
    assert not (tmp_path / 'res/xml/questions/NOV4').exists()
 
 @pytest.mark.parametrize('predmet', ['../x', 'a', 'NOV4\n', 'ABCDEFGHIJK'])
 def test_process_predmet_neplatna_skratka_je_400(ucitelia, tmp_path, predmet):
-   with pytest.raises(HTTPException) as exc:
-      _predmet('create', predmet)
-   assert exc.value.status_code == 400
+   assert _predmet('create', predmet).status_code == 400
    assert not (tmp_path / 'res/xml/questions').exists()
 
 def test_process_predmet_existujuci_je_400(ucitelia, tmp_path):
    _predmet('create', 'NOV4')
-   with pytest.raises(HTTPException) as exc:
-      _predmet('create', 'NOV4')
-   assert exc.value.status_code == 400
+   assert _predmet('create', 'NOV4').status_code == 400
 
 def test_process_predmet_zmaze_a_zalohuje(ucitelia, banka_mat):
    assert _kod(_predmet('delete', 'MAT')) == 200
@@ -928,23 +872,17 @@ def test_process_predmet_zmaze_a_zalohuje(ucitelia, banka_mat):
 
 def test_process_predmet_zmazanie_len_s_pravom_deletep_pre_dany_predmet(ucitelia, banka_mat):
    (banka_mat / 'res/xml/questions/AUT3').mkdir()
-   with pytest.raises(HTTPException) as exc:
-      _predmet('delete', 'AUT3')     # sef ma deletep len pre MAT
-   assert exc.value.status_code == 403
+   assert _predmet('delete', 'AUT3').status_code == 403     # sef ma deletep len pre MAT
    assert (banka_mat / 'res/xml/questions/AUT3').exists()
 
 def test_process_predmet_pouzity_v_testoch_sa_nezmaze(ucitelia, banka_mat):
    (banka_mat / 'res/xml/tests/MAT').mkdir(parents=True, exist_ok=True)
    (banka_mat / 'res/xml/tests/MAT/MAT_1A_01_ab12.xml').write_text('<testy><test id="K"><otazka id="otM"/></test></testy>', encoding='utf-8')
-   with pytest.raises(HTTPException) as exc:
-      _predmet('delete', 'MAT')
-   assert exc.value.status_code == 400
+   assert _predmet('delete', 'MAT').status_code == 400
    assert (banka_mat / 'res/xml/questions/MAT').exists()
 
 def test_process_predmet_neznama_operacia_je_400(ucitelia):
-   with pytest.raises(HTTPException) as exc:
-      _predmet('premenuj', 'MAT')
-   assert exc.value.status_code == 400
+   assert _predmet('premenuj', 'MAT').status_code == 400
 
 @pytest.fixture
 def banka_mat(tmp_path):
@@ -957,7 +895,7 @@ def banka_mat(tmp_path):
 # --- process_chapter ---
 
 def _kapitola(operacia, kapitola_id='02', predmet='MAT', user='sef', nazov=None):
-   return asyncio.run(volaj(process_chapter, _banka_request(), predmet=predmet, kapitola_id=kapitola_id, operacia=operacia, X_Remote_User=user, nazov=nazov))  # type: ignore[arg-type]
+   return _post('/admin/process_chapter', user=user, predmet=predmet, kapitola_id=kapitola_id, operacia=operacia, nazov=nazov)
 
 def test_process_chapter_vytvori_premenuje_a_zmaze(ucitelia, banka_mat):
    cesta = banka_mat / 'res/xml/questions/MAT/MAT_02.xml'
@@ -971,82 +909,52 @@ def test_process_chapter_vytvori_premenuje_a_zmaze(ucitelia, banka_mat):
 @pytest.mark.parametrize('operacia', ['create', 'update', 'delete'])
 def test_process_chapter_bez_opravnenia_je_403_a_nic_nezmeni(ucitelia, banka_mat, operacia):
    povodny = _kategoria_xml(banka_mat, 'MAT')
-   with pytest.raises(HTTPException) as exc:
-      _kapitola(operacia, kapitola_id='01' if operacia != 'create' else '07', user='petrik')     # petrik ma edit len pre AUT3
-   assert exc.value.status_code == 403
+   assert _kapitola(operacia, kapitola_id='01' if operacia != 'create' else '07', user='petrik').status_code == 403     # petrik ma edit len pre AUT3
    assert _kategoria_xml(banka_mat, 'MAT') == povodny
    assert not (banka_mat / 'res/xml/questions/MAT/MAT_07.xml').exists()
 
 def test_process_chapter_existujuca_sa_nevytvori_znova(ucitelia, banka_mat):
-   with pytest.raises(HTTPException) as exc:
-      _kapitola('create', kapitola_id='01')
-   assert exc.value.status_code == 400
+   assert _kapitola('create', kapitola_id='01').status_code == 400
 
 def test_process_chapter_pouzita_v_testoch_sa_nezmaze(ucitelia, banka_mat):
    (banka_mat / 'res/xml/tests/MAT').mkdir(parents=True, exist_ok=True)
    (banka_mat / 'res/xml/tests/MAT/MAT_1A_01_ab12.xml').write_text('<testy><test id="K"><otazka id="otM"/></test></testy>', encoding='utf-8')
-   with pytest.raises(HTTPException) as exc:
-      _kapitola('delete', kapitola_id='01')
-   assert exc.value.status_code == 400
+   assert _kapitola('delete', kapitola_id='01').status_code == 400
    assert (banka_mat / 'res/xml/questions/MAT/MAT_01.xml').exists()
 
 def test_process_chapter_neznama_operacia_je_400(ucitelia, banka_mat):
-   with pytest.raises(HTTPException) as exc:
-      _kapitola('premenuj')
-   assert exc.value.status_code == 400
+   assert _kapitola('premenuj').status_code == 400
 
 
 # --- importanswers (AI import, trasa) ---
 
-class _FormaSuborov:
-   def __init__(self, subory):
-      self._subory = subory
-
-   async def __aenter__(self):
-      return self
-
-   async def __aexit__(self, *args):
-      return False
-
-   def getlist(self, nazov):
-      return self._subory if nazov == 'obrazky' else []
-
-def _importanswers_request(subory):
-   state = SimpleNamespace(kluc_cache={}, ai_provider=object(), logger=logging.getLogger('pisomky'))
-   return SimpleNamespace(app=SimpleNamespace(state=state), form=lambda: _FormaSuborov(subory))
-
 def test_importanswers_bez_suborov_je_400():
-   from app.routers.importanswers import importanswers
-   with pytest.raises(HTTPException) as exc:
-      asyncio.run(volaj(importanswers, _importanswers_request([])))  # type: ignore[arg-type]
-   assert exc.value.status_code == 400
+   with http() as klient:
+      assert klient.post('/admin/ai/importanswers').status_code == 400
 
 def test_importanswers_spracuje_kazdy_subor_a_vrati_vysledky(monkeypatch):
-   import json
    import app.routers.importanswers as modul
+   poskytovatel = object()
    volania = []
 
    async def falosne_spracovanie(subor, cache, provider, vysledky):
-      volania.append((subor, provider))
-      vysledky.append({'subor': subor, 'zapisane': 1})
+      volania.append(provider)
+      vysledky.append({'subor': subor.filename, 'zapisane': 1})
 
    monkeypatch.setattr(modul, '_spracuj_subor', falosne_spracovanie)
-   request = _importanswers_request(['a.png', 'b.pdf'])
-   odpoved = asyncio.run(volaj(modul.importanswers, request))  # type: ignore[arg-type]
-   assert sorted(v['subor'] for v in json.loads(bytes(odpoved.body))['vysledky']) == ['a.png', 'b.pdf']
-   assert {p for _, p in volania} == {request.app.state.ai_provider}
+   with http(ai_provider=poskytovatel) as klient:
+      odpoved = klient.post('/admin/ai/importanswers', files=[('obrazky', ('a.png', b'x')), ('obrazky', ('b.pdf', b'y'))])
+   assert odpoved.status_code == 200
+   assert sorted(v['subor'] for v in odpoved.json()['vysledky']) == ['a.png', 'b.pdf']
+   assert volania == [poskytovatel, poskytovatel]
 
 
 # --- editor otazky: miesto na dopisanie ---
 
 def _process_question(**parametre):
-   """Volanie ako z HTTP: polia z `parametre` prisli vo formulari, ale prazdny retazec sa v parametri tvari ako None (FastAPI)."""
-   zaklad = {'operacia': 'update', 'X_Remote_User': 'sef', 'otazka_id': 'otM', 'znenie': '<znenie>Napíš postup</znenie>', 'body': '1'}
-   vsetky = {**zaklad, **parametre}
-   request = _banka_request()
-   request.form = lambda: _FormaStub({k: v for k, v in vsetky.items() if k != 'X_Remote_User'})  # type: ignore[attr-defined]
-   argumenty = {k: (None if v == '' else v) for k, v in vsetky.items()}
-   return asyncio.run(volaj(process_question, request, **argumenty))  # type: ignore[arg-type]
+   """POST ako z editora: pole s hodnotou None sa neposle (chybajuce pole), prazdny retazec sa posle ako prazdne pole."""
+   zaklad = {'operacia': 'update', 'otazka_id': 'otM', 'znenie': '<znenie>Napíš postup</znenie>', 'body': '1'}
+   return _post('/admin/process_question', **{**zaklad, **parametre})
 
 def _get_question(otazka_id='otM'):
    import json
@@ -1068,23 +976,20 @@ def test_process_question_prazdne_miesto_ho_odstrani_a_chybajuce_pole_nemeni(uci
 @pytest.mark.parametrize('hodnota', ['0', '31', 'abc', '2.5'])
 def test_process_question_neplatne_miesto_je_400_a_nic_nezapise(ucitelia, banka_mat, hodnota):
    povodny = _kategoria_xml(banka_mat, 'MAT')
-   with pytest.raises(HTTPException) as exc:
-      _process_question(miesto=hodnota)
-   assert exc.value.status_code == 400 and '1 do 30' in exc.value.detail
+   odpoved = _process_question(miesto=hodnota)
+   assert odpoved.status_code == 400 and '1 do 30' in odpoved.json()['detail']
    assert _kategoria_xml(banka_mat, 'MAT') == povodny
 
 def test_process_question_vytvori_otazku_s_miestom(ucitelia, banka_mat):
    odpoved = _process_question(operacia='create', otazka_id=None, kategoria_id='katM', miesto='2')
-   import json
-   nova_id = json.loads(bytes(odpoved.body))['id']
+   nova_id = odpoved.json()['id']
    assert _get_question(nova_id)['miesto'] == '2'
 
 def test_process_question_pouzita_otazka_sa_pri_zmene_len_miesta_nerozvetvi(ucitelia, banka_mat):
    (banka_mat / 'res/xml/tests/MAT').mkdir(parents=True, exist_ok=True)
    (banka_mat / 'res/xml/tests/MAT/MAT_1A_01_ab12.xml').write_text('<testy><test id="K"><otazka id="otM"/></test></testy>', encoding='utf-8')
-   import json
    odpoved = _process_question(znenie='<znenie>x</znenie>', body='', miesto='5')    # znenie a body ostavaju ako v banke, meni sa len miesto
-   assert json.loads(bytes(odpoved.body))['forked'] is False
+   assert odpoved.json()['forked'] is False
    assert _get_question()['miesto'] == '5'
 
 
@@ -1094,9 +999,8 @@ TABULKA_XML = '<tabulka><riadok><bunka odpoved="1"/></riadok></tabulka>'
 
 @pytest.fixture
 def klient(ucitelia, banka_mat):
-   from fastapi.testclient import TestClient
-   fastapi_app.state.perm_cache.clear()
-   return TestClient(fastapi_app, base_url='http://pisomky.ternac.net', headers={'X-Remote-User': 'sef'})
+   with http(user='sef') as k:
+      yield k
 
 def _post_otazka(klient, **polia):
    return klient.post('/admin/process_question', data={'operacia': 'update', 'otazka_id': 'otM', 'znenie': '<znenie>x</znenie>', 'body': '1', **polia})
