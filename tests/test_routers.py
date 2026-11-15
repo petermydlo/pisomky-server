@@ -993,6 +993,26 @@ def test_process_question_pouzita_otazka_sa_pri_zmene_len_miesta_nerozvetvi(ucit
    assert _get_question()['miesto'] == '5'
 
 
+# --- prazdne volitelne polia: FastAPI ich zmeni na None, handler nesmie zapisat atribut s prazdnou hodnotou ---
+
+def test_process_question_prazdne_volitelne_polia_odstrania_atributy(ucitelia, banka_mat):
+   assert _process_question(bonus='1', static='1', nazov='N', rating='1', deprecated='1').status_code == 200
+   xml = _kategoria_xml(banka_mat, 'MAT')
+   assert all(f'{a}="1"' in xml or f'{a}="N"' in xml for a in ('bonus', 'static', 'nazov', 'rating', 'deprecated'))
+   assert _process_question(bonus='', static='', nazov='', rating='', deprecated='').status_code == 200
+   xml = _kategoria_xml(banka_mat, 'MAT')
+   assert '=""' not in xml and not any(a in xml for a in ('bonus', 'static', 'nazov', 'rating', 'deprecated'))
+
+def test_process_category_prazdne_volitelne_polia_odstrania_atributy(ucitelia, banka_mat):
+   def kategoria(**polia):
+      return _post('/admin/process_category', predmet='MAT', operacia='update', kategoria_id='katM', pocet='1', **polia)
+   assert kategoria(bonus='1', static='1', nazov='N', deprecated='1').status_code == 200
+   assert all(a in _kategoria_xml(banka_mat, 'MAT') for a in ('bonus="1"', 'static="1"', 'nazov="N"', 'deprecated="1"'))
+   assert kategoria(bonus='', static='', nazov='', deprecated='').status_code == 200
+   xml = _kategoria_xml(banka_mat, 'MAT')
+   assert '=""' not in xml and not any(a in xml for a in ('bonus', 'static', 'nazov', 'deprecated'))
+
+
 # --- process_question cez skutocne HTTP: prazdne pole znamena "odstran", chybajuce "nemen" ---
 
 TABULKA_XML = '<tabulka><riadok><bunka odpoved="1"/></riadok></tabulka>'

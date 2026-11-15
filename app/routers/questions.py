@@ -130,11 +130,6 @@ async def process_category(logger: Logger, perm_cache: PermCache, predmet: Strin
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
          raise HTTPException(status_code=400, detail=f'Neznáma operácia: {operacia}')
-      body = body or None
-      static = static or None
-      bonus = bonus or None
-      nazov = nazov or None
-      deprecated = deprecated or None
       if operacia == 'create':
          check_permission(perm_cache, user, akcia, predmet)
          if not kapitola_id:
@@ -201,12 +196,6 @@ async def process_question(request: Request, logger: Logger, perm_cache: PermCac
       akcia = _AKCIA_PODLA_OPERACIE.get(operacia)
       if akcia is None:
          raise HTTPException(status_code=400, detail=f'Neznáma operácia: {operacia}')
-      body = body or None
-      static = static or None
-      bonus = bonus or None
-      rating = rating or None
-      nazov = nazov or None
-      deprecated = deprecated or None
       odpovede_list = json.loads(odpovede) if odpovede else []
       napovede_list = json.loads(napovede) if napovede else []
       vzory_list = json.loads(vzory) if vzory else []
