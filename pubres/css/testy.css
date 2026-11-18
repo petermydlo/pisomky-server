@@ -1112,6 +1112,28 @@ div:hover > span.penIcon.editActions {
 .vystredene { display: flex; align-items: center; }
 .dolava     { text-align: left; }
 
+/* poznamka: zvyraznený odsek v style GitHub alertov - farebna zvisla ciara nalavo, bez vyplne, nadpis s ikonou vo farbe typu */
+.poznamka {
+   margin: 0.5rem 0;
+   padding: 0.25rem 1rem;
+   border-left: 0.25rem solid var(--poznamka-farba);
+   color: var(--bs-body-color);
+   text-indent: 0;
+}
+.poznamka-nadpis {
+   display: flex;
+   align-items: center;
+   gap: 0.4rem;
+   margin-bottom: 0.25rem;
+   font-weight: bold;
+   color: var(--poznamka-farba);
+}
+.poznamka-nadpis .bi { font-size: 1rem; }
+.poznamka-info    { --poznamka-farba: var(--bs-info);    }
+.poznamka-warning { --poznamka-farba: var(--bs-warning); }
+.poznamka-danger  { --poznamka-farba: var(--bs-danger);  }
+.poznamka-success { --poznamka-farba: var(--bs-success); }
+
 .sup { vertical-align: super; font-size: smaller; }
 .sub { vertical-align: sub; font-size: smaller; }
 

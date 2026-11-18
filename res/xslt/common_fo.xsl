@@ -96,6 +96,22 @@
    </fo:block>
 </xsl:template>
 
+<!-- zvyraznený odsek v style GitHub alertov; FOP nepozna CSS premenne ani ikonovy font, preto pevne hex farby Bootstrap palety
+      (pas aj nadpis majú rovnakú farbu) a nadpis bez ikony -->
+<xsl:template match="poznamka">
+   <xsl:variable name="vlastnosti" select="map{
+      'info':    ('#0dcaf0', 'Informácia'),
+      'warning': ('#ffc107', 'Upozornenie'),
+      'danger':  ('#dc3545', 'Pozor'),
+      'success': ('#198754', 'Tip')}"/>
+   <xsl:variable name="v" select="($vlastnosti(string(@typ)), $vlastnosti('info'))[position() le 2]"/>
+   <fo:block text-indent="0" start-indent="{if (ancestor::znenie) then '0.75cm' else '0cm'}" margin-top="0.15cm" margin-bottom="0.15cm"
+         padding-left="0.3cm" border-left="solid 3pt {$v[1]}" keep-together.within-page="always">
+      <fo:block font-weight="bold" color="{$v[1]}"><xsl:value-of select="$v[2]"/></fo:block>
+      <xsl:apply-templates/>
+   </fo:block>
+</xsl:template>
+
 <xsl:template match="file">
    <xsl:value-of select="@nazov"/> &lt;<xsl:value-of select="@src"/>&gt;
    <xsl:apply-templates/>

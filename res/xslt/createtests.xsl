@@ -373,6 +373,13 @@
    </xsl:copy>
 </xsl:template>
 
+<xsl:template match="poznamka">
+   <xsl:copy copy-namespaces="no">
+      <xsl:copy-of select="@typ"/>
+      <xsl:apply-templates/>
+   </xsl:copy>
+</xsl:template>
+
 <xsl:template match="miesto|obrazok|table|file|okno">
    <xsl:copy-of copy-namespaces="no" select="."/>
 </xsl:template>

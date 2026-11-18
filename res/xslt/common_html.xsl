@@ -93,6 +93,17 @@
    </div>
 </xsl:template>
 
+<!-- zvyraznený odsek v style GitHub alertov: farebna ciara nalavo, nadpis s ikonou podla @typ (info, warning, danger, success) -->
+<xsl:template match="poznamka">
+   <xsl:variable name="ikona" select="map{'info': ('bi-info-circle', 'Informácia'), 'warning': ('bi-exclamation-triangle', 'Upozornenie'),
+      'danger': ('bi-exclamation-octagon', 'Pozor'), 'success': ('bi-lightbulb', 'Tip')}"/>
+   <xsl:variable name="vlastnosti" select="($ikona(string(@typ)), $ikona('info'))[position() le 2]"/>
+   <div class="poznamka poznamka-{@typ}">
+      <div class="poznamka-nadpis"><i class="bi {$vlastnosti[1]}"/><xsl:text> </xsl:text><xsl:value-of select="$vlastnosti[2]"/></div>
+      <xsl:apply-templates/>
+   </div>
+</xsl:template>
+
 <xsl:template match="file">
    <a href="/pubres/subory/{@src}">
       <xsl:if test="@meno">

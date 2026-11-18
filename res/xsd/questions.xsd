@@ -36,6 +36,7 @@
         sub                      — dolný index
         alter                    — alternatívna formulácia (vykresľuje sa náhodne)
         placeholder              — zástupný symbol (napr. meno žiaka)
+        poznamka                 — zvýraznený odsek (@typ: info, warning, danger, success)
         obrazok                  — odkaz na obrázok
         file                     — odkaz na súbor
         ref                      — odkaz na inú otázku podľa @id
@@ -45,6 +46,7 @@
          <xs:element name="italic" type="InlineMixed"/>
          <xs:element name="underline" type="InlineMixed"/>
          <xs:element name="bold" type="InlineMixed"/>
+         <xs:element name="poznamka" type="Poznamka"/>
          <xs:element name="sub" type="xs:string"/>
          <xs:element name="alter" type="Alter"/>
          <xs:element name="placeholder">
@@ -207,12 +209,31 @@
       <xs:assert test="not(@autor) = not(@nahrada_za)"/>
    </xs:complexType>
 
+   <!-- poznamka: zvýraznený odsek (obdĺžnik s farebnou zvislou čiarou naľavo); typ určuje farbu podľa Bootstrap palety -->
+   <xs:complexType name="Poznamka" mixed="true">
+      <xs:complexContent>
+         <xs:extension base="InlineMixed">
+            <xs:attribute name="typ" use="required">
+               <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                     <xs:enumeration value="info"/>
+                     <xs:enumeration value="warning"/>
+                     <xs:enumeration value="danger"/>
+                     <xs:enumeration value="success"/>
+                  </xs:restriction>
+               </xs:simpleType>
+            </xs:attribute>
+         </xs:extension>
+      </xs:complexContent>
+   </xs:complexType>
+
    <xs:complexType name="Pokyny">
       <xs:sequence>
          <xs:element name="head" minOccurs="0" maxOccurs="unbounded">
             <xs:complexType mixed="true">
                <xs:choice minOccurs="0" maxOccurs="unbounded">
                   <xs:element name="italic" type="InlineMixed"/>
+                  <xs:element name="poznamka" type="Poznamka"/>
                   <!-- okno: odkaz otvárajúci /pubres/@src v samostatnom okne (len online verzia) -->
                   <xs:element name="okno">
                      <xs:complexType>
@@ -234,6 +255,7 @@
             <xs:complexType mixed="true">
                <xs:choice minOccurs="0" maxOccurs="unbounded">
                   <xs:element name="italic" type="InlineMixed"/>
+                  <xs:element name="poznamka" type="Poznamka"/>
                   <xs:element name="placeholder">
                      <xs:complexType>
                         <xs:attribute name="typ" type="xs:string" use="required"/>
